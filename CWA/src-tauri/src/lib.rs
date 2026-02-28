@@ -27,6 +27,8 @@ pub fn run() {
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.set_always_on_bottom(true);
                 let _ = win.set_skip_taskbar(true);
+                // 창이 최소화되거나 표시되지 않도록 방지
+                let _ = win.set_visible_on_all_workspaces(true);
             }
 
             let enabled = app.autolaunch().is_enabled().unwrap_or(false);
@@ -57,6 +59,7 @@ pub fn run() {
                             } else {
                                 let _ = win.show();
                                 let _ = win.set_always_on_bottom(true);
+                                let _ = win.set_focus();
                             }
                         }
                     }
@@ -81,7 +84,7 @@ pub fn run() {
                         let app = tray.app_handle();
                         if let Some(win) = app.get_webview_window("main") {
                             if win.is_visible().unwrap_or(false) { let _ = win.hide(); }
-                            else { let _ = win.show(); let _ = win.set_always_on_bottom(true); }
+                            else { let _ = win.show(); let _ = win.set_always_on_bottom(true); let _ = win.set_focus(); }
                         }
                     }
                 })
@@ -93,6 +96,11 @@ pub fn run() {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
+            }
+            // Windows+D 방지: 최소화되지 않도록
+            if let WindowEvent::Resized(_) | WindowEvent::Moved(_) = event {
+                let _ = window.show();
+                let _ = window.set_always_on_bottom(true);
             }
         })
         .invoke_handler(tauri::generate_handler![

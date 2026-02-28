@@ -274,6 +274,14 @@ html, body, #root {
 .todo-quick-add { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
 .todo-input-row { display:flex; gap:6px; }
 
+.color-row-quick { display:flex; gap:4px; flex-wrap:wrap; padding:2px 0; }
+.color-dot-quick {
+  width:20px; height:20px; border-radius:50%; border:2px solid transparent;
+  cursor:pointer; transition:transform .15s, border-color .15s;
+}
+.color-dot-quick:hover { transform:scale(1.15); }
+.color-dot-quick.selected { border-color:var(--text-primary); transform:scale(1.1); }
+
 .todo-input {
   flex:1; padding:6px 10px; border:1px solid var(--glass-border);
   border-radius:var(--radius-sm); background:rgba(255,255,255,.22);
@@ -346,6 +354,14 @@ html, body, #root {
 .todo-item:hover .todo-delete { opacity:1; }
 .todo-delete:hover { color:var(--accent); }
 
+.todo-edit {
+  background:none; border:none; color:var(--text-secondary); font-size:14px;
+  cursor:pointer; padding:0 2px; opacity:0; transition:opacity .15s;
+  flex-shrink:0; line-height:1;
+}
+.todo-item:hover .todo-edit { opacity:1; }
+.todo-edit:hover { color:var(--accent); }
+
 .todo-stats {
   font-size:10px; color:var(--text-secondary); text-align:right;
   padding-top:4px; border-top:1px solid var(--glass-border); flex-shrink:0;
@@ -382,7 +398,7 @@ html, body, #root {
 .settings-drawer {
   position:fixed; top:62px; right:10px;
   width:300px; max-height:calc(100vh - 74px);
-  overflow-y:auto; z-index:200; padding:0;
+  overflow-y:auto; z-index:900; padding:0;
   transform:translateX(calc(100% + 14px)); opacity:0;
   transition:transform .28s cubic-bezier(.4,0,.2,1), opacity .25s;
   pointer-events:none;
@@ -510,7 +526,7 @@ html, body, #root {
 }
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
-.modal-box { width:340px; animation:slideUp .18s cubic-bezier(.4,0,.2,1); }
+.modal-box { width:340px; animation:slideUp .18s cubic-bezier(.4,0,.2,1); z-index:1000; }
 @keyframes slideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 
 .modal-hdr {

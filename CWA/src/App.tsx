@@ -23,6 +23,8 @@ type TodayStyle = "highlight" | "glow" | "elevated" | "border";
 interface Todo {
   id: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   title: string;
   done: boolean;
   color: string;
@@ -50,6 +52,8 @@ interface Settings {
 interface ModalState {
   open: boolean;
   date: string;
+  startDate: string;
+  endDate: string;
   startTime: string;
   endTime:   string;
   allDay:    boolean;
@@ -99,27 +103,84 @@ const DEFAULT_SETTINGS: Settings = {
   eventColor:TODO_COLORS[0], todoPanelWidth:270, autostart:false,
 };
 
-// ── Korean public holidays 2024-2026 ──
-const KR_HOLIDAYS: Record<string,string> = {
-  // 2024
-  "2024-01-01":"신정","2024-02-09":"설날전날","2024-02-10":"설날","2024-02-11":"설날다음날",
-  "2024-03-01":"삼일절","2024-04-10":"국회의원선거","2024-05-05":"어린이날","2024-05-06":"대체공휴일",
-  "2024-05-15":"부처님오신날","2024-06-06":"현충일","2024-08-15":"광복절",
-  "2024-09-16":"추석전날","2024-09-17":"추석","2024-09-18":"추석다음날",
-  "2024-10-03":"개천절","2024-10-09":"한글날","2024-12-25":"크리스마스",
-  // 2025
-  "2025-01-01":"신정","2025-01-28":"설날전날","2025-01-29":"설날","2025-01-30":"설날다음날",
-  "2025-03-01":"삼일절","2025-05-05":"어린이날","2025-05-06":"대체공휴일",
-  "2025-05-15":"부처님오신날","2025-06-06":"현충일","2025-08-15":"광복절",
-  "2025-10-05":"추석전날","2025-10-06":"추석","2025-10-07":"추석다음날",
-  "2025-10-03":"개천절","2025-10-09":"한글날","2025-12-25":"크리스마스",
-  // 2026
-  "2026-01-01":"신정","2026-02-16":"설날전날","2026-02-17":"설날","2026-02-18":"설날다음날",
-  "2026-03-01":"삼일절","2026-05-05":"어린이날","2026-05-24":"부처님오신날",
-  "2026-06-06":"현충일","2026-08-15":"광복절",
-  "2026-09-24":"추석전날","2026-09-25":"추석","2026-09-26":"추석다음날",
-  "2026-10-03":"개천절","2026-10-09":"한글날","2026-12-25":"크리스마스",
-};
+// ═══════════════════════════════════════════════════════════
+// Holiday API
+// ═══════════════════════════════════════════════════════════
+async function fetchHolidays(year: number): Promise<Record<string, string>> {
+  // 기본 공휴일 (대체 공휴일 등은 계산이 복잡하므로 수동으로 유지)
+  const baseHolidays: Record<string, string> = {
+    [`${year}-01-01`]: "신정",
+    [`${year}-03-01`]: "삼일절",
+    [`${year}-05-05`]: "어린이날",
+    [`${year}-05-15`]: "부처님오신날",
+    [`${year}-06-06`]: "현충일",
+    [`${year}-08-15`]: "광복절",
+    [`${year}-10-03`]: "개천절",
+    [`${year}-10-09`]: "한글날",
+    [`${year}-12-25`]: "크리스마스",
+  };
+
+  // 설날 (음력 1월 1일) - 대략적인 날짜 계산
+  const getLunarNewYear = (year: number): number[] => {
+    // 음력 1월 1일이 양력 몇 월几日인지 단순 계산 (대체값)
+    const lunarNewYears: Record<number, number[]> = {
+      2024: [2, 9, 10],
+      2025: [1, 28, 29, 30],
+      2026: [2, 16, 17, 18],
+      2027: [2, 6, 7, 8],
+    };
+    return lunarNewYears[year] || [2, 10];
+  };
+
+  // 추석 (음력 8월 15일) - 대략적인 날짜 계산
+  const getChuseok = (year: number): number[] => {
+    const chuseokDates: Record<number, number[]> = {
+      2024: [9, 16, 17, 18],
+      2025: [10, 5, 6, 7],
+      2026: [9, 24, 25, 26],
+      2027: [9, 14, 15, 16],
+    };
+    return chuseokDates[year] || [9, 20];
+  };
+
+  const holidays: Record<string, string> = { ...baseHolidays };
+
+  // 설날 추가
+  const lunarNewYear = getLunarNewYear(year);
+  if (lunarNewYear.length >= 1) {
+    holidays[`${year}-01-0${lunarNewYear[0]}`] = "설날전날";
+    if (lunarNewYear.length >= 2) {
+      holidays[`${year}-01-0${lunarNewYear[1]}`] = "설날";
+      if (lunarNewYear.length >= 3) {
+        holidays[`${year}-01-0${lunarNewYear[2]}`] = "설날다음날";
+      }
+    }
+  }
+
+  // 추석 추가
+  const chuseok = getChuseok(year);
+  if (chuseok.length >= 1) {
+    const chuseokMonth = chuseok[0];
+    const prefix = chuseokMonth >= 10 ? `${chuseokMonth}-` : `0${chuseokMonth}-`;
+    holidays[`${year}-${prefix}${chuseok[1]}`] = "추석전날";
+    if (chuseok.length >= 2) {
+      holidays[`${year}-${prefix}${chuseok[2]}`] = "추석";
+      if (chuseok.length >= 3) {
+        holidays[`${year}-${prefix}${chuseok[3]}`] = "추석다음날";
+      }
+    }
+  }
+
+  // 대체 공휴일 추가
+  if (year === 2024) {
+    holidays["2024-05-06"] = "대체공휴일";
+  }
+  if (year === 2025) {
+    holidays["2025-05-06"] = "대체공휴일";
+  }
+
+  return holidays;
+}
 
 // ═══════════════════════════════════════════════════════════
 // Helpers
@@ -149,11 +210,12 @@ const fmtDate   = (d:Date) => [
 ].join("-");
 
 const MODAL_CLOSED: ModalState = {
-  open:false, date:localToday(), startTime:"09:00", endTime:"10:00", allDay:false,
+  open:false, date:localToday(), startDate:localToday(), endDate:localToday(),
+  startTime:"09:00", endTime:"10:00", allDay:false,
 };
 
 // ─── Expand recurring todos ───────────────────────────────
-function expandTodos(todos: Todo[]): EventInput[] {
+function expandTodos(todos: Todo[], KR_HOLIDAYS: Record<string,string>): EventInput[] {
   const events: EventInput[] = [];
   const now   = new Date();
   const rangeStart = new Date(now.getFullYear(), now.getMonth()-3, 1);
@@ -212,6 +274,7 @@ function expandTodos(todos: Todo[]): EventInput[] {
 export default function App() {
   const [view, setView]   = useState<"dayGridMonth"|"timeGridWeek">("dayGridMonth");
   const [todos, setTodos] = useState<Todo[]>(() => loadJson(TODOS_KEY, []));
+  const [holidays, setHolidays] = useState<Record<string, string>>({});
   const [settings, setSettings] = useState<Settings>(() => ({
     ...DEFAULT_SETTINGS,
     ...loadJson<Partial<Settings>>(SETTINGS_KEY, {}),
@@ -219,8 +282,10 @@ export default function App() {
   const [selectedDate, setSelectedDate] = useState(localToday);
   const [inputVal, setInputVal]   = useState("");
   const [inputTime, setInputTime] = useState("");
+  const [inputColor, setInputColor] = useState(TODO_COLORS[0]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editMode, setEditMode]   = useState(false);
+  const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [modal, setModal]         = useState<ModalState>(MODAL_CLOSED);
   const [modalTitle, setModalTitle] = useState("");
   const [modalColor, setModalColor] = useState(TODO_COLORS[0]);
@@ -231,6 +296,7 @@ export default function App() {
   const [dragId, setDragId] = useState<string|null>(null);
   const [dragOver, setDragOver] = useState<string|null>(null);
   const [isResizing, setIsResizing] = useState(false);
+  const [calendarTitle, setCalendarTitle] = useState("");
   const calendarRef = useRef<FullCalendar>(null);
   const appWin      = useRef(getCurrentWindow());
 
@@ -246,6 +312,16 @@ export default function App() {
           setSystemFonts(names);
         }
       } catch { /* fallback already set */ }
+    })();
+  }, []);
+
+  // ── Load holidays ──
+  useEffect(() => {
+    (async () => {
+      const year = new Date().getFullYear();
+      const h1 = await fetchHolidays(year);
+      const h2 = await fetchHolidays(year + 1);
+      setHolidays({ ...h1, ...h2 });
     })();
   }, []);
 
@@ -331,7 +407,7 @@ export default function App() {
   };
 
   // ── Calendar events ──
-  const calendarEvents = useMemo(() => expandTodos(todos), [todos]);
+  const calendarEvents = useMemo(() => expandTodos(todos, holidays), [todos, holidays]);
 
   // ── Add quick todo ──
   const addQuickTodo = useCallback(() => {
@@ -340,12 +416,12 @@ export default function App() {
     const maxOrder = todos.filter(x => x.date===selectedDate).reduce((m,x) => Math.max(m,x.sortOrder), -1);
     setTodos(p => [...p, {
       id: crypto.randomUUID(), date: selectedDate, title: t, done: false,
-      color: settings.eventColor, allDay: true,
+      color: inputColor, allDay: true,
       todoTime: inputTime || undefined,
       repeat:"none", sortOrder: maxOrder+1,
     }]);
     setInputVal(""); setInputTime("");
-  }, [inputVal, inputTime, selectedDate, settings.eventColor, todos]);
+  }, [inputVal, inputTime, selectedDate, inputColor, todos]);
 
   // ── Add modal todo ──
   const commitModal = () => {
@@ -354,6 +430,7 @@ export default function App() {
     const maxOrder = todos.filter(x => x.date===modal.date).reduce((m,x) => Math.max(m,x.sortOrder), -1);
     setTodos(p => [...p, {
       id: crypto.randomUUID(), date: modal.date, title: t, done:false,
+      startDate: modal.startDate, endDate: modal.endDate,
       color: modalColor, allDay: modal.allDay,
       startTime: modal.allDay ? undefined : modal.startTime,
       endTime:   modal.allDay ? undefined : modal.endTime,
@@ -371,6 +448,12 @@ export default function App() {
   const toggleDone = (id:string) => setTodos(p => p.map(t => t.id===id ? { ...t, done:!t.done } : t));
   const deleteTodo = (id:string) => setTodos(p => p.filter(t => t.id!==id));
 
+  const saveEdit = () => {
+    if (!editingTodo) return;
+    setTodos(p => p.map(t => t.id === editingTodo.id ? editingTodo : t));
+    setEditingTodo(null);
+  };
+
   // ── Date click ──
   const handleDateClick = (info: DateClickArg) => {
     const d = info.dateStr.slice(0,10);
@@ -379,7 +462,8 @@ export default function App() {
       const h  = String(info.date.getHours()).padStart(2,"0");
       const m  = String(info.date.getMinutes()).padStart(2,"0");
       const h2 = String((info.date.getHours()+1)%24).padStart(2,"0");
-      setModal({ open:true, date:d, allDay:false, startTime:`${h}:${m}`, endTime:`${h2}:${m}` });
+      setModal({ open:true, date:d, allDay:false, startDate:d, endDate:d,
+        startTime:`${h}:${m}`, endTime:`${h2}:${m}` });
       setModalTitle(""); setModalColor(settings.eventColor); setModalRepeat("none");
     }
   };
@@ -389,7 +473,7 @@ export default function App() {
     if (info.view.type !== "timeGridWeek") return;
     const d = info.startStr.slice(0,10);
     setSelectedDate(d);
-    setModal({ open:true, date:d, allDay:false,
+    setModal({ open:true, date:d, allDay:false, startDate:d, endDate:d,
       startTime: info.startStr.slice(11,16), endTime: info.endStr.slice(11,16) });
     setModalTitle(""); setModalColor(settings.eventColor); setModalRepeat("none");
     calendarRef.current?.getApi().unselect();
@@ -442,6 +526,24 @@ export default function App() {
     todos.filter(t => t.date===selectedDate).sort((a,b) => a.sortOrder-b.sortOrder),
   [todos, selectedDate]);
 
+  // ═══════════════════════════════════════════════════════════
+  // Right-click prevention
+  // ═══════════════════════════════════════════════════════════
+  const preventContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════
+  // Week number display
+  // ═══════════════════════════════════════════════════════════
+  const getWeekNumber = (date: Date): number => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+  };
+
   const fmtSelectedDate = new Date(selectedDate+"T00:00:00")
     .toLocaleDateString("ko-KR", { month:"long", day:"numeric", weekday:"short" });
 
@@ -454,6 +556,7 @@ export default function App() {
     <div
       className={`app-root today-${settings.todayStyle}`}
       style={{ cursor: isResizing ? "ew-resize" : undefined }}
+      onContextMenu={preventContextMenu}
     >
 
       {/* ══════════════════════════════════
@@ -516,13 +619,27 @@ export default function App() {
                   toggleDone(tid);
                 }
               }}
+              datesSet={(info) => {
+                if (info.view.type === "timeGridWeek") {
+                  const start = info.view.activeStart;
+                  const month = start.getMonth() + 1;
+                  const week = getWeekNumber(start);
+                  const title = `${month}월 ${week}주차`;
+                  setCalendarTitle(title);
+                  // Update the title element directly
+                  const titleEl = document.querySelector(".fc-toolbar-title");
+                  if (titleEl) titleEl.textContent = title;
+                } else {
+                  setCalendarTitle("");
+                }
+              }}
               dayCellClassNames={arg => {
                 const cls: string[] = [];
                 if (arg.dateStr === selectedDate) cls.push("selected-day");
                 const dow = arg.date.getDay();
                 if (dow === 0) cls.push("sunday-cell");
                 if (dow === 6) cls.push("saturday-cell");
-                if (KR_HOLIDAYS[arg.dateStr]) cls.push("holiday-cell");
+                if (holidays[arg.dateStr]) cls.push("holiday-cell");
                 return cls;
               }}
             />
@@ -550,6 +667,16 @@ export default function App() {
                   onChange={e=>setInputVal(e.target.value)}
                   onKeyDown={e=>e.key==="Enter"&&addQuickTodo()} />
                 <button className="add-btn" onClick={addQuickTodo}>+</button>
+              </div>
+              <div className="color-row-quick">
+                {TODO_COLORS.map(c=>(
+                  <button
+                    key={c}
+                    className={`color-dot-quick ${inputColor===c?"selected":""}`}
+                    style={{ background:c }}
+                    onClick={()=>setInputColor(c)}
+                  />
+                ))}
               </div>
               <input type="time" className="todo-input time-memo" value={inputTime}
                 onChange={e=>setInputTime(e.target.value)} />
@@ -585,6 +712,7 @@ export default function App() {
                       </span>
                     )}
                   </div>
+                  <button className="todo-edit" onClick={()=>setEditingTodo(t)}>✏</button>
                   <button className="todo-delete" onClick={()=>deleteTodo(t.id)}>×</button>
                 </div>
               ))}
@@ -761,6 +889,17 @@ export default function App() {
                 onKeyDown={e=>e.key==="Enter"&&commitModal()} />
 
               <div className="modal-times">
+                <label className="time-lbl">시작일
+                  <input type="date" className="time-input" value={modal.startDate}
+                    onChange={e=>setModal(m=>({...m,startDate:e.target.value}))} />
+                </label>
+                <label className="time-lbl">종료일
+                  <input type="date" className="time-input" value={modal.endDate}
+                    onChange={e=>setModal(m=>({...m,endDate:e.target.value}))} />
+                </label>
+              </div>
+
+              <div className="modal-times">
                 <label className="time-lbl">시작
                   <input type="time" className="time-input" value={modal.startTime}
                     onChange={e=>setModal(m=>({...m,startTime:e.target.value}))} />
@@ -805,6 +944,61 @@ export default function App() {
               <div className="modal-actions">
                 <button className="modal-cancel" onClick={closeModal}>취소</button>
                 <button className="modal-confirm" onClick={commitModal}>추가</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════
+          Edit Todo Modal
+          ══════════════════════════════════ */}
+      {editingTodo && (
+        <div className="modal-overlay" onClick={()=>setEditingTodo(null)}>
+          <div className="modal-box glass-panel" onClick={e=>e.stopPropagation()}>
+            <div className="modal-hdr">
+              <span>✏ 일정 수정</span>
+              <button className="modal-close" onClick={()=>setEditingTodo(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <input className="todo-input modal-input" placeholder="일정 제목…"
+                value={editingTodo.title} autoFocus
+                onChange={e=>setEditingTodo({...editingTodo, title: e.target.value})} />
+
+              <div className="modal-times">
+                <label className="time-lbl">시작일
+                  <input type="date" className="time-input" value={editingTodo.date}
+                    onChange={e=>setEditingTodo({...editingTodo, date: e.target.value})} />
+                </label>
+              </div>
+
+              <div className="modal-times">
+                <label className="time-lbl">시작
+                  <input type="time" className="time-input" value={editingTodo.startTime || ""}
+                    onChange={e=>setEditingTodo({...editingTodo, startTime: e.target.value})} />
+                </label>
+                <label className="time-lbl">종료
+                  <input type="time" className="time-input" value={editingTodo.endTime || ""}
+                    onChange={e=>setEditingTodo({...editingTodo, endTime: e.target.value})} />
+                </label>
+                <label className="allday-lbl">
+                  <input type="checkbox" checked={editingTodo.allDay}
+                    onChange={e=>setEditingTodo({...editingTodo, allDay: e.target.checked})} />
+                  종일
+                </label>
+              </div>
+
+              <div className="color-row-setting" style={{padding:"2px 0"}}>
+                {TODO_COLORS.map(c=>(
+                  <button key={c}
+                    className={`color-dot-setting ${editingTodo.color===c?"selected":""}`}
+                    style={{background:c}} onClick={()=>setEditingTodo({...editingTodo, color:c})} />
+                ))}
+              </div>
+
+              <div className="modal-actions">
+                <button className="modal-cancel" onClick={()=>setEditingTodo(null)}>취소</button>
+                <button className="modal-confirm" onClick={saveEdit}>저장</button>
               </div>
             </div>
           </div>
