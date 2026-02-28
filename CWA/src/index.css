@@ -1,0 +1,7 @@
+/* Transparent root – lets desktop wallpaper show through */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  overflow: hidden;
+}
