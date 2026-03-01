@@ -817,9 +817,10 @@ export default function App() {
               datesSet={(info) => {
                 if (info.view.type === "timeGridWeek") {
                   const start = info.view.activeStart;
+                  const month = start.getMonth() + 1;
                   const week = getWeekNumber(start);
-                  const title = `${week}주차`;
-                  setCalendarTitle(title);
+                  const title = `${month}월 ${week}주차`;
+                  // setCalendarTitle(title);
                   // Update the title element directly
                   const titleEl = document.querySelector(".fc-toolbar-title");
                   if (titleEl) titleEl.textContent = title;
@@ -835,6 +836,20 @@ export default function App() {
                 if (dow === 6) cls.push("saturday-cell");
                 if (holidays[arg.dateStr]) cls.push("holiday-cell");
                 return cls;
+              }}
+              dayCellContent={(arg) => {
+                const date = arg.date;
+                const dateStr = arg.dateStr;
+                const lunarInfo = getLunarDateString(date);
+                const isToday = dateStr === localToday();
+                return (
+                  <div className="day-cell-content">
+                    <div className="day-number">{date.getDate()}</div>
+                    {holidays[dateStr] && <div className="holiday-name">{holidays[dateStr]}</div>}
+                    <div className="lunar-date">{lunarInfo.replace('음력 ', '')}</div>
+                    {isToday && <div className="moon-phase-small">{moonPhase.emoji}</div>}
+                  </div>
+                );
               }}
             />
           </div>
@@ -888,6 +903,10 @@ export default function App() {
                   onDragOver={e=>handleDragOver(e,t.id)}
                   onDrop={e=>handleDrop(e,t.id)}
                   onDragEnd={()=>{ setDragId(null); setDragOver(null); }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setEditingTodo(t);
+                  }}
                 >
                   <span className="drag-handle" title="드래그해서 순서 변경">⠿</span>
                   <button className="todo-check" onClick={()=>toggleDone(t.id)}>
@@ -1074,10 +1093,17 @@ export default function App() {
                 위치는 자동 저장됩니다
               </div>
             )}
-            <button className="edit-mode-btn" style={{marginTop:4}} onClick={async()=>{
-              localStorage.removeItem(WIN_POS_KEY);
-              await appWin.current.setPosition(new PhysicalPosition(100,100));
-            }}>🔄 위치 초기화</button>
+          </div>
+
+          {/* 설정 초기화 */}
+          <div className="sg">
+            <div className="sg-label">🔄 설정 초기화</div>
+            <button className="edit-mode-btn reset-btn" onClick={()=>{
+              if (confirm("설정을 초기화하시겠습니까?")) {
+                localStorage.removeItem(SETTINGS_KEY);
+                setSettings(DEFAULT_SETTINGS);
+              }
+            }}>모든 설정 초기화</button>
           </div>
 
         </div>

@@ -97,6 +97,15 @@ pub fn run() {
                 api.prevent_close();
                 let _ = window.hide();
             }
+            // 창이 최소화되거나 숨겨지지 않도록 방지
+            if let WindowEvent::Resized(_) | WindowEvent::Moved(_) | WindowEvent::Focused(false) = event {
+                let _ = window.show();
+                let _ = window.set_always_on_bottom(true);
+            }
+            // Windows+D, Windows+M 등으로부터 보호
+            if let WindowEvent::CloseRequested { .. } = event {
+                // 위에서 처리
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_autostart_status,
