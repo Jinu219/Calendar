@@ -1,0 +1,192 @@
+// ═══════════════════════════════════════════════════════════
+// CalendarView Component
+// ═══════════════════════════════════════════════════════════
+
+import React, { useRef, useEffect, useCallback, memo } from "react";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
+import { DateSelectArg } from "@fullcalendar/core";
+import { EventInput } from "@fullcalendar/core";
+import type { Settings, MoonPhase } from "../types";
+import { getLunarDateString, getWeekNumber, getLocalToday } from "../utils";
+
+interface CalendarViewProps {
+  view: "dayGridMonth" | "timeGridWeek";
+  onViewChange: (view: "dayGridMonth" | "timeGridWeek") => void;
+  events: EventInput[];
+  holidays: Record<string, string>;
+  settings: Settings;
+  selectedDate: string;
+  moonPhase: MoonPhase;
+  onDateClick: (dateStr: string, allDay: boolean, time?: { start: string; end: string }) => void;
+  onSelect: (date: string, time: { start: string; end: string }) => void;
+  onEventDrop: (todoId: string, newDate: string) => void;
+  onEventClick: (todoId: string, date: string) => void;
+  editMode: boolean;
+}
+
+// Expose calendar API globally for TitleBar to use
+let calendarApiRef: any = null;
+
+export const getCalendarApi = () => calendarApiRef;
+
+const CalendarViewComponent: React.FC<CalendarViewProps> = ({
+  view,
+  events,
+  holidays,
+  settings,
+  selectedDate,
+  moonPhase,
+  onDateClick,
+  onSelect,
+  onEventDrop,
+  onEventClick,
+  editMode,
+}) => {
+  const calendarRef = useRef<FullCalendar>(null);
+  const [calendarTitle, setCalendarTitle] = React.useState("");
+
+  // Store calendar API for external access
+  useEffect(() => {
+    if (calendarRef.current) {
+      calendarApiRef = calendarRef.current?.getApi();
+    }
+  }, []);
+
+  // Sync view
+  useEffect(() => {
+    calendarRef.current?.getApi().changeView(view);
+  }, [view]);
+
+  const handleDateClick = useCallback((info: DateClickArg) => {
+    const d = info.dateStr.slice(0, 10);
+    if (info.view.type === "timeGridWeek" && !info.allDay) {
+      const h = String(info.date.getHours()).padStart(2, "0");
+      const m = String(info.date.getMinutes()).padStart(2, "0");
+      const h2 = String((info.date.getHours() + 1) % 24).padStart(2, "0");
+      onDateClick(d, false, { start: `${h}:${m}`, end: `${h2}:${m}` });
+    } else {
+      onDateClick(d, true);
+    }
+  }, [onDateClick]);
+
+  const handleSelect = useCallback((info: DateSelectArg) => {
+    if (info.view.type !== "timeGridWeek") return;
+    const d = info.startStr.slice(0, 10);
+    onSelect(d, { start: info.startStr.slice(11, 16), end: info.endStr.slice(11, 16) });
+    calendarRef.current?.getApi().unselect();
+  }, [onSelect]);
+
+  const handleEventDrop = useCallback((info: any) => {
+    const todoId = info.event.extendedProps?.todoId;
+    if (todoId) {
+      const newDate = info.event.startStr.slice(0, 10);
+      onEventDrop(todoId, newDate);
+    }
+  }, [onEventDrop]);
+
+  const handleEventClick = useCallback((info: any) => {
+    const todoId = info.event.extendedProps?.todoId;
+    if (todoId) {
+      const d = info.event.startStr.slice(0, 10);
+      onEventClick(todoId, d);
+    }
+  }, [onEventClick]);
+
+  const handleDatesSet = (info: any) => {
+    // Update global API reference
+    calendarApiRef = info.view.calendar;
+    
+    if (info.view.type === "timeGridWeek") {
+      const start = info.view.activeStart;
+      const month = start.getMonth() + 1;
+      const week = getWeekNumber(start);
+      const title = `${month}월 ${week}주차`;
+      setCalendarTitle(title);
+    } else if (info.view.type === "dayGridMonth") {
+      const start = info.view.activeStart;
+      const year = start.getFullYear();
+      const month = start.getMonth() + 1;
+      const title = `${year}년 ${month}월`;
+      setCalendarTitle(title);
+    } else {
+      setCalendarTitle("");
+    }
+  };
+
+  const dayCellClassNames = (arg: any) => {
+    const cls: string[] = [];
+    if (arg.dateStr === selectedDate) cls.push("selected-day");
+    const dow = arg.date.getDay();
+    if (dow === 0) cls.push("sunday-cell");
+    if (dow === 6) cls.push("saturday-cell");
+    if (holidays[arg.dateStr]) cls.push("holiday-cell");
+    return cls;
+  };
+
+  const dayCellContent = (arg: any) => {
+    const date = arg.date;
+    const dateStr = arg.dateStr;
+    const lunarInfo = getLunarDateString(date);
+    const isToday = dateStr === getLocalToday();
+    const showLunar = view === "dayGridMonth" && settings.useLunar && lunarInfo;
+
+    return (
+      <div className="day-cell-content">
+        <div className="day-number-row">
+          <span className="day-number">{date.getDate()}</span>
+          {showLunar && (
+            <span className="lunar-date-small">{lunarInfo}</span>
+          )}
+        </div>
+        {holidays[dateStr] && <div className="holiday-name">{holidays[dateStr]}</div>}
+        {isToday && settings.showMoonPhase && <div className="moon-phase-small">{moonPhase.emoji}</div>}
+      </div>
+    );
+  };
+
+  return (
+    <div className="calendar-wrap" style={{ position: "relative" }}>
+      {editMode && (
+        <div className="edit-mode-badge">
+          ✏ 편집 모드 — 경계 드래그로 패널 너비 조절
+        </div>
+      )}
+      {/* Custom title display */}
+      <div className="calendar-custom-title">{calendarTitle || ' '}</div>
+      <FullCalendar
+        ref={calendarRef}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        initialView={view}
+        locale="ko"
+        height="100%"
+        editable={true}
+        headerToolbar={{ left: "", center: "", right: "" }}
+        slotMinTime="09:00:00"
+        slotMaxTime="23:00:00"
+        slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+        slotDuration="00:30:00"
+        allDaySlot={true}
+        allDayText=""
+        nowIndicator={true}
+        selectable={view === "timeGridWeek"}
+        selectMirror={true}
+        events={events}
+        showNonCurrentDates={true}
+        fixedWeekCount={settings.showOverflow}
+        dayMaxEvents={3}
+        dateClick={handleDateClick}
+        select={handleSelect}
+        eventDrop={handleEventDrop}
+        eventClick={handleEventClick}
+        datesSet={handleDatesSet}
+        dayCellClassNames={dayCellClassNames}
+        dayCellContent={dayCellContent}
+      />
+    </div>
+  );
+};
+
+export const CalendarView = memo(CalendarViewComponent);

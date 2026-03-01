@@ -15,6 +15,7 @@ pub fn run() {
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
                 let _ = win.set_focus();
+                // 데스크톱 위젯처럼 항상 맨 뒤에 배치
                 let _ = win.set_always_on_bottom(true);
             }
         }))
@@ -23,10 +24,13 @@ pub fn run() {
             Some(vec![]),
         ))
         .setup(|app| {
-            // ── 시작 시 항상 맨 뒤 ──
+            // ── 시작 시 항상 맨 뒤 (데스크톱 위젯 모드) ──
             if let Some(win) = app.get_webview_window("main") {
+                // 데스크톱 위젯처럼 맨 뒤에 배치
                 let _ = win.set_always_on_bottom(true);
                 let _ = win.set_skip_taskbar(true);
+                // 작업표시줄에 표시하지 않음
+                let _ = win.set_visible_on_all_workspaces(true);
             }
 
             let enabled = app.autolaunch().is_enabled().unwrap_or(false);
@@ -57,6 +61,7 @@ pub fn run() {
                             } else {
                                 let _ = win.show();
                                 let _ = win.set_always_on_bottom(true);
+                                let _ = win.set_focus();
                             }
                         }
                     }
@@ -81,7 +86,7 @@ pub fn run() {
                         let app = tray.app_handle();
                         if let Some(win) = app.get_webview_window("main") {
                             if win.is_visible().unwrap_or(false) { let _ = win.hide(); }
-                            else { let _ = win.show(); let _ = win.set_always_on_bottom(true); }
+                            else { let _ = win.show(); let _ = win.set_always_on_bottom(true); let _ = win.set_focus(); }
                         }
                     }
                 })
@@ -90,9 +95,25 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // 창이 닫히면 완전히 종료하지 않고 숨기기
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
+            }
+            
+            // 다른 앱 사용 시 창을 계속前台로 유지 (데스크톱 위젯 모드)
+            // 단, 불필요한 연쇄 호출 방지
+            match event {
+                WindowEvent::Focused(false) => {
+                    // 창이 포커스를 잃어도 데스크톱 위젯처럼 맨 뒤에 유지
+                    // 하지만 사용자가 창을 클릭하면 다시 포커스를 받을 수 있음
+                    let _ = window.set_always_on_bottom(true);
+                }
+                WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
+                    // 크기/위치 변경 후 항상 맨 뒤로
+                    let _ = window.set_always_on_bottom(true);
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![

@@ -13,6 +13,7 @@
   --text-primary:    #2d1520;
   --text-secondary:  rgba(45,21,32,0.55);
   --font:            'Noto Sans KR', sans-serif;
+  --font-size:       14px;
   --day-num-justify: flex-start;
   --radius-lg:       18px;
   --radius-md:       12px;
@@ -38,6 +39,8 @@ html, body, #root {
   display:flex; flex-direction:column;
   padding:10px; gap:8px;
   background:transparent; position:relative;
+  font-family:var(--font);
+  font-size: var(--font-size, 14px);
 }
 
 /* ════════════════════════════════════════════
@@ -67,7 +70,13 @@ html, body, #root {
 }
 
 .tb-left  { display:flex; align-items:center; gap:7px; flex-shrink:0; cursor:default; }
-.app-logo { font-size:18px; filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--accent) 40%,transparent)); }
+.app-logo { 
+  font-size:18px; 
+  filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--accent) 40%,transparent)); 
+  background:none; border:none; cursor:pointer; padding:2px 4px; border-radius:4px;
+  transition:background .15s;
+}
+.app-logo:hover { background:rgba(255,255,255,0.15); }
 .app-title {
   font-family:'Playfair Display',serif; font-size:15px; font-weight:600;
   color:var(--text-primary); letter-spacing:.4px; cursor:default; flex-shrink:0;
@@ -102,6 +111,21 @@ html, body, #root {
 
 .tb-sep { width:1px; height:20px; background:var(--glass-border); margin:0 4px; }
 
+.tb-nav {
+  display:flex; align-items:center; gap:4px;
+  background:rgba(255,200,220,.15); border-radius:30px; padding:3px;
+}
+.tb-moon {
+  font-size:16px; margin-right:4px;
+}
+.nav-btn {
+  padding:3px 10px; border:none; border-radius:24px;
+  font-family:var(--font); font-size:11px; font-weight:500;
+  color:var(--text-secondary); background:transparent; cursor:pointer; transition:all .18s;
+}
+.nav-btn:hover { background:rgba(255,200,220,.22); color:var(--text-primary); }
+.nav-today { font-weight:600; }
+
 .wc-btn {
   width:28px; height:28px; border:none; border-radius:7px;
   display:flex; align-items:center; justify-content:center;
@@ -118,13 +142,26 @@ html, body, #root {
 .main-panel { flex:1; overflow:hidden; display:flex; flex-direction:column; }
 
 .app-body {
-  flex:1; display:flex; overflow:hidden; gap:0; padding:12px;
+  flex:1; display:flex; overflow:hidden; gap:0; padding:4px;
 }
 
 /* ════════════════════════════════════════════
    Calendar
    ════════════════════════════════════════════ */
-.calendar-wrap { flex:1; min-width:0; overflow:hidden; border-radius:var(--radius-md); }
+.calendar-wrap { flex:1; min-width:0;  border-radius:var(--radius-md); position: relative; margin-top: 20px; }
+
+.calendar-custom-title {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  z-index: 100;
+  pointer-events: none;
+  padding: 8px 16px;
+}
 
 .edit-mode-badge {
   position:absolute; top:6px; left:50%; transform:translateX(-50%);
@@ -190,7 +227,7 @@ html, body, #root {
 /* Sunday / Holiday cell */
 .fc .fc-daygrid-day.sunday-cell,
 .fc .fc-daygrid-day.holiday-cell {
-  background:rgba(239,68,68,0.07) !important;
+  background:rgba(239,68,68,0.15) !important;
 }
 .fc .fc-daygrid-day.sunday-cell .fc-daygrid-day-number,
 .fc .fc-daygrid-day.holiday-cell .fc-daygrid-day-number { color:#ef4444 !important; font-weight:600; }
@@ -248,6 +285,19 @@ html, body, #root {
   padding:1px 4px !important; cursor:pointer;
   transition:transform .1s, opacity .1s;
 }
+
+/* Limit events in day grid to prevent cell expansion */
+/* .fc .fc-daygrid-day-events {
+  margin-top: auto !important;
+} */
+
+.fc .fc-daygrid-more-link {
+  font-size: 9px;
+  color: var(--accent);
+  font-weight: 500;
+  padding: 1px 2px;
+}
+
 .fc .fc-event:hover { transform:translateY(-1px); opacity:.88; }
 
 .fc .fc-timegrid-slot       { height:30px !important; }
@@ -273,6 +323,14 @@ html, body, #root {
 
 .todo-quick-add { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
 .todo-input-row { display:flex; gap:6px; }
+
+.color-row-quick { display:flex; gap:4px; flex-wrap:wrap; padding:2px 0; }
+.color-dot-quick {
+  width:20px; height:20px; border-radius:50%; border:2px solid transparent;
+  cursor:pointer; transition:transform .15s, border-color .15s;
+}
+.color-dot-quick:hover { transform:scale(1.15); }
+.color-dot-quick.selected { border-color:var(--text-primary); transform:scale(1.1); }
 
 .todo-input {
   flex:1; padding:6px 10px; border:1px solid var(--glass-border);
@@ -346,6 +404,14 @@ html, body, #root {
 .todo-item:hover .todo-delete { opacity:1; }
 .todo-delete:hover { color:var(--accent); }
 
+.todo-edit {
+  background:none; border:none; color:var(--text-secondary); font-size:14px;
+  cursor:pointer; padding:0 2px; opacity:0; transition:opacity .15s;
+  flex-shrink:0; line-height:1;
+}
+.todo-item:hover .todo-edit { opacity:1; }
+.todo-edit:hover { color:var(--accent); }
+
 .todo-stats {
   font-size:10px; color:var(--text-secondary); text-align:right;
   padding-top:4px; border-top:1px solid var(--glass-border); flex-shrink:0;
@@ -382,10 +448,11 @@ html, body, #root {
 .settings-drawer {
   position:fixed; top:62px; right:10px;
   width:300px; max-height:calc(100vh - 74px);
-  overflow-y:auto; z-index:200; padding:0;
+  overflow-y:auto; z-index:900; padding:0;
   transform:translateX(calc(100% + 14px)); opacity:0;
   transition:transform .28s cubic-bezier(.4,0,.2,1), opacity .25s;
   pointer-events:none;
+  background:rgba(255,245,248,0.92); /* More opaque background */
 }
 .settings-drawer.open { transform:translateX(0); opacity:1; pointer-events:all; }
 .settings-drawer::-webkit-scrollbar { width:3px; }
@@ -406,6 +473,31 @@ html, body, #root {
   transition:background .15s;
 }
 .settings-close:hover { background:rgba(255,80,80,.15); color:#b00; }
+
+/* Moon phase display */
+.moon-phase-display {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px;
+  background:rgba(255,255,255,0.1);
+  border-radius:var(--radius-md);
+}
+.moon-emoji {
+  font-size:24px;
+}
+.moon-name {
+  font-size:14px;
+  color:var(--text-primary);
+}
+
+/* Lunar date display */
+.lunar-date-display {
+  margin-top:8px;
+  padding:6px 10px;
+  background:rgba(255,255,255,0.08);
+  border-radius:var(--radius-sm);
+  font-size:13px;
+  color:var(--text-secondary);
+}
 
 .settings-body { padding:12px 14px; display:flex; flex-direction:column; gap:16px; }
 .sg      { display:flex; flex-direction:column; gap:7px; }
@@ -466,7 +558,7 @@ html, body, #root {
 
 .font-list {
   display:flex; flex-direction:column; gap:4px;
-  max-height:160px; overflow-y:auto; padding-right:2px;
+  max-height:120px; overflow-y:auto; padding-right:2px;
 }
 .font-list::-webkit-scrollbar { width:3px; }
 .font-list::-webkit-scrollbar-thumb { background:color-mix(in srgb,var(--mid) 40%,transparent); border-radius:3px; }
@@ -510,7 +602,7 @@ html, body, #root {
 }
 @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
-.modal-box { width:340px; animation:slideUp .18s cubic-bezier(.4,0,.2,1); }
+.modal-box { width:340px; animation:slideUp .18s cubic-bezier(.4,0,.2,1); z-index:1000; }
 @keyframes slideUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
 
 .modal-hdr {
@@ -572,3 +664,51 @@ html, body, #root {
    Global scrollbar
    ════════════════════════════════════════════ */
 * { scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--mid) 35%,transparent) transparent; }
+
+/* Day cell content for lunar and moon phase */
+.day-cell-content {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  height:100%;
+  padding:2px;
+  font-size:10px;
+}
+
+.day-number {
+  font-weight:600;
+}
+
+.day-number-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.lunar-date-small {
+  font-size: 7px;
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+
+.lunar-date {
+  font-size:8px;
+  color:var(--text-secondary);
+}
+
+.moon-phase-small {
+  font-size:10px;
+  margin-top:2px;
+}
+
+.holiday-name {
+  font-size:8px;
+  color:#dc2626;
+  font-weight:600;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width:100%;
+}
+

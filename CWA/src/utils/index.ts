@@ -1,5 +1,7 @@
 // ═══════════════════════════════════════════════════════════
-// App.tsx - Re-export CalendarPage for backwards compatibility
+// Utils Index
 // ═══════════════════════════════════════════════════════════
 
-export { CalendarPage as default } from "./pages/CalendarPage";
+export * from "./dateUtils";
+export * from "./apiUtils";
+export * from "./todoUtils";
