@@ -15,6 +15,7 @@ pub fn run() {
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
                 let _ = win.set_focus();
+                // 데스크톱 위젯처럼 항상 맨 뒤에 배치
                 let _ = win.set_always_on_bottom(true);
             }
         }))
@@ -23,11 +24,12 @@ pub fn run() {
             Some(vec![]),
         ))
         .setup(|app| {
-            // ── 시작 시 항상 맨 뒤 ──
+            // ── 시작 시 항상 맨 뒤 (데스크톱 위젯 모드) ──
             if let Some(win) = app.get_webview_window("main") {
+                // 데스크톱 위젯처럼 맨 뒤에 배치
                 let _ = win.set_always_on_bottom(true);
                 let _ = win.set_skip_taskbar(true);
-                // 창이 최소화되거나 표시되지 않도록 방지
+                // 작업표시줄에 표시하지 않음
                 let _ = win.set_visible_on_all_workspaces(true);
             }
 
@@ -93,18 +95,25 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // 창이 닫히면 완전히 종료하지 않고 숨기기
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
                 let _ = window.hide();
             }
-            // 창이 최소화되거나 숨겨지지 않도록 방지
-            if let WindowEvent::Resized(_) | WindowEvent::Moved(_) | WindowEvent::Focused(false) = event {
-                let _ = window.show();
-                let _ = window.set_always_on_bottom(true);
-            }
-            // Windows+D, Windows+M 등으로부터 보호
-            if let WindowEvent::CloseRequested { .. } = event {
-                // 위에서 처리
+            
+            // Windows+D (Show Desktop) 등으로부터 창 보호
+            match event {
+                WindowEvent::Focused(false) => {
+                    // 창이 포커스를 잃으면 (Windows+D 등) 다시 표시
+                    let _ = window.show();
+                    let _ = window.set_always_on_bottom(true);
+                    let _ = window.set_focus();
+                }
+                WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
+                    // 크기/위치 변경 후 항상 맨 뒤로
+                    let _ = window.set_always_on_bottom(true);
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![

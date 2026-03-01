@@ -35,6 +35,7 @@ export interface Settings {
   autostart: boolean;
   useLunar: boolean;
   use24Hour: boolean;
+  showMoonPhase: boolean;
 }
 
 export interface ModalState {

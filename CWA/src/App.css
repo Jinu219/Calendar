@@ -108,6 +108,18 @@ html, body, #root {
 
 .tb-sep { width:1px; height:20px; background:var(--glass-border); margin:0 4px; }
 
+.tb-nav {
+  display:flex; align-items:center; gap:4px;
+  background:rgba(255,200,220,.15); border-radius:30px; padding:3px;
+}
+.nav-btn {
+  padding:3px 10px; border:none; border-radius:24px;
+  font-family:var(--font); font-size:11px; font-weight:500;
+  color:var(--text-secondary); background:transparent; cursor:pointer; transition:all .18s;
+}
+.nav-btn:hover { background:rgba(255,200,220,.22); color:var(--text-primary); }
+.nav-today { font-weight:600; }
+
 .wc-btn {
   width:28px; height:28px; border:none; border-radius:7px;
   display:flex; align-items:center; justify-content:center;

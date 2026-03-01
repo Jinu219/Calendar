@@ -92,6 +92,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       const start = info.view.activeStart;
       const month = start.getMonth() + 1;
       const week = getWeekNumber(start);
+      // Just show "3월 1주차" without the date range
       const title = `${month}월 ${week}주차`;
       setCalendarTitle(title);
       titleEl.textContent = title;
@@ -99,6 +100,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       const start = info.view.activeStart;
       const year = start.getFullYear();
       const month = start.getMonth() + 1;
+      // Just show "2026년 3월" without duplication
       const title = `${year}년 ${month}월`;
       setCalendarTitle(title);
       titleEl.textContent = title;
@@ -128,11 +130,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         <div className="day-number-row">
           <span className="day-number">{date.getDate()}</span>
           {settings.useLunar && lunarInfo && (
-            <span className="lunar-date-small">{lunarInfo.replace('음력 ', '')}</span>
+            <span className="lunar-date-small">{lunarInfo}</span>
           )}
         </div>
         {holidays[dateStr] && <div className="holiday-name">{holidays[dateStr]}</div>}
-        {isToday && <div className="moon-phase-small">{moonPhase.emoji}</div>}
+        {isToday && settings.showMoonPhase && <div className="moon-phase-small">{moonPhase.emoji}</div>}
       </div>
     );
   };
@@ -151,7 +153,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         locale="ko"
         height="100%"
         editable={true}
-        headerToolbar={{ left: "prev,next today", center: "title", right: "" }}
+        headerToolbar={{ left: "", center: "title", right: "" }}
+        titleFormat={{ year: 'numeric', month: 'long', day: 'numeric' }}
         slotMinTime="09:00:00"
         slotMaxTime="23:00:00"
         slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}

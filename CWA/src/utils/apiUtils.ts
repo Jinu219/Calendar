@@ -69,6 +69,10 @@ export async function fetchHolidays(year: number): Promise<Record<string, string
   // 대체 공휴일
   if (year === 2024) holidays["2024-05-06"] = "대체공휴일";
   if (year === 2025) holidays["2025-05-06"] = "대체공휴일";
+  if (year === 2026) {
+    // 2026년 대체공휴일 (설연휴 연속 휴일)
+    holidays["2026-02-17"] = "대체공휴일";
+  }
 
   return holidays;
 }
@@ -168,9 +172,68 @@ export function calculateMoonPhaseLocally(date: Date): MoonPhase {
 
 /** Get lunar date string */
 export function getLunarDateString(date: Date): string {
+  const year = date.getFullYear();
   const month = date.getMonth() + 1;
   const day = date.getDate();
   
-  // Simple lunar date display - just show the day
-  return `${day}`;
+  // 음력 계산 (간단한 방식)
+  // 음력은 양력보다 약 20~50일 정도 늦음
+  const lunarOffset = getLunarOffset(year, month);
+  let lunarMonth = month;
+  let lunarDay = day - lunarOffset;
+  
+  if (lunarDay <= 0) {
+    // 이전 달로
+    lunarMonth = month - 1;
+    if (lunarMonth <= 0) {
+      lunarMonth = 12;
+    }
+    // 이전 달의 마지막 날로
+    const lastDay = getLunarMonthDays(year, lunarMonth);
+    lunarDay = lastDay + lunarDay;
+  }
+  
+  // 음력일 이름
+  const dayNames = ['初一','初二','初三','初四','初五','初六','初七','初八','初九','初十',
+                    '十一','十二','十三','十四','十五','十六','十七','十八','十九','二十',
+                    '廿一','廿二','廿三','廿四','廿五','廿六','廿七','廿八','廿九','三十'];
+  
+  // 음력월 이름 (간단)
+  const monthNames = ['','正月','二月','三月','四月','五月','六月','七月','八月','九月','十月','臘月'];
+  
+  // 적절한 형식으로 반환
+  if (lunarDay >= 1 && lunarDay <= 30) {
+    return dayNames[lunarDay - 1] || `${lunarDay}`;
+  }
+  return `${lunarDay}`;
+}
+
+// 음력 오프셋 가져오기 (대략적)
+function getLunarOffset(year: number, month: number): number {
+  // 음력 캘린더 데이터 (양력 월/일 -> 음력 오프셋)
+  const lunarCalendar: Record<string, number> = {
+    // 2026년
+    '2026-1': 20, '2026-2': 19, '2026-3': 20, '2026-4': 19, '2026-5': 20, '2026-6': 20,
+    '2026-7': 21, '2026-8': 21, '2026-9': 22, '2026-10': 22, '2026-11': 22, '2026-12': 22,
+    // 2025년
+    '2025-1': 22, '2025-2': 20, '2025-3': 21, '2025-4': 20, '2025-5': 21, '2025-6': 21,
+    '2025-7': 22, '2025-8': 22, '2025-9': 23, '2025-10': 23, '2025-11': 23, '2025-12': 23,
+    // 2024년
+    '2024-1': 21, '2024-2': 19, '2024-3': 20, '2024-4': 19, '2024-5': 20, '2024-6': 20,
+    '2024-7': 21, '2024-8': 21, '2024-9': 22, '2024-10': 22, '2024-11': 22, '2024-12': 22,
+  };
+  
+  const key = `${year}-${month}`;
+  return lunarCalendar[key] || 20;
+}
+
+// 음력 월의 마지막 날
+function getLunarMonthDays(year: number, month: number): number {
+  // 대략 29 또는 30일
+  const leapMonths = [2024, 2026];
+  if (leapMonths.includes(year)) {
+    if (month === 6) return 30; // 윤월
+  }
+  // 기본값
+  return month % 2 === 0 ? 29 : 30;
 }

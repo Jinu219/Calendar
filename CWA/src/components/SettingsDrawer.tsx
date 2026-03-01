@@ -179,6 +179,20 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             <span className="moon-emoji">{moonPhase.emoji}</span>
             <span className="moon-name">{moonPhase.name || "측정 중..."}</span>
           </div>
+          <div className="seg-ctrl" style={{ marginTop: '8px' }}>
+            <button
+              className={`seg-btn ${settings.showMoonPhase ? "active" : ""}`}
+              onClick={() => onSetSetting("showMoonPhase", true)}
+            >
+              달력에 표시
+            </button>
+            <button
+              className={`seg-btn ${!settings.showMoonPhase ? "active" : ""}`}
+              onClick={() => onSetSetting("showMoonPhase", false)}
+            >
+              숨기기
+            </button>
+          </div>
         </div>
 
         {/* 음력 표시 */}

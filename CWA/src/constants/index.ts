@@ -64,6 +64,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autostart:false, 
   useLunar:false, 
   use24Hour:true,
+  showMoonPhase:true,
 };
 
 export const MODAL_CLOSED = {
