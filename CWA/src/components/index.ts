@@ -1,5 +1,10 @@
 // ═══════════════════════════════════════════════════════════
-// App.tsx - Re-export CalendarPage for backwards compatibility
+// Components Index
 // ═══════════════════════════════════════════════════════════
 
-export { CalendarPage as default } from "./pages/CalendarPage";
+export { TitleBar } from "./TitleBar";
+export { CalendarView } from "./CalendarView";
+export { TodoPanel } from "./TodoPanel";
+export { SettingsDrawer } from "./SettingsDrawer";
+export { AddEventModal } from "./AddEventModal";
+export { EditTodoModal } from "./EditTodoModal";

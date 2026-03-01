@@ -1,5 +1,8 @@
 // ═══════════════════════════════════════════════════════════
-// App.tsx - Re-export CalendarPage for backwards compatibility
+// Hooks Index
 // ═══════════════════════════════════════════════════════════
 
-export { CalendarPage as default } from "./pages/CalendarPage";
+export { useTodos } from "./useTodos";
+export { useSettings } from "./useSettings";
+export { useHolidays } from "./useHolidays";
+export { useSystemFonts } from "./useSystemFonts";
