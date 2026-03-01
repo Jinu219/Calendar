@@ -101,13 +101,13 @@ pub fn run() {
                 let _ = window.hide();
             }
             
-            // Windows+D (Show Desktop) 등으로부터 창 보호
+            // 다른 앱 사용 시 창을 계속前台로 유지 (데스크톱 위젯 모드)
+            // 단, 불필요한 연쇄 호출 방지
             match event {
                 WindowEvent::Focused(false) => {
-                    // 창이 포커스를 잃으면 (Windows+D 등) 다시 표시
-                    let _ = window.show();
+                    // 창이 포커스를 잃어도 데스크톱 위젯처럼 맨 뒤에 유지
+                    // 하지만 사용자가 창을 클릭하면 다시 포커스를 받을 수 있음
                     let _ = window.set_always_on_bottom(true);
-                    let _ = window.set_focus();
                 }
                 WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
                     // 크기/위치 변경 후 항상 맨 뒤로

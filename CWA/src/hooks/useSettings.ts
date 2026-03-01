@@ -45,11 +45,16 @@ export function useSettings() {
     }
   }, [settings.fontFamily]);
 
+  // Apply font size
+  useEffect(() => {
+    document.documentElement.style.setProperty("--font-size", `${settings.fontSize}px`);
+  }, [settings.fontSize]);
+
   // Apply day-num position
   useEffect(() => {
     const m: Record<DayNumPos, string> = { 
-      left: "flex-start", 
-      right: "flex-end" 
+      left: "flex-end", 
+      right: "flex-start" 
     };
     document.documentElement.style.setProperty("--day-num-justify", m[settings.dayNumberPos]);
   }, [settings.dayNumberPos]);

@@ -2,22 +2,26 @@
 // TitleBar Component
 // ═══════════════════════════════════════════════════════════
 
-import React, { useCallback } from "react";
+import React, { useCallback, memo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getTodayLabel } from "../utils";
+import { getCalendarApi } from "./CalendarView";
+import type { MoonPhase } from "../types";
 
 interface TitleBarProps {
   view: "dayGridMonth" | "timeGridWeek";
   onViewChange: (view: "dayGridMonth" | "timeGridWeek") => void;
   settingsOpen: boolean;
   onSettingsToggle: () => void;
+  moonPhase?: MoonPhase;
 }
 
-export const TitleBar: React.FC<TitleBarProps> = ({
+export const TitleBar: React.FC<TitleBarProps> = memo(({
   view,
   onViewChange,
   settingsOpen,
   onSettingsToggle,
+  moonPhase,
 }) => {
   const appWin = getCurrentWindow();
   const todayLabel = getTodayLabel();
@@ -50,34 +54,25 @@ export const TitleBar: React.FC<TitleBarProps> = ({
 
   // Navigate to previous month/week
   const handlePrev = useCallback(() => {
-    const calendarEl = document.querySelector('.fc');
-    if (calendarEl) {
-      const calendar = (calendarEl as any)._fullCalendar;
-      if (calendar) {
-        calendar.getApi().prev();
-      }
+    const api = getCalendarApi();
+    if (api) {
+      api.prev();
     }
   }, []);
 
   // Navigate to next month/week
   const handleNext = useCallback(() => {
-    const calendarEl = document.querySelector('.fc');
-    if (calendarEl) {
-      const calendar = (calendarEl as any)._fullCalendar;
-      if (calendar) {
-        calendar.getApi().next();
-      }
+    const api = getCalendarApi();
+    if (api) {
+      api.next();
     }
   }, []);
 
   // Go to today
   const handleToday = useCallback(() => {
-    const calendarEl = document.querySelector('.fc');
-    if (calendarEl) {
-      const calendar = (calendarEl as any)._fullCalendar;
-      if (calendar) {
-        calendar.getApi().today();
-      }
+    const api = getCalendarApi();
+    if (api) {
+      api.today();
     }
   }, []);
 
@@ -103,6 +98,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({
         <button className="nav-btn" onClick={handlePrev} title="이전">◀</button>
         <button className="nav-btn nav-today" onClick={handleToday}>오늘</button>
         <button className="nav-btn" onClick={handleNext} title="다음">▶</button>
+        {moonPhase && moonPhase.emoji && (
+          <span className="tb-moon" title={moonPhase.name}>{moonPhase.emoji} {moonPhase.name}</span>
+        )}
       </div>
 
       <div className="tb-today" data-tauri-drag-region>
@@ -135,4 +133,4 @@ export const TitleBar: React.FC<TitleBarProps> = ({
       </div>
     </div>
   );
-};
+});

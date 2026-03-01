@@ -143,7 +143,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             onChange={e => onFontSearchChange(e.target.value)}
           />
           <div className="font-list">
-            {filteredFonts.slice(0, 50).map(f => (
+            {filteredFonts.slice(0, 30).map(f => (
               <button
                 key={f}
                 className={`font-btn ${settings.fontFamily === f ? "active" : ""}`}
@@ -153,10 +153,29 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                 {f}
               </button>
             ))}
-            {filteredFonts.length > 50 && (
-              <div className="font-more">…외 {filteredFonts.length - 50}개 (검색으로 좁히기)</div>
+            {filteredFonts.length > 30 && (
+              <div className="font-more">…외 {filteredFonts.length - 30}개 (검색으로 좁히기)</div>
             )}
           </div>
+        </div>
+
+        {/* 글꼴 크기 */}
+        <div className="sg">
+          <div className="sg-label">🔤 글꼴 크기</div>
+          <div className="slider-row">
+            <span className="slider-hint">작게</span>
+            <input
+              type="range"
+              min="10"
+              max="20"
+              step="1"
+              value={settings.fontSize}
+              className="opacity-slider"
+              onChange={e => onSetSetting("fontSize", parseInt(e.target.value))}
+            />
+            <span className="slider-hint">크게</span>
+          </div>
+          <div className="slider-val">{settings.fontSize}px</div>
         </div>
 
         {/* 시작 프로그램 */}
@@ -168,29 +187,6 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               onClick={onToggleAutostart}
             >
               {settings.autostart ? "ON — 자동 실행 중" : "OFF — 클릭해서 켜기"}
-            </button>
-          </div>
-        </div>
-
-        {/* 오늘의 달 */}
-        <div className="sg">
-          <div className="sg-label">🌙 오늘의 달</div>
-          <div className="moon-phase-display">
-            <span className="moon-emoji">{moonPhase.emoji}</span>
-            <span className="moon-name">{moonPhase.name || "측정 중..."}</span>
-          </div>
-          <div className="seg-ctrl" style={{ marginTop: '8px' }}>
-            <button
-              className={`seg-btn ${settings.showMoonPhase ? "active" : ""}`}
-              onClick={() => onSetSetting("showMoonPhase", true)}
-            >
-              달력에 표시
-            </button>
-            <button
-              className={`seg-btn ${!settings.showMoonPhase ? "active" : ""}`}
-              onClick={() => onSetSetting("showMoonPhase", false)}
-            >
-              숨기기
             </button>
           </div>
         </div>
@@ -212,9 +208,6 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               OFF
             </button>
           </div>
-          {settings.useLunar && lunarDate && (
-            <div className="lunar-date-display">{lunarDate}</div>
-          )}
         </div>
 
         {/* 시간 형식 */}

@@ -13,6 +13,7 @@
   --text-primary:    #2d1520;
   --text-secondary:  rgba(45,21,32,0.55);
   --font:            'Noto Sans KR', sans-serif;
+  --font-size:       14px;
   --day-num-justify: flex-start;
   --radius-lg:       18px;
   --radius-md:       12px;
@@ -38,6 +39,8 @@ html, body, #root {
   display:flex; flex-direction:column;
   padding:10px; gap:8px;
   background:transparent; position:relative;
+  font-family:var(--font);
+  font-size: var(--font-size, 14px);
 }
 
 /* ════════════════════════════════════════════
@@ -112,6 +115,9 @@ html, body, #root {
   display:flex; align-items:center; gap:4px;
   background:rgba(255,200,220,.15); border-radius:30px; padding:3px;
 }
+.tb-moon {
+  font-size:16px; margin-right:4px;
+}
 .nav-btn {
   padding:3px 10px; border:none; border-radius:24px;
   font-family:var(--font); font-size:11px; font-weight:500;
@@ -136,13 +142,26 @@ html, body, #root {
 .main-panel { flex:1; overflow:hidden; display:flex; flex-direction:column; }
 
 .app-body {
-  flex:1; display:flex; overflow:hidden; gap:0; padding:12px;
+  flex:1; display:flex; overflow:hidden; gap:0; padding:4px;
 }
 
 /* ════════════════════════════════════════════
    Calendar
    ════════════════════════════════════════════ */
-.calendar-wrap { flex:1; min-width:0; overflow:hidden; border-radius:var(--radius-md); }
+.calendar-wrap { flex:1; min-width:0;  border-radius:var(--radius-md); position: relative; margin-top: 20px; }
+
+.calendar-custom-title {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  z-index: 100;
+  pointer-events: none;
+  padding: 8px 16px;
+}
 
 .edit-mode-badge {
   position:absolute; top:6px; left:50%; transform:translateX(-50%);
@@ -268,9 +287,9 @@ html, body, #root {
 }
 
 /* Limit events in day grid to prevent cell expansion */
-.fc .fc-daygrid-day-events {
+/* .fc .fc-daygrid-day-events {
   margin-top: auto !important;
-}
+} */
 
 .fc .fc-daygrid-more-link {
   font-size: 9px;
@@ -539,7 +558,7 @@ html, body, #root {
 
 .font-list {
   display:flex; flex-direction:column; gap:4px;
-  max-height:160px; overflow-y:auto; padding-right:2px;
+  max-height:120px; overflow-y:auto; padding-right:2px;
 }
 .font-list::-webkit-scrollbar { width:3px; }
 .font-list::-webkit-scrollbar-thumb { background:color-mix(in srgb,var(--mid) 40%,transparent); border-radius:3px; }
@@ -692,3 +711,4 @@ html, body, #root {
   text-overflow:ellipsis;
   max-width:100%;
 }
+

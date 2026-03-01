@@ -28,6 +28,7 @@ export interface Settings {
   colorTheme: ColorTheme;
   dayNumberPos: DayNumPos;
   fontFamily: string;
+  fontSize: number;
   showOverflow: boolean;
   todayStyle: TodayStyle;
   opacity: number;

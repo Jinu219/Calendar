@@ -35,8 +35,6 @@ export const THEME_OPTIONS: ThemeOption[] = [
 
 export const TODAY_STYLES: TodayStyleOption[] = [
   { key:"highlight", label:"배경 강조" },
-  { key:"glow",      label:"글로우"   },
-  { key:"elevated",  label:"입체 카드" },
   { key:"border",    label:"테두리"   },
 ];
 
@@ -57,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   colorTheme:"pink", 
   dayNumberPos:"left", 
   fontFamily:"Noto Sans KR",
+  fontSize:14,
   showOverflow:true, 
   todayStyle:"highlight", 
   opacity:0.22, 

@@ -87,7 +87,7 @@ export const CalendarPage: React.FC = () => {
   const calendarEvents = useMemo(() => expandTodos(todos, holidays), [todos, holidays]);
 
   // Selected todos
-  const selectedTodos = useMemo(() => getTodosByDate(selectedDate), [getTodosByDate, selectedDate]);
+  const selectedTodos = useMemo(() => getTodosByDate(selectedDate), [todos, selectedDate]);
 
   // Handlers
   const handleDateClick = useCallback((dateStr: string, allDay: boolean, time?: { start: string; end: string }) => {
@@ -191,6 +191,7 @@ export const CalendarPage: React.FC = () => {
         onViewChange={setView}
         settingsOpen={settingsOpen}
         onSettingsToggle={() => setSettingsOpen(o => !o)}
+        moonPhase={moonPhase}
       />
 
       <div className="glass-panel main-panel">
