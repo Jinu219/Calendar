@@ -97,11 +97,6 @@ pub fn run() {
                 api.prevent_close();
                 let _ = window.hide();
             }
-            // Windows+D 방지: 최소화되지 않도록
-            if let WindowEvent::Resized(_) | WindowEvent::Moved(_) = event {
-                let _ = window.show();
-                let _ = window.set_always_on_bottom(true);
-            }
         })
         .invoke_handler(tauri::generate_handler![
             get_autostart_status,

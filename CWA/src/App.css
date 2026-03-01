@@ -67,7 +67,13 @@ html, body, #root {
 }
 
 .tb-left  { display:flex; align-items:center; gap:7px; flex-shrink:0; cursor:default; }
-.app-logo { font-size:18px; filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--accent) 40%,transparent)); }
+.app-logo { 
+  font-size:18px; 
+  filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--accent) 40%,transparent)); 
+  background:none; border:none; cursor:pointer; padding:2px 4px; border-radius:4px;
+  transition:background .15s;
+}
+.app-logo:hover { background:rgba(255,255,255,0.15); }
 .app-title {
   font-family:'Playfair Display',serif; font-size:15px; font-weight:600;
   color:var(--text-primary); letter-spacing:.4px; cursor:default; flex-shrink:0;
@@ -402,6 +408,7 @@ html, body, #root {
   transform:translateX(calc(100% + 14px)); opacity:0;
   transition:transform .28s cubic-bezier(.4,0,.2,1), opacity .25s;
   pointer-events:none;
+  background:rgba(255,245,248,0.92); /* More opaque background */
 }
 .settings-drawer.open { transform:translateX(0); opacity:1; pointer-events:all; }
 .settings-drawer::-webkit-scrollbar { width:3px; }
@@ -422,6 +429,31 @@ html, body, #root {
   transition:background .15s;
 }
 .settings-close:hover { background:rgba(255,80,80,.15); color:#b00; }
+
+/* Moon phase display */
+.moon-phase-display {
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px;
+  background:rgba(255,255,255,0.1);
+  border-radius:var(--radius-md);
+}
+.moon-emoji {
+  font-size:24px;
+}
+.moon-name {
+  font-size:14px;
+  color:var(--text-primary);
+}
+
+/* Lunar date display */
+.lunar-date-display {
+  margin-top:8px;
+  padding:6px 10px;
+  background:rgba(255,255,255,0.08);
+  border-radius:var(--radius-sm);
+  font-size:13px;
+  color:var(--text-secondary);
+}
 
 .settings-body { padding:12px 14px; display:flex; flex-direction:column; gap:16px; }
 .sg      { display:flex; flex-direction:column; gap:7px; }

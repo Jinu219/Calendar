@@ -44,9 +44,10 @@ interface Settings {
   showOverflow:   boolean;
   todayStyle:     TodayStyle;
   opacity:        number;
-  eventColor:     string;
   todoPanelWidth: number;
   autostart:      boolean;
+  useLunar:       boolean;
+  use24Hour:      boolean;
 }
 
 interface ModalState {
@@ -99,15 +100,39 @@ const WIN_POS_KEY  = "cwa-win-pos";
 
 const DEFAULT_SETTINGS: Settings = {
   colorTheme:"pink", dayNumberPos:"left", fontFamily:"Noto Sans KR",
-  showOverflow:true, todayStyle:"highlight", opacity:0.22,
-  eventColor:TODO_COLORS[0], todoPanelWidth:270, autostart:false,
+  showOverflow:true, todayStyle:"highlight", opacity:0.22, 
+  todoPanelWidth:270, autostart:false, useLunar:false, use24Hour:true,
 };
 
 // ═══════════════════════════════════════════════════════════
-// Holiday API
+// Holiday API - Using public holiday API
 // ═══════════════════════════════════════════════════════════
+interface HolidayAPIItem {
+  dateName: string;
+  localeDate: string;
+  isHoliday: boolean;
+}
+
 async function fetchHolidays(year: number): Promise<Record<string, string>> {
-  // 기본 공휴일 (대체 공휴일 등은 계산이 복잡하므로 수동으로 유지)
+  const holidays: Record<string, string> = {};
+  
+  try {
+    // Try to fetch from Korea holiday API
+    const response = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/KR`);
+    if (response.ok) {
+      const data: HolidayAPIItem[] = await response.json();
+      for (const item of data) {
+        if (item.isHoliday) {
+          const dateStr = item.localeDate; // Format: YYYY-MM-DD
+          holidays[dateStr] = item.dateName;
+        }
+      }
+    }
+  } catch (e) {
+    console.log("Holiday API failed, using fallback data");
+  }
+
+  // Fallback: 기본 공휴일 (API 실패 시)
   const baseHolidays: Record<string, string> = {
     [`${year}-01-01`]: "신정",
     [`${year}-03-01`]: "삼일절",
@@ -120,30 +145,39 @@ async function fetchHolidays(year: number): Promise<Record<string, string>> {
     [`${year}-12-25`]: "크리스마스",
   };
 
-  // 설날 (음력 1월 1일) - 대략적인 날짜 계산
+  // Merge with base holidays (only if not already set)
+  for (const [date, name] of Object.entries(baseHolidays)) {
+    if (!holidays[date]) {
+      holidays[date] = name;
+    }
+  }
+
+  // Add lunar holidays (설날, 추석) - approximate dates
   const getLunarNewYear = (year: number): number[] => {
-    // 음력 1월 1일이 양력 몇 월几日인지 단순 계산 (대체값)
     const lunarNewYears: Record<number, number[]> = {
       2024: [2, 9, 10],
       2025: [1, 28, 29, 30],
       2026: [2, 16, 17, 18],
       2027: [2, 6, 7, 8],
+      2028: [1, 26, 27, 28],
+      2029: [2, 13, 14, 15],
+      2030: [2, 3, 4, 5],
     };
     return lunarNewYears[year] || [2, 10];
   };
 
-  // 추석 (음력 8월 15일) - 대략적인 날짜 계산
   const getChuseok = (year: number): number[] => {
     const chuseokDates: Record<number, number[]> = {
       2024: [9, 16, 17, 18],
       2025: [10, 5, 6, 7],
       2026: [9, 24, 25, 26],
       2027: [9, 14, 15, 16],
+      2028: [9, 29, 30, 10, 1],
+      2029: [9, 19, 20, 21],
+      2030: [9, 8, 9, 10],
     };
     return chuseokDates[year] || [9, 20];
   };
-
-  const holidays: Record<string, string> = { ...baseHolidays };
 
   // 설날 추가
   const lunarNewYear = getLunarNewYear(year);
@@ -171,7 +205,7 @@ async function fetchHolidays(year: number): Promise<Record<string, string>> {
     }
   }
 
-  // 대체 공휴일 추가
+  // 대체 공휴일
   if (year === 2024) {
     holidays["2024-05-06"] = "대체공휴일";
   }
@@ -180,6 +214,126 @@ async function fetchHolidays(year: number): Promise<Record<string, string>> {
   }
 
   return holidays;
+}
+
+// ═══════════════════════════════════════════════════════════
+// Moon Phase API
+// ═══════════════════════════════════════════════════════════
+async function fetchMoonPhase(): Promise<{name:string; emoji:string}> {
+  try {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    const response = await fetch(`https://moon-api.com/?date=${dateStr}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.phase) {
+        const phase = data.phase;
+        const phases: Record<number, {name:string; emoji:string}> = {
+          0: {name:"삭", emoji:"🌑"},
+          1: {name:"초승달", emoji:"🌒"},
+          2: {name:"초승달", emoji:"🌒"},
+          3: {name:"초승달", emoji:"🌒"},
+          4: {name:"상현망간달", emoji:"🌓"},
+          5: {name:"상현달", emoji:"🌓"},
+          6: {name:"상현달", emoji:"🌓"},
+          7: {name:"상현달", emoji:"🌓"},
+          8: {name:"보름달", emoji:"🌕"},
+          9: {name:"망명", emoji:"🌕"},
+          10: {name: "망명", emoji: "🌕"},
+          11: {name: "하현달", emoji: "🌖"},
+          12: {name: "하현달", emoji: "🌖"},
+          13: {name: "하현달", emoji: "🌖"},
+          14: {name: "하현망간달", emoji: "🌖"},
+          15: {name: "보름달", emoji: "🌕"},
+          16: {name: "김서리달", emoji: "🌗"},
+          17: {name: "김서리달", emoji: "🌗"},
+          18: {name: "김서리달", emoji: "🌗"},
+          19: {name: "하현망간달", emoji: "🌗"},
+          20: {name: "하현달", emoji: "🌖"},
+          21: {name: "하현달", emoji: "🌖"},
+          22: {name: "하현달", emoji: "🌖"},
+          23: {name: "하현망간달", emoji: "🌖"},
+          24: {name: "보름달", emoji: "🌕"},
+        };
+        return phases[Math.round(phase)] || {name:"", emoji:""};
+      }
+    }
+  } catch (e) {
+    console.log("Moon phase API failed, calculating locally");
+  }
+  
+  // Fallback: Calculate moon phase locally
+  return calculateMoonPhaseLocally(new Date());
+}
+
+function calculateMoonPhaseLocally(date: Date): {name:string; emoji:string} {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  
+  // Moon phase calculation algorithm
+  let jd = (1461 * (year + 4800 + (month - 14) / 12)) / 4 +
+           (367 * (month - 2 - 12 * ((month - 14) / 12))) / 12 -
+           (3 * ((year + 4900 + (month - 14) / 12) / 100)) / 4 +
+           day - 32075;
+  
+  const phase = (jd + 1.5) % 29.53;
+  const phaseIndex = Math.floor((phase / 29.53) * 24);
+  
+  const phases: Record<number, {name:string; emoji:string}> = {
+    0: {name:"삭", emoji:"🌑"},
+    1: {name:"초승달", emoji:"🌒"},
+    2: {name:"초승달", emoji:"🌒"},
+    3: {name:"초승달", emoji:"🌒"},
+    4: {name:"초승달", emoji:"🌒"},
+    5: {name:"상현망간달", emoji:"🌓"},
+    6: {name:"상현달", emoji:"🌓"},
+    7: {name:"상현달", emoji:"🌓"},
+    8: {name:"상현달", emoji:"🌓"},
+    9: {name:"보름달", emoji:"🌕"},
+    10: {name: "보름달", emoji: "🌕"},
+    11: {name: "보름달", emoji: "🌕"},
+    12: {name: "하현달", emoji: "🌖"},
+    13: {name: "하현달", emoji: "🌖"},
+    14: {name: "하현달", emoji: "🌖"},
+    15: {name: "하현망간달", emoji: "🌖"},
+    16: {name: "김서리달", emoji: "🌗"},
+    17: {name: "김서리달", emoji: "🌗"},
+    18: {name: "김서리달", emoji: "🌗"},
+    19: {name: "김서리달", emoji: "🌗"},
+    20: {name: "삭", emoji: "🌑"},
+    21: {name: "삭", emoji: "🌑"},
+    22: {name: "삭", emoji: "🌑"},
+    23: {name: "삭", emoji: "🌑"},
+  };
+  
+  return phases[phaseIndex] || {name:"", emoji:""};
+}
+
+// ═══════════════════════════════════════════════════════════
+// Lunar Calendar Calculation
+// ═══════════════════════════════════════════════════════════
+function getLunarDateString(date: Date): string {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  
+  // 주요 음력 일정 표시
+  const lunarSchedule: Record<string, {m:number; d:number; name:string}> = {
+    "2024-2-10": {m: 2, d: 10, name: "설날"}, 
+    "2025-1-29": {m: 1, d: 29, name: "설날"}, 
+    "2026-2-17": {m: 2, d: 17, name: "설날"},
+    "2024-9-17": {m: 9, d: 17, name: "추석"},
+    "2025-10-6": {m: 10, d: 6, name: "추석"},
+    "2026-9-25": {m: 9, d: 25, name: "추석"},
+  };
+  
+  const key = `${year}-${month}-${day}`;
+  if (lunarSchedule[key]) {
+    return `음력 ${lunarSchedule[key].name}`;
+  }
+  
+  return `음력 ${month}월 ${day}일`;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -281,7 +435,10 @@ export default function App() {
   }));
   const [selectedDate, setSelectedDate] = useState(localToday);
   const [inputVal, setInputVal]   = useState("");
-  const [inputTime, setInputTime] = useState("");
+  const [inputTime, setInputTime] = useState(() => {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  });
   const [inputColor, setInputColor] = useState(TODO_COLORS[0]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editMode, setEditMode]   = useState(false);
@@ -296,7 +453,9 @@ export default function App() {
   const [dragId, setDragId] = useState<string|null>(null);
   const [dragOver, setDragOver] = useState<string|null>(null);
   const [isResizing, setIsResizing] = useState(false);
-  const [calendarTitle, setCalendarTitle] = useState("");
+  const [_calendarTitle, setCalendarTitle] = useState("");
+  const [moonPhase, setMoonPhase] = useState<{name:string; emoji:string}>({name:"", emoji:""});
+  const [lunarDate, setLunarDate] = useState<string>("");
   const calendarRef = useRef<FullCalendar>(null);
   const appWin      = useRef(getCurrentWindow());
 
@@ -324,6 +483,24 @@ export default function App() {
       setHolidays({ ...h1, ...h2 });
     })();
   }, []);
+
+  // ── Load moon phase ──
+  useEffect(() => {
+    (async () => {
+      const phase = await fetchMoonPhase();
+      setMoonPhase(phase);
+    })();
+  }, []);
+
+  // ── Update lunar date when selected date changes ──
+  useEffect(() => {
+    if (settings.useLunar) {
+      const date = new Date(selectedDate + "T00:00:00");
+      setLunarDate(getLunarDateString(date));
+    } else {
+      setLunarDate("");
+    }
+  }, [selectedDate, settings.useLunar]);
 
   // ── Restore window position ──
   useEffect(() => {
@@ -464,7 +641,7 @@ export default function App() {
       const h2 = String((info.date.getHours()+1)%24).padStart(2,"0");
       setModal({ open:true, date:d, allDay:false, startDate:d, endDate:d,
         startTime:`${h}:${m}`, endTime:`${h2}:${m}` });
-      setModalTitle(""); setModalColor(settings.eventColor); setModalRepeat("none");
+      setModalTitle(""); setModalColor(TODO_COLORS[0]); setModalRepeat("none");
     }
   };
 
@@ -475,7 +652,7 @@ export default function App() {
     setSelectedDate(d);
     setModal({ open:true, date:d, allDay:false, startDate:d, endDate:d,
       startTime: info.startStr.slice(11,16), endTime: info.endStr.slice(11,16) });
-    setModalTitle(""); setModalColor(settings.eventColor); setModalRepeat("none");
+    setModalTitle(""); setModalColor(TODO_COLORS[0]); setModalRepeat("none");
     calendarRef.current?.getApi().unselect();
   };
 
@@ -534,18 +711,25 @@ export default function App() {
   }, []);
 
   // ═══════════════════════════════════════════════════════════
-  // Week number display
+  // Week number display (month-based)
   // ═══════════════════════════════════════════════════════════
   const getWeekNumber = (date: Date): number => {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    // 월별 주차 계산: 해당 월의 1일이 몇 번째 주인지 구하고, 현재 날짜의 주차를 계산
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    // 해당 월 1일
+    const firstDayOfMonth = new Date(year, month, 1);
+    // 1일이 속한 주의 첫 번째 일요일 구하기
+    const firstSunday = new Date(firstDayOfMonth);
+    firstSunday.setDate(firstSunday.getDate() - firstSunday.getDay());
+    // 현재 날짜부터 첫 번째 일요일까지의 일 수
+    const diffTime = date.getTime() - firstSunday.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return Math.floor(diffDays / 7) + 1;
   };
 
   const fmtSelectedDate = new Date(selectedDate+"T00:00:00")
-    .toLocaleDateString("ko-KR", { month:"long", day:"numeric", weekday:"short" });
+    .toLocaleDateString("ko-KR", { year:"numeric", month:"long", day:"numeric", weekday:"short" });
 
   const filteredFonts = useMemo(() =>
     systemFonts.filter(f => f.toLowerCase().includes(fontSearch.toLowerCase())),
@@ -564,7 +748,7 @@ export default function App() {
           ══════════════════════════════════ */}
       <div className="title-bar" data-tauri-drag-region>
         <div className="tb-left" data-tauri-drag-region>
-          <span className="app-logo">🌸</span>
+          <button className="app-logo minimize-btn" onClick={()=>appWin.current.hide()} title="창 내리기">🌸</button>
           <span className="app-title" data-tauri-drag-region>Calendar</span>
         </div>
 
@@ -597,6 +781,7 @@ export default function App() {
               initialView={view}
               locale="ko"
               height="100%"
+              editable={true}
               headerToolbar={{ left:"prev,next today", center:"title", right:"" }}
               slotMinTime="09:00:00"
               slotMaxTime="23:00:00"
@@ -611,6 +796,16 @@ export default function App() {
               fixedWeekCount={true}
               dateClick={handleDateClick}
               select={handleSelect}
+              eventDrop={(info) => {
+                // Handle event drag and drop in calendar
+                const tid = info.event.extendedProps?.todoId;
+                if (tid) {
+                  const newDate = info.event.startStr.slice(0, 10);
+                  setTodos(prev => prev.map(t => 
+                    t.id === tid ? { ...t, date: newDate } : t
+                  ));
+                }
+              }}
               eventClick={info => {
                 const tid = info.event.extendedProps?.todoId;
                 if (tid) {
@@ -622,9 +817,8 @@ export default function App() {
               datesSet={(info) => {
                 if (info.view.type === "timeGridWeek") {
                   const start = info.view.activeStart;
-                  const month = start.getMonth() + 1;
                   const week = getWeekNumber(start);
-                  const title = `${month}월 ${week}주차`;
+                  const title = `${week}주차`;
                   setCalendarTitle(title);
                   // Update the title element directly
                   const titleEl = document.querySelector(".fc-toolbar-title");
@@ -753,20 +947,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* 기본 이벤트 색상 */}
-          <div className="sg">
-            <div className="sg-label">🎨 기본 이벤트 색상</div>
-            <div className="color-row-setting">
-              {TODO_COLORS.map(c=>(
-                <button key={c}
-                  className={`color-dot-setting ${settings.eventColor===c?"selected":""}`}
-                  style={{ background:c }}
-                  onClick={()=>setSetting("eventColor",c)}
-                />
-              ))}
-            </div>
-          </div>
-
           {/* 투명도 */}
           <div className="sg">
             <div className="sg-label">🔮 배경 투명도</div>
@@ -841,6 +1021,42 @@ export default function App() {
                 onClick={toggleAutostart}>
                 {settings.autostart ? "ON — 자동 실행 중" : "OFF — 클릭해서 켜기"}
               </button>
+            </div>
+          </div>
+
+          {/* 오늘의 달 */}
+          <div className="sg">
+            <div className="sg-label">🌙 오늘의 달</div>
+            <div className="moon-phase-display">
+              <span className="moon-emoji">{moonPhase.emoji}</span>
+              <span className="moon-name">{moonPhase.name || "측정 중..."}</span>
+            </div>
+          </div>
+
+          {/* 음력 표시 */}
+          <div className="sg">
+            <div className="sg-label">📅 음력 표시</div>
+            <div className="seg-ctrl">
+              <button className={`seg-btn ${settings.useLunar?"active":""}`}
+                onClick={()=>setSetting("useLunar", true)}>ON</button>
+              <button className={`seg-btn ${!settings.useLunar?"active":""}`}
+                onClick={()=>setSetting("useLunar", false)}>OFF</button>
+            </div>
+            {settings.useLunar && lunarDate && (
+              <div className="lunar-date-display">
+                {lunarDate}
+              </div>
+            )}
+          </div>
+
+          {/* 시간 형식 */}
+          <div className="sg">
+            <div className="sg-label">🕐 시간 형식</div>
+            <div className="seg-ctrl">
+              <button className={`seg-btn ${settings.use24Hour?"active":""}`}
+                onClick={()=>setSetting("use24Hour", true)}>24시간</button>
+              <button className={`seg-btn ${!settings.use24Hour?"active":""}`}
+                onClick={()=>setSetting("use24Hour", false)}>12시간</button>
             </div>
           </div>
 
