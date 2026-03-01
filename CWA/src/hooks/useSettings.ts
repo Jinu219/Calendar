@@ -47,7 +47,10 @@ export function useSettings() {
 
   // Apply day-num position
   useEffect(() => {
-    const m: Record<DayNumPos, string> = { left: "flex-start", center: "center", right: "flex-end" };
+    const m: Record<DayNumPos, string> = { 
+      left: "flex-start", 
+      right: "flex-end" 
+    };
     document.documentElement.style.setProperty("--day-num-justify", m[settings.dayNumberPos]);
   }, [settings.dayNumberPos]);
 

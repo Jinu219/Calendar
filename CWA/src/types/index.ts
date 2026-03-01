@@ -4,7 +4,7 @@
 
 export type RepeatType = "none" | "daily" | "weekly" | "monthly";
 export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm";
-export type DayNumPos = "left" | "center" | "right";
+export type DayNumPos = "left" | "right";
 export type TodayStyle = "highlight" | "glow" | "elevated" | "border";
 
 export interface Todo {

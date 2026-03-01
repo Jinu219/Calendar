@@ -85,14 +85,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   const handleDatesSet = (info: any) => {
+    const titleEl = document.querySelector(".fc-toolbar-title");
+    if (!titleEl) return;
+    
     if (info.view.type === "timeGridWeek") {
       const start = info.view.activeStart;
       const month = start.getMonth() + 1;
       const week = getWeekNumber(start);
       const title = `${month}월 ${week}주차`;
       setCalendarTitle(title);
-      const titleEl = document.querySelector(".fc-toolbar-title");
-      if (titleEl) titleEl.textContent = title;
+      titleEl.textContent = title;
+    } else if (info.view.type === "dayGridMonth") {
+      const start = info.view.activeStart;
+      const year = start.getFullYear();
+      const month = start.getMonth() + 1;
+      const title = `${year}년 ${month}월`;
+      setCalendarTitle(title);
+      titleEl.textContent = title;
     } else {
       setCalendarTitle("");
     }
@@ -116,9 +125,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
     return (
       <div className="day-cell-content">
-        <div className="day-number">{date.getDate()}</div>
+        <div className="day-number-row">
+          <span className="day-number">{date.getDate()}</span>
+          {settings.useLunar && lunarInfo && (
+            <span className="lunar-date-small">{lunarInfo.replace('음력 ', '')}</span>
+          )}
+        </div>
         {holidays[dateStr] && <div className="holiday-name">{holidays[dateStr]}</div>}
-        <div className="lunar-date">{lunarInfo.replace('음력 ', '')}</div>
         {isToday && <div className="moon-phase-small">{moonPhase.emoji}</div>}
       </div>
     );
@@ -150,6 +163,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         events={events}
         showNonCurrentDates={true}
         fixedWeekCount={settings.showOverflow}
+        dayMaxEvents={2}
         dateClick={handleDateClick}
         select={handleSelect}
         eventDrop={handleEventDrop}

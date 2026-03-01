@@ -196,7 +196,7 @@ html, body, #root {
 /* Sunday / Holiday cell */
 .fc .fc-daygrid-day.sunday-cell,
 .fc .fc-daygrid-day.holiday-cell {
-  background:rgba(239,68,68,0.07) !important;
+  background:rgba(239,68,68,0.15) !important;
 }
 .fc .fc-daygrid-day.sunday-cell .fc-daygrid-day-number,
 .fc .fc-daygrid-day.holiday-cell .fc-daygrid-day-number { color:#ef4444 !important; font-weight:600; }
@@ -254,6 +254,19 @@ html, body, #root {
   padding:1px 4px !important; cursor:pointer;
   transition:transform .1s, opacity .1s;
 }
+
+/* Limit events in day grid to prevent cell expansion */
+.fc .fc-daygrid-day-events {
+  margin-top: auto !important;
+}
+
+.fc .fc-daygrid-more-link {
+  font-size: 9px;
+  color: var(--accent);
+  font-weight: 500;
+  padding: 1px 2px;
+}
+
 .fc .fc-event:hover { transform:translateY(-1px); opacity:.88; }
 
 .fc .fc-timegrid-slot       { height:30px !important; }
@@ -634,6 +647,18 @@ html, body, #root {
 
 .day-number {
   font-weight:600;
+}
+
+.day-number-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.lunar-date-small {
+  font-size: 7px;
+  color: var(--text-secondary);
+  opacity: 0.8;
 }
 
 .lunar-date {

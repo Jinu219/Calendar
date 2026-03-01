@@ -168,23 +168,9 @@ export function calculateMoonPhaseLocally(date: Date): MoonPhase {
 
 /** Get lunar date string */
 export function getLunarDateString(date: Date): string {
-  const year = date.getFullYear();
   const month = date.getMonth() + 1;
   const day = date.getDate();
   
-  const lunarSchedule: Record<string, { m: number; d: number; name: string }> = {
-    "2024-2-10": { m: 2, d: 10, name: "설날" },
-    "2025-1-29": { m: 1, d: 29, name: "설날" },
-    "2026-2-17": { m: 2, d: 17, name: "설날" },
-    "2024-9-17": { m: 9, d: 17, name: "추석" },
-    "2025-10-6": { m: 10, d: 6, name: "추석" },
-    "2026-9-25": { m: 9, d: 25, name: "추석" },
-  };
-  
-  const key = `${year}-${month}-${day}`;
-  if (lunarSchedule[key]) {
-    return `음력 ${lunarSchedule[key].name}`;
-  }
-  
-  return `음력 ${month}월 ${day}일`;
+  // Simple lunar date display - just show the day
+  return `${day}`;
 }

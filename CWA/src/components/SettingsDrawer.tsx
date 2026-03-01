@@ -102,13 +102,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
         <div className="sg">
           <div className="sg-label">📅 날짜 숫자 위치</div>
           <div className="seg-ctrl">
-            {(["left", "center", "right"] as DayNumPos[]).map(p => (
+            {(["left", "right"] as DayNumPos[]).map(p => (
               <button
                 key={p}
                 className={`seg-btn ${settings.dayNumberPos === p ? "active" : ""}`}
                 onClick={() => onSetSetting("dayNumberPos", p)}
               >
-                {p === "left" ? "왼쪽" : p === "center" ? "가운데" : "오른쪽"}
+                {p === "left" ? "왼쪽" : "오른쪽"}
               </button>
             ))}
           </div>

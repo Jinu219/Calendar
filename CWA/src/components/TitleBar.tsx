@@ -2,7 +2,7 @@
 // TitleBar Component
 // ═══════════════════════════════════════════════════════════
 
-import React from "react";
+import React, { useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getTodayLabel } from "../utils";
 
@@ -22,12 +22,29 @@ export const TitleBar: React.FC<TitleBarProps> = ({
   const appWin = getCurrentWindow();
   const todayLabel = getTodayLabel();
 
+  // Prevent double-click from maximizing the window
+  const preventDblClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleMinimize = useCallback(async () => {
+    try {
+      await appWin.hide();
+    } catch (e) {
+      console.error("Failed to hide window:", e);
+    }
+  }, [appWin]);
+
   return (
-    <div className="title-bar" data-tauri-drag-region>
+    <div 
+      className="title-bar" 
+      data-tauri-drag-region
+      onMouseDown={preventDblClick}
+    >
       <div className="tb-left" data-tauri-drag-region>
         <button 
           className="app-logo minimize-btn" 
-          onClick={() => appWin.hide()} 
+          onClick={handleMinimize} 
           title="창 내리기"
         >
           🌸

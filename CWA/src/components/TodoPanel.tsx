@@ -5,7 +5,7 @@
 import React, { useState, DragEvent } from "react";
 import type { Todo, Settings } from "../types";
 import { TODO_COLORS } from "../constants";
-import { formatDateDisplay, getCurrentTime } from "../utils";
+import { formatDateDisplayWithWeekday, getCurrentTime } from "../utils";
 import { getTodoTimeDisplay, getTodoRepeatLabel } from "../utils/todoUtils";
 
 interface TodoPanelProps {
@@ -43,7 +43,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
     .filter(t => t.date === selectedDate)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
-  const fmtSelectedDate = formatDateDisplay(selectedDate);
+  const fmtSelectedDate = formatDateDisplayWithWeekday(selectedDate);
 
   const handleAddTodo = () => {
     const t = inputVal.trim();

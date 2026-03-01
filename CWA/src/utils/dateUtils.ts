@@ -62,10 +62,16 @@ export const getWeekNumber = (date: Date): number => {
   return Math.floor(diffDays / 7) + 1;
 };
 
-/** Format date for display */
+/** Format date for display with weekday */
 export const formatDateDisplay = (dateStr: string): string => {
   return new Date(dateStr + "T00:00:00")
     .toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+};
+
+/** Format date for display with full weekday */
+export const formatDateDisplayWithWeekday = (dateStr: string): string => {
+  return new Date(dateStr + "T00:00:00")
+    .toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 };
 
 /** Get today label */
