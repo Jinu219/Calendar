@@ -174,39 +174,74 @@ html, body, #root {
 .todo-panel-toggle-calendar {
   position: absolute;
   top: 50%;
-  right: -4px;
+  right: -26px;
   transform: translateY(-50%);
   z-index: 20;
-  width: 20px;
-  height: 40px;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 0 8px 8px 0;
+  width: 32px;
+  height: 70px;
+  background: transparent;
+  border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  font-size: 10px;
+  font-size: 20px;
   transition: all .15s;
+  opacity: 0.6;
+  padding: 0;
 }
 .todo-panel-toggle-calendar:hover {
-  background: color-mix(in srgb,var(--accent) 20%,white 20%);
-  color: var(--text-primary);
+  opacity: 1;
+  color: var(--accent);
 }
-.todo-panel-toggle-calendar.expanded {
-  right: -4px;
+
+/* Toggle button when collapsed - show on right side of calendar */
+.todo-panel-toggle-calendar.collapsed {
+  position: absolute;
+  right: -18px;
+  width: 24px;
+  height: 50px;
+  font-size: 16px;
 }
+
+/* Hide old toggle button */
+.todo-panel-toggle { display: none; }
 
 /* ── Resize Handle ── */
 .resize-handle {
-  width:8px; flex-shrink:0; background:transparent;
-  transition:background .15s; border-radius:4px; margin:0 2px; cursor:default;
+  width: 12px;
+  flex-shrink: 0;
+  background: transparent;
+  transition: background .15s;
+  border-radius: 4px;
+  margin: 0 2px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 }
 .resize-handle.active {
-  background:color-mix(in srgb,var(--accent) 30%,transparent); cursor:ew-resize;
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  cursor: ew-resize;
 }
-.resize-handle.active:hover { background:color-mix(in srgb,var(--accent) 55%,transparent); }
+.resize-handle.active:hover {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Toggle button inside resize handle */
+.resize-handle .todo-panel-toggle-calendar {
+  position: static;
+  transform: none;
+  width: 20px;
+  height: 40px;
+  font-size: 14px;
+  opacity: 0.5;
+}
+.resize-handle:hover .todo-panel-toggle-calendar {
+  opacity: 1;
+}
 
 /* ════════════════════════════════════════════
    FullCalendar Overrides
@@ -351,17 +386,6 @@ html, body, #root {
 
 .todo-quick-add { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
 .todo-input-row { display:flex; gap:6px; }
-
-.todo-panel-toggle {
-  display:flex; align-items:center; justify-content:center;
-  width:100%; padding:4px; margin-bottom:4px;
-  background:transparent; border:none; cursor:pointer;
-  color:var(--text-secondary); font-size:12px;
-  transition:color .15s, transform .15s;
-}
-.todo-panel-toggle:hover { color:var(--text-primary); }
-.todo-panel-toggle.expanded { transform:rotate(180deg); }
-.todo-panel-toggle.collapsed { transform:rotate(0deg); }
 
 .color-row-quick { display:flex; gap:4px; flex-wrap:wrap; padding:2px 0; }
 .color-dot-quick {

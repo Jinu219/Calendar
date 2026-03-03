@@ -2,7 +2,7 @@
 // AddEventModal Component
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { ModalState, RepeatType } from "../types";
 import { TODO_COLORS, MODAL_CLOSED, getLocalToday } from "../constants";
 
@@ -40,6 +40,18 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   const [color, setColor] = useState(TODO_COLORS[0]);
   const [repeat, setRepeat] = useState<RepeatType>("none");
   const [repeatEndDate, setRepeatEndDate] = useState("");
+
+  // Update state when initialData changes (e.g., when user selects a different time slot)
+  useEffect(() => {
+    if (isOpen && initialData) {
+      setDate(initialData.date || getLocalToday());
+      setStartDate(initialData.startDate || getLocalToday());
+      setEndDate(initialData.endDate || getLocalToday());
+      setStartTime(initialData.startTime || "09:00");
+      setEndTime(initialData.endTime || "10:00");
+      setAllDay(initialData.allDay ?? false);
+    }
+  }, [isOpen, initialData]);
 
   if (!isOpen) return null;
 

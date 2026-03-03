@@ -65,9 +65,78 @@ export const CalendarPage: React.FC = () => {
     }
   }, [selectedDate, settings.useLunar]);
 
-  // Apply always on top setting
+  // Keyboard event handler for deleting and copy-paste events
   useEffect(() => {
-    invoke("set_always_on_top", { enabled: settings.alwaysOnTop }).catch(console.error);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+        return;
+      }
+
+      // Delete key - delete selected event(s)
+      if (e.key === "Delete" || e.key === "Backspace") {
+        // Get selected events
+        const selectedEvents = (window as any).__selectedEvents || [];
+        const selectedEventId = (window as any).__selectedEventId;
+        
+        if (selectedEvents.length > 0) {
+          e.preventDefault();
+          // Delete all selected events
+          selectedEvents.forEach((id: string) => deleteTodo(id));
+          (window as any).__selectedEvents = [];
+          (window as any).__selectedEventId = null;
+        } else if (selectedEventId) {
+          e.preventDefault();
+          deleteTodo(selectedEventId);
+          (window as any).__selectedEventId = null;
+        }
+      }
+
+      // Ctrl+C - Copy selected event(s)
+      if (e.ctrlKey && e.key === "c") {
+        const selectedEvents = (window as any).__selectedEvents || [];
+        const selectedEventId = (window as any).__selectedEventId;
+        
+        if (selectedEvents.length > 0 || selectedEventId) {
+          const idsToCopy = selectedEvents.length > 0 ? selectedEvents : [selectedEventId];
+          (window as any).__copiedEvents = idsToCopy;
+        }
+      }
+
+      // Ctrl+V - Paste copied event(s) to selected date
+      if (e.ctrlKey && e.key === "v") {
+        const copiedEvents = (window as any).__copiedEvents || [];
+        if (copiedEvents.length > 0) {
+          e.preventDefault();
+          copiedEvents.forEach((id: string) => {
+            const original = todos.find(t => t.id === id);
+            if (original) {
+              addTodo(original.title, selectedDate, {
+                color: original.color,
+                allDay: original.allDay,
+                todoTime: original.todoTime,
+                startTime: original.startTime,
+                endTime: original.endTime,
+              });
+            }
+          });
+        }
+      }
+    };
+    
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [deleteTodo, addTodo, selectedDate, todos]);
+
+  // Apply always on bottom setting (window behind other apps)
+  useEffect(() => {
+    // Always set to bottom by default
+    invoke("set_always_on_bottom", {}).catch(console.error);
+    // But also apply always on top if setting is enabled
+    if (settings.alwaysOnTop) {
+      invoke("set_always_on_top", { enabled: true }).catch(console.error);
+    }
   }, [settings.alwaysOnTop]);
 
   // Apply show on taskbar setting
@@ -143,9 +212,14 @@ export const CalendarPage: React.FC = () => {
     setModalRepeat("none");
   }, []);
 
-  const handleEventDrop = useCallback((todoId: string, newDate: string) => {
-    updateTodoDate(todoId, newDate);
-  }, [updateTodoDate]);
+  const handleEventDrop = useCallback((todoId: string, newDate: string, newTime?: string) => {
+    if (newTime) {
+      // Update both date and time for weekly view
+      updateTodo(todoId, { date: newDate, startTime: newTime });
+    } else {
+      updateTodoDate(todoId, newDate);
+    }
+  }, [updateTodo, updateTodoDate]);
 
   const handleEventClick = useCallback((todoId: string, date: string) => {
     setSelectedDate(date);
@@ -236,12 +310,14 @@ export const CalendarPage: React.FC = () => {
             onEventClick={handleEventClick}
             onEventResize={handleEventResize}
             editMode={editMode}
-            onToggleTodoPanel={() => setTodoPanelExpanded(v => !v)}
-            isTodoPanelExpanded={todoPanelExpanded}
           />
 
           {todoPanelExpanded ? (
             <>
+              <div
+                className={`resize-handle ${editMode ? "active" : ""}`}
+                onMouseDown={editMode ? startResize : undefined}
+              />
               <TodoPanel
                 selectedDate={selectedDate}
                 todos={todos}
@@ -253,36 +329,7 @@ export const CalendarPage: React.FC = () => {
                 onMoveTodo={moveTodo}
               />
             </>
-          ) : (
-            <div
-              className="todo-panel-collapsed"
-              onClick={() => setTodoPanelExpanded(true)}
-              title="할 일 패널 펼치기"
-              style={{
-                width: "40px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                background: "var(--glass-bg)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px solid var(--glass-border)",
-                padding: "10px 5px",
-                flexShrink: 0
-              }}
-            >
-              <span style={{ fontSize: "18px" }}>📝</span>
-              <span style={{ 
-                writingMode: "vertical-rl", 
-                fontSize: "10px", 
-                color: "var(--text-secondary)",
-                marginTop: "4px"
-              }}>
-                할 일
-              </span>
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
 

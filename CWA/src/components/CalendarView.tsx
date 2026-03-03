@@ -22,9 +22,11 @@ interface CalendarViewProps {
   moonPhase: MoonPhase;
   onDateClick: (dateStr: string, allDay: boolean, time?: { start: string; end: string }) => void;
   onSelect: (date: string, time: { start: string; end: string }) => void;
-  onEventDrop: (todoId: string, newDate: string) => void;
+  onEventDrop: (todoId: string, newDate: string, newTime?: string) => void;
   onEventClick: (todoId: string, date: string) => void;
   onEventResize?: (todoId: string, newEndTime: string | undefined) => void;
+  onEventDelete?: (todoId: string) => void;
+  onEventCopy?: (todoId: string, newDate: string) => void;
   editMode: boolean;
   onToggleTodoPanel?: () => void;
   isTodoPanelExpanded?: boolean;
@@ -47,6 +49,8 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   onEventDrop,
   onEventClick,
   onEventResize,
+  onEventDelete,
+  onEventCopy,
   editMode,
   onToggleTodoPanel,
   isTodoPanelExpanded,
@@ -97,7 +101,8 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     
     if (todoId) {
       const newDate = info.event.startStr.slice(0, 10);
-      onEventDrop(todoId, newDate);
+      const newTime = info.event.startStr.slice(11, 16);
+      onEventDrop(todoId, newDate, newTime);
     }
   }, [onEventDrop]);
 
@@ -111,8 +116,21 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     }
     
     if (todoId) {
-      const d = info.event.startStr.slice(0, 10);
-      onEventClick(todoId, d);
+      // Handle Shift+Click for multi-select
+      if (info.jsEvent?.shiftKey) {
+        // Add to selected events array
+        const selected = (window as any).__selectedEvents || [];
+        if (!selected.includes(todoId)) {
+          selected.push(todoId);
+          (window as any).__selectedEvents = selected;
+        }
+      } else {
+        // Single click - select one event
+        (window as any).__selectedEventId = todoId;
+        (window as any).__selectedEvents = [todoId];
+        const d = info.event.startStr.slice(0, 10);
+        onEventClick(todoId, d);
+      }
     }
   }, [onEventClick]);
 
@@ -193,16 +211,6 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
       )}
       {/* Custom title display */}
       <div className="calendar-custom-title">{calendarTitle || ' '}</div>
-      {/* Todo panel toggle button on the right */}
-      {onToggleTodoPanel && (
-        <button
-          className={`todo-panel-toggle-calendar ${isTodoPanelExpanded ? "expanded" : ""}`}
-          onClick={onToggleTodoPanel}
-          title={isTodoPanelExpanded ? "할 일 패널 접기" : "할 일 패널 펼치기"}
-        >
-          {isTodoPanelExpanded ? "◀" : "▶"}
-        </button>
-      )}
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}

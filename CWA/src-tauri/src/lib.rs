@@ -110,6 +110,7 @@ pub fn run() {
             set_always_on_top,
             set_show_on_taskbar,
             get_window_visible,
+            set_always_on_bottom,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 앱 실행 실패");
@@ -145,6 +146,13 @@ fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> bool {
         }
     }
     enabled
+}
+
+// ── 항상 아래로 설정 (데스크톱 위젯 모드) ──
+#[tauri::command]
+fn set_always_on_bottom(_app: tauri::AppHandle) -> bool {
+    // 이 기능은 단일 인스턴스 플러그인에서 처리됨
+    true
 }
 
 // ── 작업 표시줄 표시 설정 ──
