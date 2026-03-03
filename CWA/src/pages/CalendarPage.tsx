@@ -18,6 +18,7 @@ import {
 import { expandTodos, getLunarDateString, loadJson } from "../utils";
 import { TODO_COLORS, MODAL_CLOSED, getLocalToday, WIN_POS_KEY } from "../constants";
 import type { Todo, ModalState, RepeatType } from "../types";
+import { invoke } from "@tauri-apps/api/core";
 
 export const CalendarPage: React.FC = () => {
   // State
@@ -27,6 +28,7 @@ export const CalendarPage: React.FC = () => {
   const [editMode, setEditMode] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [isResizing, setIsResizing] = useState(false);
+  const [todoPanelExpanded, setTodoPanelExpanded] = useState(true); // Collapsible todo input
   
   // Modal state
   const [modal, setModal] = useState<ModalState>(MODAL_CLOSED);
@@ -63,10 +65,25 @@ export const CalendarPage: React.FC = () => {
     }
   }, [selectedDate, settings.useLunar]);
 
+  // Apply always on top setting
+  useEffect(() => {
+    invoke("set_always_on_top", { enabled: settings.alwaysOnTop }).catch(console.error);
+  }, [settings.alwaysOnTop]);
+
+  // Apply show on taskbar setting
+  useEffect(() => {
+    invoke("set_show_on_taskbar", { show: settings.showOnTaskbar }).catch(console.error);
+  }, [settings.showOnTaskbar]);
+
+  // Sync editMode with settings
+  useEffect(() => {
+    setEditMode(settings.editMode);
+  }, [settings.editMode]);
+
   // Restore window position
   useEffect(() => {
     const saved = loadJson<{ x: number; y: number } | null>(WIN_POS_KEY, null);
-    if (saved) {
+    if (saved && settings.editMode) {
       appWin.setPosition(new PhysicalPosition(saved.x, saved.y));
     }
   }, []);
@@ -75,13 +92,15 @@ export const CalendarPage: React.FC = () => {
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const unlisten = appWin.onMoved(({ payload }) => {
+      // Only save position in edit mode
+      if (!settings.editMode) return;
       clearTimeout(timer);
       timer = setTimeout(() => {
         localStorage.setItem(WIN_POS_KEY, JSON.stringify({ x: payload.x, y: payload.y }));
       }, 500);
     });
     return () => { unlisten.then(fn => fn()); clearTimeout(timer); };
-  }, []);
+  }, [settings.editMode]);
 
   // Calendar events
   const calendarEvents = useMemo(() => expandTodos(todos, holidays), [todos, holidays]);
@@ -132,6 +151,13 @@ export const CalendarPage: React.FC = () => {
     setSelectedDate(date);
     toggleDone(todoId);
   }, [toggleDone]);
+
+  const handleEventResize = useCallback((todoId: string, newEndTime: string | undefined) => {
+    const todo = todos.find(t => t.id === todoId);
+    if (todo && newEndTime) {
+      updateTodo(todoId, { endTime: newEndTime });
+    }
+  }, [todos, updateTodo]);
 
   const commitModal = () => {
     const t = modalTitle.trim();
@@ -208,24 +234,55 @@ export const CalendarPage: React.FC = () => {
             onSelect={handleSelect}
             onEventDrop={handleEventDrop}
             onEventClick={handleEventClick}
+            onEventResize={handleEventResize}
             editMode={editMode}
+            onToggleTodoPanel={() => setTodoPanelExpanded(v => !v)}
+            isTodoPanelExpanded={todoPanelExpanded}
           />
 
-          <div
-            className={`resize-handle ${editMode ? "active" : ""}`}
-            onMouseDown={startResize}
-          />
-
-          <TodoPanel
-            selectedDate={selectedDate}
-            todos={todos}
-            settings={settings}
-            onAddTodo={addTodo}
-            onToggleDone={toggleDone}
-            onDeleteTodo={deleteTodo}
-            onEditTodo={setEditingTodo}
-            onMoveTodo={moveTodo}
-          />
+          {todoPanelExpanded ? (
+            <>
+              <TodoPanel
+                selectedDate={selectedDate}
+                todos={todos}
+                settings={settings}
+                onAddTodo={addTodo}
+                onToggleDone={toggleDone}
+                onDeleteTodo={deleteTodo}
+                onEditTodo={setEditingTodo}
+                onMoveTodo={moveTodo}
+              />
+            </>
+          ) : (
+            <div
+              className="todo-panel-collapsed"
+              onClick={() => setTodoPanelExpanded(true)}
+              title="할 일 패널 펼치기"
+              style={{
+                width: "40px",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                background: "var(--glass-bg)",
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid var(--glass-border)",
+                padding: "10px 5px",
+                flexShrink: 0
+              }}
+            >
+              <span style={{ fontSize: "18px" }}>📝</span>
+              <span style={{ 
+                writingMode: "vertical-rl", 
+                fontSize: "10px", 
+                color: "var(--text-secondary)",
+                marginTop: "4px"
+              }}>
+                할 일
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

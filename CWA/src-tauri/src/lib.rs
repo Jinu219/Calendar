@@ -24,13 +24,14 @@ pub fn run() {
             Some(vec![]),
         ))
         .setup(|app| {
-            // ── 시작 시 항상 맨 뒤 (데스크톱 위젯 모드) ──
+            // ── 일반 모드로 시작: 창이 화면에 표시됨 ──
             if let Some(win) = app.get_webview_window("main") {
-                // 데스크톱 위젯처럼 맨 뒤에 배치
-                let _ = win.set_always_on_bottom(true);
-                let _ = win.set_skip_taskbar(true);
-                // 작업표시줄에 표시하지 않음
-                let _ = win.set_visible_on_all_workspaces(true);
+                // 창을 표시하고前台으로 유지
+                let _ = win.show();
+                let _ = win.set_focus();
+                
+                // 데스크톱 위젯 모드로 변경하려면 트레이 아이콘을 더블클릭하세요
+                // 또는 '항상 뒤로' 옵션을 사용하세요
             }
 
             let enabled = app.autolaunch().is_enabled().unwrap_or(false);
@@ -60,7 +61,6 @@ pub fn run() {
                                 let _ = win.hide();
                             } else {
                                 let _ = win.show();
-                                let _ = win.set_always_on_bottom(true);
                                 let _ = win.set_focus();
                             }
                         }
@@ -86,7 +86,7 @@ pub fn run() {
                         let app = tray.app_handle();
                         if let Some(win) = app.get_webview_window("main") {
                             if win.is_visible().unwrap_or(false) { let _ = win.hide(); }
-                            else { let _ = win.show(); let _ = win.set_always_on_bottom(true); let _ = win.set_focus(); }
+                            else { let _ = win.show(); let _ = win.set_focus(); }
                         }
                     }
                 })
@@ -101,24 +101,15 @@ pub fn run() {
                 let _ = window.hide();
             }
             
-            // 다른 앱 사용 시 창을 계속前台로 유지 (데스크톱 위젯 모드)
-            // 단, 불필요한 연쇄 호출 방지
-            match event {
-                WindowEvent::Focused(false) => {
-                    // 창이 포커스를 잃어도 데스크톱 위젯처럼 맨 뒤에 유지
-                    // 하지만 사용자가 창을 클릭하면 다시 포커스를 받을 수 있음
-                    let _ = window.set_always_on_bottom(true);
-                }
-                WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
-                    // 크기/위치 변경 후 항상 맨 뒤로
-                    let _ = window.set_always_on_bottom(true);
-                }
-                _ => {}
-            }
+            // 데스크톱 위젯 모드 관련 설정은 사용자가 직접 트레이 아이콘을 통해 전환
+            // 여기서는 자동 뒤로 이동 기능을 비활성화
         })
         .invoke_handler(tauri::generate_handler![
             get_autostart_status,
             set_autostart_status,
+            set_always_on_top,
+            set_show_on_taskbar,
+            get_window_visible,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 앱 실행 실패");
@@ -140,4 +131,37 @@ fn set_autostart_status(app: tauri::AppHandle, enabled: bool) -> bool {
         if let Ok(item) = state.0.lock() { let _ = item.set_text(new_label); }
     }
     al.is_enabled().unwrap_or(false)
+}
+
+// ── 항상 위에 표시 설정 ──
+#[tauri::command]
+fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> bool {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.set_always_on_top(enabled);
+        // Win+D 방지: 창을 항상 위에 표시하면 Winn+D시 숨겨지지 않음
+        if enabled {
+            let _ = win.show();
+            let _ = win.set_focus();
+        }
+    }
+    enabled
+}
+
+// ── 작업 표시줄 표시 설정 ──
+#[tauri::command]
+fn set_show_on_taskbar(app: tauri::AppHandle, show: bool) -> bool {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.set_skip_taskbar(!show);
+    }
+    show
+}
+
+// ── 창 표시 상태 가져오기 ──
+#[tauri::command]
+fn get_window_visible(app: tauri::AppHandle) -> bool {
+    if let Some(win) = app.get_webview_window("main") {
+        win.is_visible().unwrap_or(false)
+    } else {
+        false
+    }
 }

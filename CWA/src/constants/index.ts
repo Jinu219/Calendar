@@ -64,6 +64,10 @@ export const DEFAULT_SETTINGS: Settings = {
   useLunar:false, 
   use24Hour:true,
   showMoonPhase:true,
+  // New settings for 3rd day
+  alwaysOnTop:false,
+  showOnTaskbar:false,
+  editMode:false,
 };
 
 export const MODAL_CLOSED = {

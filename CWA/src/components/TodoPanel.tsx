@@ -21,6 +21,8 @@ interface TodoPanelProps {
   onDeleteTodo: (id: string) => void;
   onEditTodo: (todo: Todo) => void;
   onMoveTodo: (fromId: string, toId: string) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 export const TodoPanel: React.FC<TodoPanelProps> = ({

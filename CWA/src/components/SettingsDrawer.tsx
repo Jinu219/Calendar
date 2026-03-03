@@ -191,6 +191,48 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           </div>
         </div>
 
+        {/* 항상 위에 표시 (Win+D 방지) */}
+        <div className="sg">
+          <div className="sg-label">🖥️ 항상 위에 표시</div>
+          <div className="seg-ctrl">
+            <button
+              className={`seg-btn ${settings.alwaysOnTop ? "active" : ""}`}
+              onClick={() => onSetSetting("alwaysOnTop", !settings.alwaysOnTop)}
+            >
+              {settings.alwaysOnTop ? "ON — Win+D 방지됨" : "OFF — 클릭해서 켜기"}
+            </button>
+          </div>
+          <div className="sg-hint">ON 시 작업 표시줄을 눌러도 창이 숨겨지지 않습니다</div>
+        </div>
+
+        {/* 작업 표시줄 표시 */}
+        <div className="sg">
+          <div className="sg-label">📌 작업 표시줄 표시</div>
+          <div className="seg-ctrl">
+            <button
+              className={`seg-btn ${settings.showOnTaskbar ? "active" : ""}`}
+              onClick={() => onSetSetting("showOnTaskbar", !settings.showOnTaskbar)}
+            >
+              {settings.showOnTaskbar ? "ON" : "OFF"}
+            </button>
+          </div>
+          <div className="sg-hint">ON 시 작업 표시줄에서 창을 끄고 끌 수 있습니다</div>
+        </div>
+
+        {/* 편집 모드 (위치/크기 고정) */}
+        <div className="sg">
+          <div className="sg-label">🔒 편집 모드</div>
+          <div className="seg-ctrl">
+            <button
+              className={`seg-btn ${settings.editMode ? "active" : ""}`}
+              onClick={() => onSetSetting("editMode", !settings.editMode)}
+            >
+              {settings.editMode ? "ON — 위치/크기 조절 가능" : "OFF — 고정됨"}
+            </button>
+          </div>
+          <div className="sg-hint">ON 시 창 크기와 패널 너비를 조절할 수 있습니다</div>
+        </div>
+
         {/* 음력 표시 */}
         <div className="sg">
           <div className="sg-label">📅 음력 표시</div>

@@ -70,6 +70,7 @@ export function expandTodos(
         textColor: "#dc2626",
         classNames: ["holiday-event"],
         display: "block",
+        extendedProps: { isHoliday: true },
       });
     }
   }

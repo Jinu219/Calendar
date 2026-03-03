@@ -24,7 +24,10 @@ interface CalendarViewProps {
   onSelect: (date: string, time: { start: string; end: string }) => void;
   onEventDrop: (todoId: string, newDate: string) => void;
   onEventClick: (todoId: string, date: string) => void;
+  onEventResize?: (todoId: string, newEndTime: string | undefined) => void;
   editMode: boolean;
+  onToggleTodoPanel?: () => void;
+  isTodoPanelExpanded?: boolean;
 }
 
 // Expose calendar API globally for TitleBar to use
@@ -43,7 +46,10 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   onSelect,
   onEventDrop,
   onEventClick,
+  onEventResize,
   editMode,
+  onToggleTodoPanel,
+  isTodoPanelExpanded,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [calendarTitle, setCalendarTitle] = React.useState("");
@@ -81,6 +87,14 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
 
   const handleEventDrop = useCallback((info: any) => {
     const todoId = info.event.extendedProps?.todoId;
+    const isHoliday = info.event.extendedProps?.isHoliday;
+    
+    // Prevent moving holidays
+    if (isHoliday) {
+      info.revert();
+      return;
+    }
+    
     if (todoId) {
       const newDate = info.event.startStr.slice(0, 10);
       onEventDrop(todoId, newDate);
@@ -89,11 +103,34 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
 
   const handleEventClick = useCallback((info: any) => {
     const todoId = info.event.extendedProps?.todoId;
+    const isHoliday = info.event.extendedProps?.isHoliday;
+    
+    // Prevent clicking on holidays
+    if (isHoliday) {
+      return;
+    }
+    
     if (todoId) {
       const d = info.event.startStr.slice(0, 10);
       onEventClick(todoId, d);
     }
   }, [onEventClick]);
+
+  const handleEventResize = useCallback((info: any) => {
+    const todoId = info.event.extendedProps?.todoId;
+    const isHoliday = info.event.extendedProps?.isHoliday;
+    
+    // Prevent resizing holidays
+    if (isHoliday) {
+      info.revert();
+      return;
+    }
+    
+    if (todoId && onEventResize) {
+      const newEndTime = info.event.endStr ? info.event.endStr.slice(11, 16) : undefined;
+      onEventResize(todoId, newEndTime);
+    }
+  }, [onEventResize]);
 
   const handleDatesSet = (info: any) => {
     // Update global API reference
@@ -156,6 +193,16 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
       )}
       {/* Custom title display */}
       <div className="calendar-custom-title">{calendarTitle || ' '}</div>
+      {/* Todo panel toggle button on the right */}
+      {onToggleTodoPanel && (
+        <button
+          className={`todo-panel-toggle-calendar ${isTodoPanelExpanded ? "expanded" : ""}`}
+          onClick={onToggleTodoPanel}
+          title={isTodoPanelExpanded ? "할 일 패널 접기" : "할 일 패널 펼치기"}
+        >
+          {isTodoPanelExpanded ? "◀" : "▶"}
+        </button>
+      )}
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -163,6 +210,8 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
         locale="ko"
         height="100%"
         editable={true}
+        eventResizableFromStart={true}
+        eventDurationEditable={true}
         headerToolbar={{ left: "", center: "", right: "" }}
         slotMinTime="09:00:00"
         slotMaxTime="23:00:00"
@@ -176,11 +225,12 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
         events={events}
         showNonCurrentDates={true}
         fixedWeekCount={settings.showOverflow}
-        dayMaxEvents={3}
+        dayMaxEvents={view === "dayGridMonth" ? 3 : false}
         dateClick={handleDateClick}
         select={handleSelect}
         eventDrop={handleEventDrop}
         eventClick={handleEventClick}
+        eventResize={handleEventResize}
         datesSet={handleDatesSet}
         dayCellClassNames={dayCellClassNames}
         dayCellContent={dayCellContent}
