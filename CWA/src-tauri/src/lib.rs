@@ -32,6 +32,41 @@ pub fn run() {
                 
                 // 데스크톱 위젯 모드로 변경하려면 트레이 아이콘을 더블클릭하세요
                 // 또는 '항상 뒤로' 옵션을 사용하세요
+
+                // ── 에어로 스냅(Aero Snap) 비활성화 ──
+                // 창을 화면 가장자리로 드래그할 때 자동으로 크기가 바뀌는 기능을 차단
+                #[cfg(target_os = "windows")]
+                {
+                    use windows::Win32::UI::WindowsAndMessaging::{
+                        GetWindowLongW, SetWindowLongW,
+                        GWL_STYLE, GWL_EXSTYLE,
+                        WS_MAXIMIZEBOX, WS_THICKFRAME,
+                        WS_EX_NOACTIVATE,
+                    };
+                    // windows 크레이트의 HWND 타입 명시적 사용
+                    use windows::Win32::Foundation::HWND;
+
+                    if let Ok(raw_hwnd) = win.hwnd() {
+                        // Tauri의 HWND(isize)를 windows::Win32::Foundation::HWND로 변환
+                        let hwnd = HWND(raw_hwnd.0);
+                        unsafe {
+                            // WS_MAXIMIZEBOX 제거 → 최대화 불가 → 상단 드래그 스냅 차단
+                            // WS_THICKFRAME   제거 → 크기 조절 핸들 없앰 → 가장자리 스냅 차단
+                            let style = GetWindowLongW(hwnd, GWL_STYLE);
+                            let _ = SetWindowLongW(hwnd, GWL_STYLE,
+                                style
+                                    & !(WS_MAXIMIZEBOX.0 as i32)
+                                    & !(WS_THICKFRAME.0  as i32),
+                            );
+
+                            // WS_EX_NOACTIVATE → Windows 11 Snap Layout 팝업 차단
+                            let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+                            let _ = SetWindowLongW(hwnd, GWL_EXSTYLE,
+                                ex | WS_EX_NOACTIVATE.0 as i32,
+                            );
+                        }
+                    }
+                }
             }
 
             let enabled = app.autolaunch().is_enabled().unwrap_or(false);
@@ -111,6 +146,7 @@ pub fn run() {
             set_show_on_taskbar,
             get_window_visible,
             set_always_on_bottom,
+            disable_snap,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 앱 실행 실패");
@@ -153,6 +189,44 @@ fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> bool {
 fn set_always_on_bottom(_app: tauri::AppHandle) -> bool {
     // 이 기능은 단일 인스턴스 플러그인에서 처리됨
     true
+}
+
+// ── 에어로 스냅 비활성화 커맨드 ──
+// setup()에서 자동 적용되지만, 필요 시 invoke("disable_snap")으로 재호출 가능
+#[tauri::command]
+fn disable_snap(app: tauri::AppHandle) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetWindowLongW, SetWindowLongW,
+            GWL_STYLE, GWL_EXSTYLE,
+            WS_MAXIMIZEBOX, WS_THICKFRAME,
+            WS_EX_NOACTIVATE,
+        };
+        use windows::Win32::Foundation::HWND;
+
+        if let Some(win) = app.get_webview_window("main") {
+            if let Ok(raw_hwnd) = win.hwnd() {
+                let hwnd = HWND(raw_hwnd.0);
+                unsafe {
+                    let style = GetWindowLongW(hwnd, GWL_STYLE);
+                    let _ = SetWindowLongW(hwnd, GWL_STYLE,
+                        style
+                            & !(WS_MAXIMIZEBOX.0 as i32)
+                            & !(WS_THICKFRAME.0  as i32),
+                    );
+                    let ex = GetWindowLongW(hwnd, GWL_EXSTYLE);
+                    let _ = SetWindowLongW(hwnd, GWL_EXSTYLE,
+                        ex | WS_EX_NOACTIVATE.0 as i32,
+                    );
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+    #[cfg(not(target_os = "windows"))]
+    { let _ = app; false }
 }
 
 // ── 작업 표시줄 표시 설정 ──
