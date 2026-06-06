@@ -90,10 +90,10 @@ export const CalendarPage: React.FC = () => {
   } = useMoonAndLunar(selectedDate, settings.useLunar);
 
   useWindowBehavior({
-    alwaysOnTop: settings.alwaysOnTop,
+    windowLevel: settings.windowLevel,
     showOnTaskbar: settings.showOnTaskbar,
   });
-
+  
   useWindowPosition(editMode);
 
   const {

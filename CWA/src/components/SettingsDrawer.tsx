@@ -3,8 +3,9 @@
 // ═══════════════════════════════════════════════════════════
 
 import React from "react";
-import type { Settings, MoonPhase, DayNumPos } from "../types";
+import type { Settings, MoonPhase, DayNumPos, WindowLevel } from "../types";
 import { THEME_OPTIONS, TODAY_STYLES } from "../constants";
+
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -38,7 +39,16 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       onResetSettings();
     }
   };
+  const TOP_MODE_OPACITY = 0.16;
 
+  const handleWindowLevelChange = (level: WindowLevel) => {
+  onSetSetting("windowLevel", level);
+
+  if (level === "top" && settings.opacity > TOP_MODE_OPACITY) {
+    onSetSetting("opacity", TOP_MODE_OPACITY);
+  }
+  };
+  
   return (
     <aside className={`settings-drawer glass-panel ${isOpen ? "open" : ""}`}>
       <div className="settings-hdr">
@@ -264,23 +274,35 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             {settings.autostart ? "시작 프로그램 ON" : "시작 프로그램 OFF"}
           </button>
 
-          <div className="seg-ctrl">
+          <div className="seg-ctrl seg-3">
             <button
               type="button"
-              className={`seg-btn ${settings.alwaysOnTop ? "active" : ""}`}
-              onClick={() => onSetSetting("alwaysOnTop", true)}
+              className={`seg-btn ${settings.windowLevel === "bottom" ? "active" : ""}`}
+              onClick={() => handleWindowLevelChange("bottom")}
             >
-              항상 위
+              항상 아래
             </button>
 
             <button
               type="button"
-              className={`seg-btn ${!settings.alwaysOnTop ? "active" : ""}`}
-              onClick={() => onSetSetting("alwaysOnTop", false)}
+              className={`seg-btn ${settings.windowLevel === "normal" ? "active" : ""}`}
+              onClick={() => handleWindowLevelChange("normal")}
             >
-              바탕화면형
+              일반
+            </button>
+
+            <button
+              type="button"
+              className={`seg-btn ${settings.windowLevel === "top" ? "active" : ""}`}
+              onClick={() => handleWindowLevelChange("top")}
+            >
+              항상 위
             </button>
           </div>
+
+          <p className="sg-hint">
+            항상 아래는 바탕화면 위젯처럼 뒤쪽에 두는 모드입니다. 항상 위를 선택하면 화면을 덜 가리도록 투명도가 자동으로 낮아집니다.
+          </p>
 
           <div className="seg-ctrl">
             <button

@@ -1185,3 +1185,13 @@ html, body, #root {
   text-overflow:ellipsis;
   max-width:100%;
 }
+
+
+.seg-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.seg-3 .seg-btn + .seg-btn {
+  border-left: 1px solid var(--glass-border);
+}

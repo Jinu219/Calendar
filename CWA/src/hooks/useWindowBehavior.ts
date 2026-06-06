@@ -1,42 +1,19 @@
-import { useEffect, useMemo } from "react";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import type { WindowLevel } from "../types";
 
 interface UseWindowBehaviorParams {
-  alwaysOnTop: boolean;
+  windowLevel: WindowLevel;
   showOnTaskbar: boolean;
 }
 
 export const useWindowBehavior = ({
-  alwaysOnTop,
+  windowLevel,
   showOnTaskbar,
 }: UseWindowBehaviorParams) => {
-  const appWin = useMemo(() => getCurrentWindow(), []);
-
   useEffect(() => {
-    if (alwaysOnTop) {
-      invoke("set_always_on_top", { enabled: true }).catch(console.error);
-      return;
-    }
-
-    invoke("set_always_on_top", { enabled: false }).catch(console.error);
-
-    const pushToBottom = () => {
-      invoke("set_always_on_bottom", {}).catch(console.error);
-    };
-
-    pushToBottom();
-
-    const unlistenPromise = appWin.onFocusChanged(({ payload: focused }) => {
-      if (!focused) {
-        pushToBottom();
-      }
-    });
-
-    return () => {
-      unlistenPromise.then(unlisten => unlisten()).catch(console.error);
-    };
-  }, [appWin, alwaysOnTop]);
+    invoke("set_window_level", { level: windowLevel }).catch(console.error);
+  }, [windowLevel]);
 
   useEffect(() => {
     invoke("set_show_on_taskbar", { show: showOnTaskbar }).catch(console.error);

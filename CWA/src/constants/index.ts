@@ -68,8 +68,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showMoonPhase: true,
 
   editMode: false,
-  alwaysOnTop: false,
   showOnTaskbar: false,
+  windowLevel: "bottom",
 };
 
 export const MODAL_CLOSED = {
