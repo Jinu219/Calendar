@@ -56,85 +56,307 @@ html, body, #root {
 }
 
 /* ════════════════════════════════════════════
-   Title Bar  (no X / no – buttons)
+   Title Bar
+   - Supports the new TitleBar.tsx class names:
+     .titlebar / .titlebar-left / .titlebar-center / .titlebar-right
+   - Keeps compatibility with old class names:
+     .title-bar / .tb-left / .tb-today / .tb-right
    ════════════════════════════════════════════ */
+.titlebar,
 .title-bar {
-  display:flex; align-items:center;
-  height:42px; padding:0 12px;
-  background:var(--glass-bg);
-  backdrop-filter:blur(var(--glass-blur));
-  -webkit-backdrop-filter:blur(var(--glass-blur));
-  border:1px solid var(--glass-border);
-  border-radius:var(--radius-lg);
-  flex-shrink:0; cursor:default; gap:8px;
+  height: 42px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  cursor: default;
+
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
 }
 
-.tb-left  { display:flex; align-items:center; gap:7px; flex-shrink:0; cursor:default; }
-.app-logo { 
-  font-size:18px; 
-  filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--accent) 40%,transparent)); 
-  background:none; border:none; cursor:pointer; padding:2px 4px; border-radius:4px;
-  transition:background .15s;
+.titlebar-left,
+.tb-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  min-width: 96px;
 }
-.app-logo:hover { background:rgba(255,255,255,0.15); }
+
+.app-logo {
+  font-size: 18px;
+  filter: drop-shadow(0 1px 3px color-mix(in srgb, var(--accent) 40%, transparent));
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background .15s;
+}
+.app-logo:hover { background: rgba(255,255,255,0.15); }
+
 .app-title {
-  font-family:'Playfair Display',serif; font-size:15px; font-weight:600;
-  color:var(--text-primary); letter-spacing:.4px; cursor:default; flex-shrink:0;
+  font-family: 'Playfair Display', serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: .4px;
+  white-space: nowrap;
 }
 
+.titlebar-center,
 .tb-today {
-  flex:1; display:flex; align-items:center; justify-content:center; cursor:default;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  overflow: hidden;
 }
+
+.titlebar-right,
+.tb-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.today-label,
 .tb-today-text {
-  font-size:13px; font-weight:600; color:var(--text-primary);
-  background:color-mix(in srgb,var(--mid) 25%,white 15%);
-  border:1px solid var(--glass-border);
-  border-radius:20px; padding:3px 14px; letter-spacing:.3px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--mid) 25%, white 15%);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 3px 12px;
+  letter-spacing: .3px;
 }
 
-.tb-right { display:flex; align-items:center; gap:6px; flex-shrink:0; }
-
-.view-switcher {
-  display:flex; gap:4px;
-  background:rgba(255,200,220,.15); border-radius:30px; padding:3px;
-}
-.view-btn {
-  padding:3px 14px; border:none; border-radius:24px;
-  font-family:var(--font); font-size:11px; font-weight:500;
-  color:var(--text-secondary); background:transparent; cursor:pointer; transition:all .18s;
-}
-.view-btn.active {
-  background:linear-gradient(135deg,var(--mid),var(--accent));
-  color:#fff; box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 38%,transparent);
-}
-.view-btn:hover:not(.active) { background:rgba(255,200,220,.22); color:var(--text-primary); }
-
-.tb-sep { width:1px; height:20px; background:var(--glass-border); margin:0 4px; }
-
-.tb-nav {
-  display:flex; align-items:center; gap:4px;
-  background:rgba(255,200,220,.15); border-radius:30px; padding:3px;
-}
+.moon-label,
 .tb-moon {
-  font-size:16px; margin-right:4px;
-}
-.nav-btn {
-  padding:3px 10px; border:none; border-radius:24px;
-  font-family:var(--font); font-size:11px; font-weight:500;
-  color:var(--text-secondary); background:transparent; cursor:pointer; transition:all .18s;
-}
-.nav-btn:hover { background:rgba(255,200,220,.22); color:var(--text-primary); }
-.nav-today { font-weight:600; }
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 
-.wc-btn {
-  width:28px; height:28px; border:none; border-radius:7px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:12px; cursor:pointer;
-  background:rgba(255,255,255,.15); color:var(--text-primary);
-  transition:background .15s, transform .1s;
+  font-size: 12px;
+  color: var(--text-secondary);
 }
-.wc-btn:active { transform:scale(.92); }
-.gear-btn:hover, .gear-on { background:color-mix(in srgb,var(--accent) 20%,white 20%); }
+
+/* View switch */
+.view-switch,
+.view-switcher {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+  background: rgba(255,200,220,.15);
+  border-radius: 30px;
+  padding: 3px;
+}
+
+.view-switch button,
+.view-btn {
+  padding: 3px 12px;
+  min-width: 42px;
+  border: none;
+  border-radius: 24px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all .18s;
+}
+
+.view-switch button.active,
+.view-btn.active {
+  background: linear-gradient(135deg, var(--mid), var(--accent));
+  color: #fff;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 38%, transparent);
+}
+
+.view-switch button:hover:not(.active),
+.view-btn:hover:not(.active) {
+  background: rgba(255,200,220,.22);
+  color: var(--text-primary);
+}
+
+/* Navigation */
+.tb-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,200,220,.15);
+  border-radius: 30px;
+  padding: 3px;
+}
+
+.titlebar .nav-btn,
+.title-bar .nav-btn,
+.nav-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 24px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  cursor: pointer;
+  transition: all .18s;
+}
+
+.titlebar .nav-btn:hover,
+.title-bar .nav-btn:hover,
+.nav-btn:hover {
+  background: rgba(255,200,220,.22);
+  color: var(--text-primary);
+}
+
+.today-btn,
+.nav-today {
+  padding: 3px 12px;
+  border: none;
+  border-radius: 24px;
+  font-family: var(--font);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(255,255,255,.18);
+  cursor: pointer;
+  transition: all .18s;
+}
+
+.today-btn:hover,
+.nav-today:hover {
+  background: color-mix(in srgb, var(--mid) 24%, white 12%);
+}
+
+/* Window / titlebar icon buttons */
+.settings-btn,
+.window-btn,
+.wc-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: var(--font);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  background: rgba(255,255,255,.15);
+  color: var(--text-primary);
+  transition: background .15s, transform .1s, color .15s;
+}
+
+.settings-btn:hover,
+.window-btn:hover,
+.wc-btn:hover,
+.gear-btn:hover {
+  background: color-mix(in srgb, var(--accent) 20%, white 20%);
+}
+
+.settings-btn.active,
+.gear-on {
+  background: linear-gradient(135deg, var(--mid), var(--accent));
+  color: #fff;
+}
+
+.window-btn:active,
+.settings-btn:active,
+.wc-btn:active {
+  transform: scale(.92);
+}
+
+/* Titlebar edit/resize mode button.
+   Scoped to .titlebar so it does not conflict with SettingsDrawer's .edit-mode-btn. */
+.titlebar .edit-mode-btn,
+.title-bar .edit-mode-btn {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(255,255,255,.15);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 14px;
+  opacity: 0.82;
+  transition: all 0.18s ease;
+}
+
+.titlebar .edit-mode-btn:hover,
+.title-bar .edit-mode-btn:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.35);
+  border-color: var(--glass-border);
+}
+
+.titlebar .edit-mode-btn.active,
+.title-bar .edit-mode-btn.active,
+.titlebar .edit-mode-btn.on,
+.title-bar .edit-mode-btn.on {
+  opacity: 1;
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
+}
+
+.tb-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--glass-border);
+  margin: 0 4px;
+}
+
+@media (max-width: 760px) {
+  .today-label,
+  .tb-today-text {
+    max-width: 120px;
+    padding-inline: 9px;
+  }
+
+  .moon-label,
+  .tb-moon {
+    display: none;
+  }
+
+  .view-switch button,
+  .view-btn {
+    min-width: 36px;
+    padding-inline: 9px;
+  }
+}
 
 /* ════════════════════════════════════════════
    Main
@@ -170,15 +392,96 @@ html, body, #root {
   padding:3px 12px; pointer-events:none; letter-spacing:.3px;
 }
 
-/* ── Resize Handle ── */
+/* Todo panel toggle in calendar */
+.todo-panel-toggle-calendar {
+  position: absolute;
+  top: 50%;
+  right: -26px;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 32px;
+  height: 70px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 20px;
+  transition: all .15s;
+  opacity: 0.6;
+  padding: 0;
+}
+.todo-panel-toggle-calendar:hover {
+  opacity: 1;
+  color: var(--accent);
+}
+
+/* Toggle button when collapsed - show on right side of calendar */
+.todo-panel-toggle-calendar.collapsed {
+  position: absolute;
+  right: -18px;
+  width: 24px;
+  height: 50px;
+  font-size: 16px;
+}
+
+/* Hide old toggle button */
+.todo-panel-toggle { display: none; }
+
+/* ── TodoPanel Resize Handle ──
+   Single source of truth. Old duplicate resize styles were removed. */
 .resize-handle {
-  width:8px; flex-shrink:0; background:transparent;
-  transition:background .15s; border-radius:4px; margin:0 2px; cursor:default;
+  width: 8px;
+  min-width: 8px;
+  flex-shrink: 0;
+  position: relative;
+  opacity: 0;
+  pointer-events: none;
+  cursor: default;
+  transition: opacity 0.18s ease, background 0.18s ease;
 }
+
+.resize-handle.visible {
+  opacity: 1;
+  pointer-events: auto;
+  cursor: col-resize;
+}
+
+.resize-handle.visible::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: 3px;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--glass-border);
+}
+
+.resize-handle.visible:hover::before,
+.resize-handle.active::before {
+  background: var(--accent);
+}
+
 .resize-handle.active {
-  background:color-mix(in srgb,var(--accent) 30%,transparent); cursor:ew-resize;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.18);
 }
-.resize-handle.active:hover { background:color-mix(in srgb,var(--accent) 55%,transparent); }
+
+/* Optional legacy toggle button support */
+.resize-handle .todo-panel-toggle-calendar {
+  position: static;
+  transform: none;
+  width: 20px;
+  height: 40px;
+  font-size: 14px;
+  opacity: 0.5;
+}
+.resize-handle:hover .todo-panel-toggle-calendar {
+  opacity: 1;
+}
 
 /* ════════════════════════════════════════════
    FullCalendar Overrides
@@ -502,6 +805,7 @@ html, body, #root {
 .settings-body { padding:12px 14px; display:flex; flex-direction:column; gap:16px; }
 .sg      { display:flex; flex-direction:column; gap:7px; }
 .sg-label { font-size:10px; font-weight:700; color:var(--text-secondary); letter-spacing:.4px; text-transform:uppercase; }
+.sg-hint  { font-size:9px; color:var(--text-secondary); line-height:1.4; opacity:0.8; padding-left:2px; }
 
 /* Theme grid */
 .theme-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
@@ -572,23 +876,193 @@ html, body, #root {
 .font-btn:hover:not(.active) { background:rgba(255,255,255,.25); }
 .font-more { font-size:10px; color:var(--text-secondary); padding:4px 10px; }
 
-/* Edit mode */
-.edit-mode-btn {
-  width:100%; padding:8px; border-radius:var(--radius-sm);
-  border:1.5px solid var(--glass-border); cursor:pointer;
-  font-family:var(--font); font-size:12px; font-weight:600;
-  color:var(--text-primary); background:rgba(255,255,255,.15);
-  transition:all .18s; text-align:center;
+/* SettingsDrawer edit mode button.
+   Scoped to drawer to avoid conflict with TitleBar's edit-mode button. */
+.settings-drawer .edit-mode-btn {
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--glass-border);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: rgba(255,255,255,.15);
+  transition: all .18s;
+  text-align: center;
 }
-.edit-mode-btn:hover  { background:rgba(255,255,255,.28); }
-.edit-mode-btn.on {
-  background:linear-gradient(135deg,var(--mid),var(--accent));
-  color:#fff; border-color:transparent;
-  box-shadow:0 2px 10px color-mix(in srgb,var(--accent) 35%,transparent);
+
+.settings-drawer .edit-mode-btn:hover {
+  background: rgba(255,255,255,.28);
 }
+
+.settings-drawer .edit-mode-btn.on,
+.settings-drawer .edit-mode-btn.active {
+  background: linear-gradient(135deg,var(--mid),var(--accent));
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 10px color-mix(in srgb,var(--accent) 35%,transparent);
+}
+
 .edit-hint {
-  font-size:10px; color:var(--text-secondary); line-height:1.6;
-  background:rgba(255,255,255,.12); border-radius:6px; padding:6px 9px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  background: rgba(255,255,255,.12);
+  border-radius: 6px;
+  padding: 6px 9px;
+}
+
+
+/* ════════════════════════════════════════════
+   Component compatibility aliases
+   - These keep styles working whether TodoPanel uses old or new class names.
+   ════════════════════════════════════════════ */
+.todo-date {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  padding-bottom: 4px;
+}
+
+.todo-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+.todo-add-row {
+  display: flex;
+  gap: 6px;
+}
+
+.todo-add-btn {
+  width: 31px;
+  height: 31px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg,var(--mid),var(--accent));
+  color: #fff;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px color-mix(in srgb,var(--accent) 30%,transparent);
+  transition: transform .15s, box-shadow .15s;
+  flex-shrink: 0;
+}
+.todo-add-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 14px color-mix(in srgb,var(--accent) 45%,transparent);
+}
+
+.todo-time-input {
+  width: 100%;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+.empty-todos {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+.check-btn,
+.edit-btn,
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+
+.check-btn {
+  font-size: 13px;
+  margin-top: 1px;
+  transition: transform .1s;
+}
+.check-btn:hover { transform: scale(1.2); }
+
+.edit-btn {
+  font-size: 14px;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+}
+.todo-item:hover .edit-btn { opacity: 1; }
+.edit-btn:hover { color: var(--accent); }
+
+.delete-btn {
+  font-size: 16px;
+  padding: 0 2px;
+  opacity: 0;
+  transition: opacity .15s, color .15s;
+}
+.todo-item:hover .delete-btn { opacity: 1; }
+.delete-btn:hover { color: var(--accent); }
+
+.todo-summary {
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: right;
+  padding-top: 4px;
+  border-top: 1px solid var(--glass-border);
+  flex-shrink: 0;
+}
+
+/* AddEventModal compatibility */
+.modal-date-preview {
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: rgba(255,255,255,.16);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.repeat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.repeat-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: .4px;
+  text-transform: uppercase;
+}
+
+.repeat-select {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255,255,255,.22);
+  font-family: var(--font);
+  font-size: 12px;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.repeat-select:focus {
+  border-color: var(--mid);
 }
 
 /* ════════════════════════════════════════════
@@ -712,3 +1186,12 @@ html, body, #root {
   max-width:100%;
 }
 
+
+.seg-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.seg-3 .seg-btn + .seg-btn {
+  border-left: 1px solid var(--glass-border);
+}

@@ -6,7 +6,11 @@ import React, { useState, DragEvent } from "react";
 import type { Todo, Settings } from "../types";
 import { TODO_COLORS } from "../constants";
 import { formatDateDisplayWithWeekday, getCurrentTime } from "../utils";
-import { getTodoTimeDisplay, getTodoRepeatLabel } from "../utils/todoUtils";
+import {
+  getTodoTimeDisplay,
+  getTodoRepeatLabel,
+  getTodosForDate,
+} from "../utils/todoUtils";
 
 interface TodoPanelProps {
   selectedDate: string;
@@ -21,6 +25,8 @@ interface TodoPanelProps {
   onDeleteTodo: (id: string) => void;
   onEditTodo: (todo: Todo) => void;
   onMoveTodo: (fromId: string, toId: string) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 export const TodoPanel: React.FC<TodoPanelProps> = ({
@@ -39,9 +45,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
 
-  const selectedTodos = todos
-    .filter(t => t.date === selectedDate)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const selectedTodos = getTodosForDate(todos, selectedDate);
 
   const fmtSelectedDate = formatDateDisplayWithWeekday(selectedDate);
 
@@ -120,38 +124,65 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
 
       <div className="todo-list">
         {selectedTodos.length === 0 && <div className="todo-empty">할 일이 없어요 🌸</div>}
-        {selectedTodos.map(t => (
+        {selectedTodos.map(t => {
+        const isVirtualOccurrence = t.date !== selectedDate;
+
+        return (
           <div
-            key={t.id}
+            key={`${t.id}-${selectedDate}`}
             className={`todo-item ${t.done ? "done" : ""} ${dragOver === t.id ? "drag-over" : ""}`}
-            style={{ borderLeft: `3px solid ${t.color}` }}
-            draggable
-            onDragStart={e => handleDragStart(e, t.id)}
-            onDragOver={e => handleDragOver(e, t.id)}
-            onDrop={e => handleDrop(e, t.id)}
-            onDragEnd={() => { setDragId(null); setDragOver(null); }}
+            draggable={!isVirtualOccurrence}
+            title={isVirtualOccurrence ? "반복 일정입니다. 수정/삭제는 전체 반복 일정에 적용됩니다." : undefined}
+            onDragStart={e => {
+              if (isVirtualOccurrence) return;
+              handleDragStart(e, t.id);
+            }}
+            onDragOver={e => {
+              if (isVirtualOccurrence) return;
+              handleDragOver(e, t.id);
+            }}
+            onDrop={e => {
+              if (isVirtualOccurrence) return;
+              handleDrop(e, t.id);
+            }}
+            onDragEnd={() => {
+              setDragId(null);
+              setDragOver(null);
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               onEditTodo(t);
             }}
           >
-            <span className="drag-handle" title="드래그해서 순서 변경">⠿</span>
-            <button className="todo-check" onClick={() => onToggleDone(t.id)}>
-              {t.done ? "✅" : "🟦"}
+            <span className="drag-handle">
+              {isVirtualOccurrence ? "↻" : "⠿"}
+            </span>
+
+            <button className="check-btn" onClick={() => onToggleDone(t.id)}>
+              {t.done ? "✅" : ""}
             </button>
+
             <div className="todo-content">
               <span className="todo-title">{t.title}</span>
+
               {getTodoTimeDisplay(t) && (
                 <span className="todo-time">{getTodoTimeDisplay(t)}</span>
               )}
+
               {getTodoRepeatLabel(t) && (
-                <span className="todo-repeat">{getTodoRepeatLabel(t)}</span>
+                <span className="todo-time">{getTodoRepeatLabel(t)}</span>
+              )}
+
+              {isVirtualOccurrence && (
+                <span className="todo-time">반복 발생</span>
               )}
             </div>
-            <button className="todo-edit" onClick={() => onEditTodo(t)}>✏</button>
-            <button className="todo-delete" onClick={() => onDeleteTodo(t.id)}>×</button>
+
+            <button className="edit-btn" onClick={() => onEditTodo(t)}>✏</button>
+            <button className="delete-btn" onClick={() => onDeleteTodo(t.id)}>×</button>
           </div>
-        ))}
+        );
+        })}
       </div>
 
       {selectedTodos.length > 0 && (

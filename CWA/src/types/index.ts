@@ -6,6 +6,7 @@ export type RepeatType = "none" | "daily" | "weekly" | "monthly";
 export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm";
 export type DayNumPos = "left" | "right";
 export type TodayStyle = "highlight" | "glow" | "elevated" | "border";
+export type WindowLevel = "bottom" | "normal" | "top";
 
 export interface Todo {
   id: string;
@@ -37,6 +38,10 @@ export interface Settings {
   useLunar: boolean;
   use24Hour: boolean;
   showMoonPhase: boolean;
+
+  editMode: boolean;
+  showOnTaskbar: boolean;
+  windowLevel: WindowLevel;
 }
 
 export interface ModalState {

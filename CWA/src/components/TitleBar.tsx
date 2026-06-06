@@ -13,6 +13,8 @@ interface TitleBarProps {
   onViewChange: (view: "dayGridMonth" | "timeGridWeek") => void;
   settingsOpen: boolean;
   onSettingsToggle: () => void;
+  editMode: boolean;
+  onEditModeToggle: () => void;
   moonPhase?: MoonPhase;
 }
 
@@ -21,12 +23,13 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
   onViewChange,
   settingsOpen,
   onSettingsToggle,
+  editMode,
+  onEditModeToggle,
   moonPhase,
 }) => {
   const appWin = getCurrentWindow();
   const todayLabel = getTodayLabel();
 
-  // Prevent double-click from maximizing the window
   const preventDblClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
   }, []);
@@ -39,12 +42,11 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
     }
   }, [appWin]);
 
-  // Handle dragging - allow window to be moved from most of the title bar
   const handleDragStart = useCallback(async (e: React.MouseEvent) => {
-    // Don't drag if clicking on buttons
-    if ((e.target as HTMLElement).closest('button')) {
+    if ((e.target as HTMLElement).closest("button")) {
       return;
     }
+
     try {
       await appWin.startDragging();
     } catch (e) {
@@ -52,85 +54,86 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
     }
   }, [appWin]);
 
-  // Navigate to previous month/week
   const handlePrev = useCallback(() => {
     const api = getCalendarApi();
-    if (api) {
-      api.prev();
-    }
+    api?.prev();
   }, []);
 
-  // Navigate to next month/week
   const handleNext = useCallback(() => {
     const api = getCalendarApi();
-    if (api) {
-      api.next();
-    }
+    api?.next();
   }, []);
 
-  // Go to today
   const handleToday = useCallback(() => {
     const api = getCalendarApi();
-    if (api) {
-      api.today();
-    }
+    api?.today();
   }, []);
 
   return (
-    <div 
-      className="title-bar" 
-      data-tauri-drag-region
-      onMouseDown={preventDblClick}
-      onMouseMove={handleDragStart}
+    <header
+      className="titlebar"
+      onMouseDown={handleDragStart}
+      onDoubleClick={preventDblClick}
     >
-      <div className="tb-left" data-tauri-drag-region>
-        <button 
-          className="app-logo minimize-btn" 
-          onClick={handleMinimize} 
-          title="창 내리기"
-        >
-          🌸
-        </button>
-        <span className="app-title" data-tauri-drag-region>Calendar</span>
+      <div className="titlebar-left">
+        <span className="app-title">Calendar</span>
       </div>
 
-      <div className="tb-nav" data-tauri-drag-region>
-        <button className="nav-btn" onClick={handlePrev} title="이전">◀</button>
-        <button className="nav-btn nav-today" onClick={handleToday}>오늘</button>
-        <button className="nav-btn" onClick={handleNext} title="다음">▶</button>
+      <div className="titlebar-center">
+        <button className="nav-btn" onClick={handlePrev}>◀</button>
+        <button className="today-btn" onClick={handleToday}>오늘</button>
+        <button className="nav-btn" onClick={handleNext}>▶</button>
+
         {moonPhase && moonPhase.emoji && (
-          <span className="tb-moon" title={moonPhase.name}>{moonPhase.emoji} {moonPhase.name}</span>
+          <span className="moon-label">
+            {moonPhase.emoji} {moonPhase.name}
+          </span>
         )}
+
+        <span className="today-label">{todayLabel}</span>
       </div>
 
-      <div className="tb-today" data-tauri-drag-region>
-        <span className="tb-today-text">{todayLabel}</span>
-      </div>
-
-      <div className="tb-right">
-        <div className="view-switcher">
-          <button 
-            className={`view-btn ${view === "dayGridMonth" ? "active" : ""}`}
+      <div className="titlebar-right">
+        <div className="view-switch">
+          <button
+            className={view === "dayGridMonth" ? "active" : ""}
             onClick={() => onViewChange("dayGridMonth")}
           >
             월간
           </button>
-          <button 
-            className={`view-btn ${view === "timeGridWeek" ? "active" : ""}`}
+
+          <button
+            className={view === "timeGridWeek" ? "active" : ""}
             onClick={() => onViewChange("timeGridWeek")}
           >
             주간
           </button>
         </div>
-        <div className="tb-sep" />
-        <button 
-          className={`wc-btn gear-btn ${settingsOpen ? "gear-on" : ""}`}
+
+        <button
+          className={`edit-mode-btn ${editMode ? "active" : ""}`}
+          title={editMode ? "패널 크기 조절 끄기" : "패널 크기 조절 켜기"}
+          onClick={onEditModeToggle}
+        >
+          ↔
+        </button>
+
+        <button
+          className={`settings-btn ${settingsOpen ? "active" : ""}`}
           title="설정"
           onClick={onSettingsToggle}
         >
           ⚙
         </button>
+
+        <button
+          className="window-btn"
+          title="숨기기"
+          onClick={handleMinimize}
+        >
+          ＿
+        </button>
       </div>
-    </div>
+    </header>
   );
 });

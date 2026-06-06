@@ -86,7 +86,20 @@ export function useTodos() {
   }, []);
 
   const updateTodoDate = useCallback((id: string, newDate: string) => {
-    setTodos(prev => prev.map(t => t.id === id ? { ...t, date: newDate } : t));
+    setTodos(prev =>
+      prev.map(t =>
+        t.id === id
+          ? {
+              ...t,
+              date: newDate,
+              startDate: newDate,
+              endDate: t.endDate && t.startDate && t.endDate !== t.startDate
+                ? t.endDate
+                : newDate,
+            }
+          : t
+      )
+    );
   }, []);
 
   const getTodosByDate = useCallback((date: string): Todo[] => {
