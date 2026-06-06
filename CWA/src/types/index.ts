@@ -37,10 +37,11 @@ export interface Settings {
   useLunar: boolean;
   use24Hour: boolean;
   showMoonPhase: boolean;
-  // New settings for 3rd day
+
+  // Window / widget behavior
+  editMode: boolean;
   alwaysOnTop: boolean;
   showOnTaskbar: boolean;
-  editMode: boolean;
 }
 
 export interface ModalState {

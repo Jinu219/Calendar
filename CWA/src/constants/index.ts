@@ -34,8 +34,10 @@ export const THEME_OPTIONS: ThemeOption[] = [
 ];
 
 export const TODAY_STYLES: TodayStyleOption[] = [
-  { key:"highlight", label:"배경 강조" },
-  { key:"border",    label:"테두리"   },
+  { key: "highlight", label: "배경 강조" },
+  { key: "glow", label: "빛 효과" },
+  { key: "elevated", label: "입체 강조" },
+  { key: "border", label: "테두리" },
 ];
 
 export const FALLBACK_FONTS = [
@@ -52,22 +54,22 @@ export const SETTINGS_KEY = "cwa-settings-v4";
 export const WIN_POS_KEY = "cwa-win-pos";
 
 export const DEFAULT_SETTINGS: Settings = {
-  colorTheme:"pink", 
-  dayNumberPos:"left", 
-  fontFamily:"Noto Sans KR",
-  fontSize:14,
-  showOverflow:true, 
-  todayStyle:"highlight", 
-  opacity:0.22, 
-  todoPanelWidth:270, 
-  autostart:false, 
-  useLunar:false, 
-  use24Hour:true,
-  showMoonPhase:true,
-  // New settings for 3rd day
-  alwaysOnTop:false,
-  showOnTaskbar:false,
-  editMode:false,
+  colorTheme: "pink",
+  dayNumberPos: "left",
+  fontFamily: "Noto Sans KR",
+  fontSize: 14,
+  showOverflow: true,
+  todayStyle: "highlight",
+  opacity: 0.22,
+  todoPanelWidth: 270,
+  autostart: false,
+  useLunar: false,
+  use24Hour: true,
+  showMoonPhase: true,
+
+  editMode: false,
+  alwaysOnTop: false,
+  showOnTaskbar: false,
 };
 
 export const MODAL_CLOSED = {
