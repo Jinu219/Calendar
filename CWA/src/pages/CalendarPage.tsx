@@ -16,7 +16,7 @@ import {
   EditTodoModal 
 } from "../components";
 import { expandTodos, getLunarDateString, loadJson } from "../utils";
-import { TODO_COLORS, MODAL_CLOSED, getLocalToday, WIN_POS_KEY } from "../constants";
+import { MODAL_CLOSED, getLocalToday, WIN_POS_KEY } from "../constants";
 import type { Todo, ModalState, RepeatType } from "../types";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -31,14 +31,11 @@ export const CalendarPage: React.FC = () => {
   const [todoPanelExpanded, setTodoPanelExpanded] = useState(true); // Collapsible todo input
   
   // Modal state
-  const [modal, setModal] = useState<ModalState>(MODAL_CLOSED);
-  const [modalTitle, setModalTitle] = useState("");
-  const [modalColor, setModalColor] = useState(TODO_COLORS[0]);
-  const [modalRepeat, setModalRepeat] = useState<RepeatType>("none");
-  const [modalRepeatEnd, setModalRepeatEnd] = useState("");
+// Modal state
+  const [modal, setModal] = useState<ModalState>(MODAL_CLOSED); 
 
   // Hooks
-  const { todos, addTodo, updateTodo, toggleDone, deleteTodo, moveTodo, updateTodoDate, getTodosByDate } = useTodos();
+  const { todos, addTodo, updateTodo, toggleDone, deleteTodo, moveTodo, updateTodoDate } = useTodos();
   const { settings, setSetting, toggleAutostart, resetSettings } = useSettings();
   const { holidays } = useHolidays();
   const { filteredFonts, fontSearch, setFontSearch } = useSystemFonts();
@@ -191,25 +188,25 @@ useEffect(() => {
   const calendarEvents = useMemo(() => expandTodos(todos, holidays), [todos, holidays]);
 
   // Selected todos
-  const selectedTodos = useMemo(() => getTodosByDate(selectedDate), [todos, selectedDate]);
+
 
   // Handlers
-  const handleDateClick = useCallback((dateStr: string, allDay: boolean, time?: { start: string; end: string }) => {
+  const handleDateClick = useCallback((
+    dateStr: string,
+    allDay: boolean,
+    time?: { start: string; end: string }
+  ) => {
     setSelectedDate(dateStr);
-    if (time) {
-      setModal({
-        open: true,
-        date: dateStr,
-        allDay: false,
-        startDate: dateStr,
-        endDate: dateStr,
-        startTime: time.start,
-        endTime: time.end,
-      });
-      setModalTitle("");
-      setModalColor(TODO_COLORS[0]);
-      setModalRepeat("none");
-    }
+
+    setModal({
+      open: true,
+      date: dateStr,
+      startDate: dateStr,
+      endDate: dateStr,
+      allDay,
+      startTime: time?.start ?? "09:00",
+      endTime: time?.end ?? "10:00",
+    });
   }, []);
 
   const handleSelect = useCallback((date: string, time: { start: string; end: string }) => {
@@ -223,9 +220,6 @@ useEffect(() => {
       startTime: time.start,
       endTime: time.end,
     });
-    setModalTitle("");
-    setModalColor(TODO_COLORS[0]);
-    setModalRepeat("none");
   }, []);
 
   const handleEventDrop = useCallback((todoId: string, newDate: string, newTime?: string) => {
@@ -249,34 +243,38 @@ useEffect(() => {
     }
   }, [todos, updateTodo]);
 
-  const commitModal = () => {
-    const t = modalTitle.trim();
-    if (!t) { closeModal(); return; }
-    
-    addTodo(t, modal.date, {
-      color: modalColor,
-      allDay: modal.allDay,
-      startTime: modal.allDay ? undefined : modal.startTime,
-      endTime: modal.allDay ? undefined : modal.endTime,
-      repeat: modalRepeat,
-      repeatEndDate: modalRepeatEnd || undefined,
-    });
-    
-    closeModal();
-  };
-
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setModal(MODAL_CLOSED);
-    setModalTitle("");
-    setModalRepeat("none");
-    setModalRepeatEnd("");
-  };
+  }, []);
 
-  const saveEdit = () => {
-    if (!editingTodo) return;
-    updateTodo(editingTodo.id, editingTodo);
-    setEditingTodo(null);
-  };
+  const handleAddEventSubmit = useCallback((data: {
+  title: string;
+  date: string;
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  startTime: string;
+  endTime: string;
+  color: string;
+  repeat: RepeatType;
+  repeatEndDate: string;
+}) => {
+  const baseDate = data.startDate || data.date;
+
+  addTodo(data.title, baseDate, {
+    color: data.color,
+    allDay: data.allDay,
+    startTime: data.allDay ? undefined : data.startTime,
+    endTime: data.allDay ? undefined : data.endTime,
+    startDate: data.startDate || baseDate,
+    endDate: data.endDate || data.startDate || baseDate,
+    repeat: data.repeat,
+    repeatEndDate: data.repeatEndDate || undefined,
+  });
+
+  setSelectedDate(baseDate);
+  closeModal();
+}, [addTodo, closeModal]);
 
   // Resize handler
   const startResize = (e: React.MouseEvent) => {
@@ -367,17 +365,7 @@ useEffect(() => {
         isOpen={modal.open}
         initialData={modal}
         onClose={closeModal}
-        onSubmit={(data) => {
-          addTodo(data.title, data.date, {
-            color: data.color,
-            allDay: data.allDay,
-            startTime: data.startTime,
-            endTime: data.endTime,
-            repeat: data.repeat,
-            repeatEndDate: data.repeatEndDate,
-          });
-          closeModal();
-        }}
+        onSubmit={handleAddEventSubmit}
       />
 
       <EditTodoModal
