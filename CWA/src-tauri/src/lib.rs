@@ -171,11 +171,16 @@ fn set_autostart_status(app: tauri::AppHandle, enabled: bool) -> bool {
 }
 
 // ── 항상 위에 표시 설정 ──
+use windows::Win32::Foundation::HWND;
+use windows::Win32::UI::WindowsAndMessaging::{
+    SetWindowPos, HWND_BOTTOM, SWP_NOMOVE, SWP_NOSIZE, SWP_NOACTIVATE,
+};
+
+// ── 항상 위에 표시 설정 ──
 #[tauri::command]
 fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> bool {
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.set_always_on_top(enabled);
-        // Win+D 방지: 창을 항상 위에 표시하면 Winn+D시 숨겨지지 않음
         if enabled {
             let _ = win.show();
             let _ = win.set_focus();
@@ -186,11 +191,25 @@ fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> bool {
 
 // ── 항상 아래로 설정 (데스크톱 위젯 모드) ──
 #[tauri::command]
-fn set_always_on_bottom(_app: tauri::AppHandle) -> bool {
-    // 이 기능은 단일 인스턴스 플러그인에서 처리됨
+fn set_always_on_bottom(app: tauri::AppHandle) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(win) = app.get_webview_window("main") {
+            if let Ok(hwnd_raw) = win.hwnd() {
+                let hwnd = HWND(hwnd_raw.0);
+                unsafe {
+                    let _ = SetWindowPos(
+                        hwnd,
+                        HWND_BOTTOM,
+                        0, 0, 0, 0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+                }
+            }
+        }
+    }
     true
 }
-
 // ── 에어로 스냅 비활성화 커맨드 ──
 // setup()에서 자동 적용되지만, 필요 시 invoke("disable_snap")으로 재호출 가능
 #[tauri::command]

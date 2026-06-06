@@ -130,14 +130,30 @@ export const CalendarPage: React.FC = () => {
   }, [deleteTodo, addTodo, selectedDate, todos]);
 
   // Apply always on bottom setting (window behind other apps)
-  useEffect(() => {
-    // Always set to bottom by default
-    invoke("set_always_on_bottom", {}).catch(console.error);
-    // But also apply always on top if setting is enabled
-    if (settings.alwaysOnTop) {
-      invoke("set_always_on_top", { enabled: true }).catch(console.error);
+// Apply always on bottom setting (window behind other apps)
+useEffect(() => {
+  const pushToBottom = () => {
+    if (!settings.alwaysOnTop) {
+      invoke("set_always_on_bottom", {}).catch(console.error);
     }
-  }, [settings.alwaysOnTop]);
+  };
+
+  pushToBottom(); // 최초 실행
+
+  if (settings.alwaysOnTop) {
+    invoke("set_always_on_top", { enabled: true }).catch(console.error);
+    return;
+  }
+
+  // 포커스를 잃을 때마다 bottom으로 재설정
+  const unlistenPromise = appWin.onFocusChanged(({ payload: focused }) => {
+    if (!focused) pushToBottom();
+  });
+
+  return () => {
+    unlistenPromise.then(fn => fn());
+  };
+}, [settings.alwaysOnTop]);
 
   // Apply show on taskbar setting
   useEffect(() => {

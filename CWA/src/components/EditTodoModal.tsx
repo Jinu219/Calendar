@@ -2,7 +2,7 @@
 // EditTodoModal Component
 // ═══════════════════════════════════════════════════════════
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import type { Todo } from "../types";
 import { TODO_COLORS } from "../constants";
 
@@ -17,10 +17,39 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
   onClose,
   onSave,
 }) => {
-  if (!todo) return null;
+  const [formTodo, setFormTodo] = useState<Todo | null>(todo);
+
+  useEffect(() => {
+    setFormTodo(todo);
+  }, [todo]);
+
+  if (!todo || !formTodo) return null;
+
+  const updateField = <K extends keyof Todo>(key: K, value: Todo[K]) => {
+    setFormTodo(prev => {
+      if (!prev) return prev;
+
+      return {
+        ...prev,
+        [key]: value,
+      };
+    });
+  };
 
   const handleSave = () => {
-    onSave(todo);
+    const trimmedTitle = formTodo.title.trim();
+
+    if (!trimmedTitle) {
+      onClose();
+      return;
+    }
+
+    onSave({
+      ...formTodo,
+      title: trimmedTitle,
+      startTime: formTodo.allDay ? undefined : formTodo.startTime,
+      endTime: formTodo.allDay ? undefined : formTodo.endTime,
+    });
   };
 
   return (
@@ -30,13 +59,15 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
           <span>✏ 일정 수정</span>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
+
         <div className="modal-body">
           <input
             className="todo-input modal-input"
             placeholder="일정 제목…"
-            value={todo.title}
+            value={formTodo.title}
             autoFocus
-            onChange={e => onSave({ ...todo, title: e.target.value })}
+            onChange={e => updateField("title", e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSave()}
           />
 
           <div className="modal-times">
@@ -45,8 +76,8 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
               <input
                 type="date"
                 className="time-input"
-                value={todo.date}
-                onChange={e => onSave({ ...todo, date: e.target.value })}
+                value={formTodo.date}
+                onChange={e => updateField("date", e.target.value)}
               />
             </label>
           </div>
@@ -57,24 +88,28 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
               <input
                 type="time"
                 className="time-input"
-                value={todo.startTime || ""}
-                onChange={e => onSave({ ...todo, startTime: e.target.value })}
+                value={formTodo.startTime || ""}
+                disabled={formTodo.allDay}
+                onChange={e => updateField("startTime", e.target.value)}
               />
             </label>
+
             <label className="time-lbl">
               종료
               <input
                 type="time"
                 className="time-input"
-                value={todo.endTime || ""}
-                onChange={e => onSave({ ...todo, endTime: e.target.value })}
+                value={formTodo.endTime || ""}
+                disabled={formTodo.allDay}
+                onChange={e => updateField("endTime", e.target.value)}
               />
             </label>
+
             <label className="allday-lbl">
               <input
                 type="checkbox"
-                checked={todo.allDay}
-                onChange={e => onSave({ ...todo, allDay: e.target.checked })}
+                checked={formTodo.allDay}
+                onChange={e => updateField("allDay", e.target.checked)}
               />
               종일
             </label>
@@ -84,9 +119,10 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
             {TODO_COLORS.map(c => (
               <button
                 key={c}
-                className={`color-dot-setting ${todo.color === c ? "selected" : ""}`}
+                type="button"
+                className={`color-dot-setting ${formTodo.color === c ? "selected" : ""}`}
                 style={{ background: c }}
-                onClick={() => onSave({ ...todo, color: c })}
+                onClick={() => updateField("color", c)}
               />
             ))}
           </div>
