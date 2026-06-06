@@ -5,192 +5,311 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { PhysicalPosition } from "@tauri-apps/api/dpi";
+import { invoke } from "@tauri-apps/api/core";
 
 import { useTodos, useSettings, useHolidays, useSystemFonts } from "../hooks";
-import { 
-  TitleBar, 
-  CalendarView, 
-  TodoPanel, 
-  SettingsDrawer, 
-  AddEventModal, 
-  EditTodoModal 
+import {
+  TitleBar,
+  CalendarView,
+  TodoPanel,
+  SettingsDrawer,
+  AddEventModal,
+  EditTodoModal,
 } from "../components";
 import { expandTodos, getLunarDateString, loadJson } from "../utils";
 import { MODAL_CLOSED, getLocalToday, WIN_POS_KEY } from "../constants";
 import type { Todo, ModalState, RepeatType } from "../types";
-import { invoke } from "@tauri-apps/api/core";
 
 export const CalendarPage: React.FC = () => {
-  // State
+  // ───────────────────────────────────────────────────────
+  // Base state
+  // ───────────────────────────────────────────────────────
+
   const [view, setView] = useState<"dayGridMonth" | "timeGridWeek">("dayGridMonth");
-  const [selectedDate, setSelectedDate] = useState(getLocalToday);
+  const [selectedDate, setSelectedDate] = useState<string>(() => getLocalToday());
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [isResizing, setIsResizing] = useState(false);
-  const [todoPanelExpanded, setTodoPanelExpanded] = useState(true); // Collapsible todo input
-  
-  // Modal state
-// Modal state
-  const [modal, setModal] = useState<ModalState>(MODAL_CLOSED); 
+  const [modal, setModal] = useState<ModalState>(MODAL_CLOSED);
 
+  // ───────────────────────────────────────────────────────
   // Hooks
-  const { todos, addTodo, updateTodo, toggleDone, deleteTodo, moveTodo, updateTodoDate } = useTodos();
-  const { settings, setSetting, toggleAutostart, resetSettings } = useSettings();
+  // ───────────────────────────────────────────────────────
+
+  const {
+    todos,
+    addTodo,
+    updateTodo,
+    toggleDone,
+    deleteTodo,
+    moveTodo,
+    updateTodoDate,
+  } = useTodos();
+
+  const {
+    settings,
+    setSetting,
+    toggleAutostart,
+    resetSettings,
+  } = useSettings();
+
   const { holidays } = useHolidays();
-  const { filteredFonts, fontSearch, setFontSearch } = useSystemFonts();
-  
+
+  const {
+    filteredFonts,
+    fontSearch,
+    setFontSearch,
+  } = useSystemFonts();
+
+  const appWin = useMemo(() => getCurrentWindow(), []);
+
+  // settings.editMode을 단일 기준으로 사용
+  const editMode = settings.editMode;
+
+  // ───────────────────────────────────────────────────────
   // Additional state
-  const [moonPhase, setMoonPhase] = useState<{ name: string; emoji: string }>({ name: "", emoji: "" });
-  const [lunarDate, setLunarDate] = useState<string>("");
-  const appWin = getCurrentWindow();
+  // ───────────────────────────────────────────────────────
 
-  // Load moon phase
-  useEffect(() => {
-    import("../utils/apiUtils").then(({ fetchMoonPhase }) => {
-      fetchMoonPhase().then(setMoonPhase);
-    });
-  }, []);
-
-  // Update lunar date when selected date changes
-  useEffect(() => {
-    if (settings.useLunar) {
-      const date = new Date(selectedDate + "T00:00:00");
-      setLunarDate(getLunarDateString(date));
-    } else {
-      setLunarDate("");
-    }
-  }, [selectedDate, settings.useLunar]);
-
-  // Keyboard event handler for deleting and copy-paste events
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle if user is typing in an input
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
-        return;
-      }
-
-      // Delete key - delete selected event(s)
-      if (e.key === "Delete" || e.key === "Backspace") {
-        // Get selected events
-        const selectedEvents = (window as any).__selectedEvents || [];
-        const selectedEventId = (window as any).__selectedEventId;
-        
-        if (selectedEvents.length > 0) {
-          e.preventDefault();
-          // Delete all selected events
-          selectedEvents.forEach((id: string) => deleteTodo(id));
-          (window as any).__selectedEvents = [];
-          (window as any).__selectedEventId = null;
-        } else if (selectedEventId) {
-          e.preventDefault();
-          deleteTodo(selectedEventId);
-          (window as any).__selectedEventId = null;
-        }
-      }
-
-      // Ctrl+C - Copy selected event(s)
-      if (e.ctrlKey && e.key === "c") {
-        const selectedEvents = (window as any).__selectedEvents || [];
-        const selectedEventId = (window as any).__selectedEventId;
-        
-        if (selectedEvents.length > 0 || selectedEventId) {
-          const idsToCopy = selectedEvents.length > 0 ? selectedEvents : [selectedEventId];
-          (window as any).__copiedEvents = idsToCopy;
-        }
-      }
-
-      // Ctrl+V - Paste copied event(s) to selected date
-      if (e.ctrlKey && e.key === "v") {
-        const copiedEvents = (window as any).__copiedEvents || [];
-        if (copiedEvents.length > 0) {
-          e.preventDefault();
-          copiedEvents.forEach((id: string) => {
-            const original = todos.find(t => t.id === id);
-            if (original) {
-              addTodo(original.title, selectedDate, {
-                color: original.color,
-                allDay: original.allDay,
-                todoTime: original.todoTime,
-                startTime: original.startTime,
-                endTime: original.endTime,
-              });
-            }
-          });
-        }
-      }
-    };
-    
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [deleteTodo, addTodo, selectedDate, todos]);
-
-  // Apply always on bottom setting (window behind other apps)
-// Apply always on bottom setting (window behind other apps)
-useEffect(() => {
-  const pushToBottom = () => {
-    if (!settings.alwaysOnTop) {
-      invoke("set_always_on_bottom", {}).catch(console.error);
-    }
-  };
-
-  pushToBottom(); // 최초 실행
-
-  if (settings.alwaysOnTop) {
-    invoke("set_always_on_top", { enabled: true }).catch(console.error);
-    return;
-  }
-
-  // 포커스를 잃을 때마다 bottom으로 재설정
-  const unlistenPromise = appWin.onFocusChanged(({ payload: focused }) => {
-    if (!focused) pushToBottom();
+  const [moonPhase, setMoonPhase] = useState<{ name: string; emoji: string }>({
+    name: "",
+    emoji: "",
   });
 
-  return () => {
-    unlistenPromise.then(fn => fn());
-  };
-}, [settings.alwaysOnTop]);
+  const [lunarDate, setLunarDate] = useState("");
 
-  // Apply show on taskbar setting
+  // ───────────────────────────────────────────────────────
+  // Moon phase
+  // ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    let mounted = true;
+
+    import("../utils/apiUtils")
+      .then(({ fetchMoonPhase }) => fetchMoonPhase())
+      .then(phase => {
+        if (mounted) {
+          setMoonPhase(phase);
+        }
+      })
+      .catch(console.error);
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ───────────────────────────────────────────────────────
+  // Lunar date
+  // ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!settings.useLunar) {
+      setLunarDate("");
+      return;
+    }
+
+    const date = new Date(`${selectedDate}T00:00:00`);
+    setLunarDate(getLunarDateString(date));
+  }, [selectedDate, settings.useLunar]);
+
+  // ───────────────────────────────────────────────────────
+  // Window behavior
+  // ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (settings.alwaysOnTop) {
+      invoke("set_always_on_top", { enabled: true }).catch(console.error);
+      return;
+    }
+
+    invoke("set_always_on_top", { enabled: false }).catch(console.error);
+
+    const pushToBottom = () => {
+      invoke("set_always_on_bottom", {}).catch(console.error);
+    };
+
+    pushToBottom();
+
+    const unlistenPromise = appWin.onFocusChanged(({ payload: focused }) => {
+      if (!focused) {
+        pushToBottom();
+      }
+    });
+
+    return () => {
+      unlistenPromise.then(unlisten => unlisten()).catch(console.error);
+    };
+  }, [appWin, settings.alwaysOnTop]);
+
   useEffect(() => {
     invoke("set_show_on_taskbar", { show: settings.showOnTaskbar }).catch(console.error);
   }, [settings.showOnTaskbar]);
 
-  // Sync editMode with settings
-  useEffect(() => {
-    setEditMode(settings.editMode);
-  }, [settings.editMode]);
+  // ───────────────────────────────────────────────────────
+  // Window position restore/save
+  // ───────────────────────────────────────────────────────
 
-  // Restore window position
   useEffect(() => {
     const saved = loadJson<{ x: number; y: number } | null>(WIN_POS_KEY, null);
-    if (saved && settings.editMode) {
-      appWin.setPosition(new PhysicalPosition(saved.x, saved.y));
-    }
-  }, []);
 
-  // Save window position on move
+    if (!saved) return;
+
+    appWin
+      .setPosition(new PhysicalPosition(saved.x, saved.y))
+      .catch(console.error);
+  }, [appWin]);
+
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    const unlisten = appWin.onMoved(({ payload }) => {
-      // Only save position in edit mode
-      if (!settings.editMode) return;
-      clearTimeout(timer);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const unlistenPromise = appWin.onMoved(({ payload }) => {
+      // 위치 저장은 편집 모드일 때만 수행
+      if (!editMode) return;
+
+      if (timer) {
+        clearTimeout(timer);
+      }
+
       timer = setTimeout(() => {
-        localStorage.setItem(WIN_POS_KEY, JSON.stringify({ x: payload.x, y: payload.y }));
+        localStorage.setItem(
+          WIN_POS_KEY,
+          JSON.stringify({
+            x: payload.x,
+            y: payload.y,
+          })
+        );
       }, 500);
     });
-    return () => { unlisten.then(fn => fn()); clearTimeout(timer); };
-  }, [settings.editMode]);
 
+    return () => {
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      unlistenPromise.then(unlisten => unlisten()).catch(console.error);
+    };
+  }, [appWin, editMode]);
+
+  // ───────────────────────────────────────────────────────
+  // Keyboard shortcuts
+  // ───────────────────────────────────────────────────────
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      const selectedEvents = ((window as any).__selectedEvents || []) as string[];
+      const selectedEventId = (window as any).__selectedEventId as string | undefined;
+
+      // Delete / Backspace: 선택 일정 삭제
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (selectedEvents.length > 0) {
+          e.preventDefault();
+
+          selectedEvents.forEach(id => deleteTodo(id));
+
+          (window as any).__selectedEvents = [];
+          (window as any).__selectedEventId = null;
+
+          return;
+        }
+
+        if (selectedEventId) {
+          e.preventDefault();
+
+          deleteTodo(selectedEventId);
+
+          (window as any).__selectedEventId = null;
+        }
+      }
+
+      // Ctrl+C: 선택 일정 복사
+      if (e.ctrlKey && e.key.toLowerCase() === "c") {
+        if (selectedEvents.length > 0 || selectedEventId) {
+          const idsToCopy = selectedEvents.length > 0
+            ? selectedEvents
+            : [selectedEventId];
+
+          (window as any).__copiedEvents = idsToCopy;
+        }
+      }
+
+      // Ctrl+V: 선택 날짜에 복사 일정 붙여넣기
+      if (e.ctrlKey && e.key.toLowerCase() === "v") {
+        const copiedEvents = ((window as any).__copiedEvents || []) as string[];
+
+        if (copiedEvents.length === 0) return;
+
+        e.preventDefault();
+
+        copiedEvents.forEach(id => {
+          const original = todos.find(t => t.id === id);
+
+          if (!original) return;
+
+          addTodo(original.title, selectedDate, {
+            color: original.color,
+            allDay: original.allDay,
+            todoTime: original.todoTime,
+            startTime: original.startTime,
+            endTime: original.endTime,
+            startDate: selectedDate,
+            endDate: selectedDate,
+            repeat: original.repeat,
+            repeatEndDate: original.repeatEndDate,
+          });
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [addTodo, deleteTodo, selectedDate, todos]);
+
+  // ───────────────────────────────────────────────────────
   // Calendar events
-  const calendarEvents = useMemo(() => expandTodos(todos, holidays), [todos, holidays]);
+  // ───────────────────────────────────────────────────────
 
-  // Selected todos
+  const calendarEvents = useMemo(
+    () => expandTodos(todos, holidays),
+    [todos, holidays]
+  );
 
+  // ───────────────────────────────────────────────────────
+  // Handlers: view / settings / edit mode
+  // ───────────────────────────────────────────────────────
 
-  // Handlers
+  const handleViewChange = useCallback((nextView: "dayGridMonth" | "timeGridWeek") => {
+    setView(nextView);
+  }, []);
+
+  const toggleSettingsDrawer = useCallback(() => {
+    setSettingsOpen(prev => !prev);
+  }, []);
+
+  const closeSettingsDrawer = useCallback(() => {
+    setSettingsOpen(false);
+  }, []);
+
+  const toggleEditMode = useCallback(() => {
+    setSetting("editMode", !editMode);
+  }, [editMode, setSetting]);
+
+  // ───────────────────────────────────────────────────────
+  // Handlers: calendar interaction
+  // ───────────────────────────────────────────────────────
+
   const handleDateClick = useCallback((
     dateStr: string,
     allDay: boolean,
@@ -211,88 +330,144 @@ useEffect(() => {
 
   const handleSelect = useCallback((date: string, time: { start: string; end: string }) => {
     setSelectedDate(date);
+
     setModal({
       open: true,
       date,
-      allDay: false,
       startDate: date,
       endDate: date,
+      allDay: false,
       startTime: time.start,
       endTime: time.end,
     });
   }, []);
-
-  const handleEventDrop = useCallback((todoId: string, newDate: string, newTime?: string) => {
-    if (newTime) {
-      // Update both date and time for weekly view
-      updateTodo(todoId, { date: newDate, startTime: newTime });
-    } else {
-      updateTodoDate(todoId, newDate);
-    }
-  }, [updateTodo, updateTodoDate]);
 
   const handleEventClick = useCallback((todoId: string, date: string) => {
     setSelectedDate(date);
     toggleDone(todoId);
   }, [toggleDone]);
 
-  const handleEventResize = useCallback((todoId: string, newEndTime: string | undefined) => {
-    const todo = todos.find(t => t.id === todoId);
-    if (todo && newEndTime) {
-      updateTodo(todoId, { endTime: newEndTime });
+  const handleEventDrop = useCallback((
+    todoId: string,
+    newDate: string,
+    newTime?: string
+  ) => {
+    if (newTime) {
+      updateTodo(todoId, {
+        date: newDate,
+        startDate: newDate,
+        startTime: newTime,
+        allDay: false,
+      });
+
+      return;
     }
-  }, [todos, updateTodo]);
+
+    updateTodoDate(todoId, newDate);
+  }, [updateTodo, updateTodoDate]);
+
+  const handleEventResize = useCallback((
+    todoId: string,
+    newEndTime: string | undefined
+  ) => {
+    if (!newEndTime) return;
+
+    updateTodo(todoId, {
+      endTime: newEndTime,
+    });
+  }, [updateTodo]);
+
+  // ───────────────────────────────────────────────────────
+  // Handlers: modal
+  // ───────────────────────────────────────────────────────
 
   const closeModal = useCallback(() => {
     setModal(MODAL_CLOSED);
   }, []);
 
   const handleAddEventSubmit = useCallback((data: {
-  title: string;
-  date: string;
-  startDate: string;
-  endDate: string;
-  allDay: boolean;
-  startTime: string;
-  endTime: string;
-  color: string;
-  repeat: RepeatType;
-  repeatEndDate: string;
-}) => {
-  const baseDate = data.startDate || data.date;
+    title: string;
+    date: string;
+    startDate: string;
+    endDate: string;
+    allDay: boolean;
+    startTime: string;
+    endTime: string;
+    color: string;
+    repeat: RepeatType;
+    repeatEndDate: string;
+  }) => {
+    const baseDate = data.startDate || data.date;
 
-  addTodo(data.title, baseDate, {
-    color: data.color,
-    allDay: data.allDay,
-    startTime: data.allDay ? undefined : data.startTime,
-    endTime: data.allDay ? undefined : data.endTime,
-    startDate: data.startDate || baseDate,
-    endDate: data.endDate || data.startDate || baseDate,
-    repeat: data.repeat,
-    repeatEndDate: data.repeatEndDate || undefined,
-  });
+    addTodo(data.title, baseDate, {
+      color: data.color,
+      allDay: data.allDay,
+      startTime: data.allDay ? undefined : data.startTime,
+      endTime: data.allDay ? undefined : data.endTime,
+      startDate: data.startDate || baseDate,
+      endDate: data.endDate || data.startDate || baseDate,
+      repeat: data.repeat,
+      repeatEndDate: data.repeatEndDate || undefined,
+    });
 
-  setSelectedDate(baseDate);
-  closeModal();
-}, [addTodo, closeModal]);
+    setSelectedDate(baseDate);
+    closeModal();
+  }, [addTodo, closeModal]);
 
-  // Resize handler
-  const startResize = (e: React.MouseEvent) => {
+  const closeEditTodoModal = useCallback(() => {
+    setEditingTodo(null);
+  }, []);
+
+  const handleSaveEditTodo = useCallback((todo: Todo) => {
+    updateTodo(todo.id, todo);
+    setEditingTodo(null);
+  }, [updateTodo]);
+
+  // ───────────────────────────────────────────────────────
+  // Handlers: resize
+  // ───────────────────────────────────────────────────────
+
+  const startResize = useCallback((e: React.MouseEvent) => {
     if (!editMode) return;
+
     e.preventDefault();
+    e.stopPropagation();
+
     setIsResizing(true);
+
     const startX = e.clientX;
     const startW = settings.todoPanelWidth;
-    const onMove = (ev: MouseEvent) => setSetting("todoPanelWidth", Math.max(200, Math.min(480, startW + (startX - ev.clientX))));
-    const onUp = () => { setIsResizing(false); window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+
+    const onMove = (ev: MouseEvent) => {
+      const nextWidth = Math.max(
+        200,
+        Math.min(480, startW + (startX - ev.clientX))
+      );
+
+      setSetting("todoPanelWidth", nextWidth);
+    };
+
+    const onUp = () => {
+      setIsResizing(false);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
-  };
+  }, [editMode, settings.todoPanelWidth, setSetting]);
 
-  // Prevent context menu
+  // ───────────────────────────────────────────────────────
+  // Misc
+  // ───────────────────────────────────────────────────────
+
   const preventContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
   }, []);
+
+  // ───────────────────────────────────────────────────────
+  // Render
+  // ───────────────────────────────────────────────────────
 
   return (
     <div
@@ -302,17 +477,22 @@ useEffect(() => {
     >
       <TitleBar
         view={view}
-        onViewChange={setView}
+        onViewChange={handleViewChange}
         settingsOpen={settingsOpen}
-        onSettingsToggle={() => setSettingsOpen(o => !o)}
+        onSettingsToggle={toggleSettingsDrawer}
+        editMode={editMode}
+        onEditModeToggle={toggleEditMode}
         moonPhase={moonPhase}
       />
 
       <div className="glass-panel main-panel">
-        <div className="app-body" style={{ userSelect: isResizing ? "none" : undefined }}>
+        <div
+          className="app-body"
+          style={{ userSelect: isResizing ? "none" : undefined }}
+        >
           <CalendarView
             view={view}
-            onViewChange={setView}
+            onViewChange={handleViewChange}
             events={calendarEvents}
             holidays={holidays}
             settings={settings}
@@ -326,31 +506,29 @@ useEffect(() => {
             editMode={editMode}
           />
 
-          {todoPanelExpanded ? (
-            <>
-              <div
-                className={`resize-handle ${editMode ? "active" : ""}`}
-                onMouseDown={editMode ? startResize : undefined}
-              />
-              <TodoPanel
-                selectedDate={selectedDate}
-                todos={todos}
-                settings={settings}
-                onAddTodo={addTodo}
-                onToggleDone={toggleDone}
-                onDeleteTodo={deleteTodo}
-                onEditTodo={setEditingTodo}
-                onMoveTodo={moveTodo}
-              />
-            </>
-          ) : null}
+          <div
+            className={`resize-handle ${editMode ? "visible" : ""} ${isResizing ? "active" : ""}`}
+            onMouseDown={startResize}
+            title={editMode ? "드래그해서 Todo 패널 크기 조절" : undefined}
+          />
+
+          <TodoPanel
+            selectedDate={selectedDate}
+            todos={todos}
+            settings={settings}
+            onAddTodo={addTodo}
+            onToggleDone={toggleDone}
+            onDeleteTodo={deleteTodo}
+            onEditTodo={setEditingTodo}
+            onMoveTodo={moveTodo}
+          />
         </div>
       </div>
 
       <SettingsDrawer
         isOpen={settingsOpen}
         settings={settings}
-        onClose={() => setSettingsOpen(false)}
+        onClose={closeSettingsDrawer}
         onSetSetting={setSetting}
         onToggleAutostart={toggleAutostart}
         onResetSettings={resetSettings}
@@ -370,11 +548,8 @@ useEffect(() => {
 
       <EditTodoModal
         todo={editingTodo}
-        onClose={() => setEditingTodo(null)}
-        onSave={(todo) => {
-          updateTodo(todo.id, todo);
-          setEditingTodo(null);
-        }}
+        onClose={closeEditTodoModal}
+        onSave={handleSaveEditTodo}
       />
     </div>
   );
