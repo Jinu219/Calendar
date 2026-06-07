@@ -16,6 +16,10 @@ const diffInDays = (from: Date, to: Date): number => {
   return Math.round((to.getTime() - from.getTime()) / DAY_MS);
 };
 
+const getExclusiveEndDate = (dateStr: string): string => {
+  return fmtDate(addDays(toLocalDate(dateStr), 1));
+};
+
 const isSameOrAfter = (target: string, base: string): boolean => {
   return toLocalDate(target).getTime() >= toLocalDate(base).getTime();
 };
@@ -110,24 +114,39 @@ export function expandTodos(
   const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 6, 0);
 
   for (const t of todos) {
-    const base = new Date(`${t.date}T00:00:00`);
+    const baseDateStr = t.startDate || t.date;
+    const originalEndDateStr = t.endDate || baseDateStr;
+    const base = toLocalDate(baseDateStr);
+    const originalEnd = toLocalDate(originalEndDateStr);
+    const spanDays = Math.max(0, diffInDays(base, originalEnd));
 
     const cap = t.repeatEndDate
-      ? new Date(Math.min(new Date(`${t.repeatEndDate}T00:00:00`).getTime(), rangeEnd.getTime()))
+      ? new Date(Math.min(toLocalDate(t.repeatEndDate).getTime(), rangeEnd.getTime()))
       : rangeEnd;
 
     const push = (d: Date) => {
+      const occurrenceStartDate = fmtDate(d);
+      const occurrenceEndDate = fmtDate(addDays(d, spanDays));
+
       events.push({
-        id: `${t.id}__${fmtDate(d)}`,
+        id: `${t.id}__${occurrenceStartDate}`,
         title: t.done ? `✅ ${t.title}` : ` ${t.title}`,
         ...(t.allDay
-          ? {
-              date: fmtDate(d),
-              allDay: true,
-            }
+          ? occurrenceEndDate !== occurrenceStartDate
+            ? {
+                start: occurrenceStartDate,
+                end: getExclusiveEndDate(occurrenceEndDate),
+                allDay: true,
+              }
+            : {
+                date: occurrenceStartDate,
+                allDay: true,
+              }
           : {
-              start: `${fmtDate(d)}T${t.startTime}`,
-              end: t.endTime ? `${fmtDate(d)}T${t.endTime}` : undefined,
+              start: `${occurrenceStartDate}T${t.startTime || "09:00"}`,
+              end: t.endTime
+                ? `${occurrenceEndDate}T${t.endTime}`
+                : undefined,
               allDay: false,
             }),
         backgroundColor: t.color,
