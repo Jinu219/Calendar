@@ -4,8 +4,19 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { Todo, RepeatType } from "../types";
-import { loadJson, getLocalToday } from "../utils";
+import { loadJson, addDays, fmtDate } from "../utils";
 import { TODOS_KEY } from "../constants";
+
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const toLocalDate = (dateStr: string): Date => {
+  return new Date(`${dateStr}T00:00:00`);
+};
+
+const diffInDays = (from: Date, to: Date): number => {
+  return Math.round((to.getTime() - from.getTime()) / DAY_MS);
+};
 
 export function useTodos() {
   const [todos, setTodos] = useState<Todo[]>(() => loadJson(TODOS_KEY, []));
@@ -87,18 +98,26 @@ export function useTodos() {
 
   const updateTodoDate = useCallback((id: string, newDate: string) => {
     setTodos(prev =>
-      prev.map(t =>
-        t.id === id
-          ? {
-              ...t,
-              date: newDate,
-              startDate: newDate,
-              endDate: t.endDate && t.startDate && t.endDate !== t.startDate
-                ? t.endDate
-                : newDate,
-            }
-          : t
-      )
+      prev.map(t => {
+        if (t.id !== id) return t;
+
+        const currentStartDate = t.startDate || t.date;
+        const currentEndDate = t.endDate || currentStartDate;
+
+        const spanDays = Math.max(
+          0,
+          diffInDays(toLocalDate(currentStartDate), toLocalDate(currentEndDate))
+        );
+
+        const newEndDate = fmtDate(addDays(toLocalDate(newDate), spanDays));
+
+        return {
+          ...t,
+          date: newDate,
+          startDate: newDate,
+          endDate: newEndDate,
+        };
+      })
     );
   }, []);
 
