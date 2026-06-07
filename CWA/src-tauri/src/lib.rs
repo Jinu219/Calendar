@@ -1,4 +1,11 @@
-use std::sync::Mutex;
+use std::{
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex,
+    },
+    thread,
+    time::Duration,
+};
 
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
@@ -7,7 +14,357 @@ use tauri::{
 };
 use tauri_plugin_autostart::ManagerExt;
 
+#[cfg(target_os = "windows")]
+use windows::{
+    core::{w, PCWSTR},
+    Win32::Foundation::{HWND, LPARAM, WPARAM},
+    Win32::UI::WindowsAndMessaging::{
+        FindWindowExW, FindWindowW, GetClassNameW, GetForegroundWindow, GetWindowLongW,
+        IsIconic, IsWindowVisible, SendMessageTimeoutW, SetParent, SetWindowLongW,
+        SetWindowPos, ShowWindow, GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, HWND_NOTOPMOST,
+        HWND_TOPMOST, SMTO_NORMAL, SW_RESTORE, SW_SHOWNOACTIVATE, SWP_FRAMECHANGED,
+        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SWP_NOZORDER, WS_CHILD,
+        WS_EX_NOACTIVATE, WS_MAXIMIZEBOX, WS_POPUP, WS_THICKFRAME,
+    },
+};
+
 struct AutostartItem(Mutex<tauri::menu::MenuItem<tauri::Wry>>);
+
+#[cfg(target_os = "windows")]
+static DESKTOP_WIDGET_MODE: AtomicBool = AtomicBool::new(true);
+
+#[cfg(target_os = "windows")]
+static DESKTOP_WIDGET_WATCHDOG_STARTED: AtomicBool = AtomicBool::new(false);
+
+#[cfg(target_os = "windows")]
+fn get_window_class_name(hwnd: HWND) -> String {
+    let mut buffer = [0u16; 256];
+
+    unsafe {
+        let len = GetClassNameW(hwnd, &mut buffer);
+
+        if len <= 0 {
+            return String::new();
+        }#[cfg(target_os = "windows")]
+fn start_desktop_widget_watchdog(win: &tauri::WebviewWindow) {
+    if DESKTOP_WIDGET_WATCHDOG_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    let Ok(raw_hwnd) = win.hwnd() else {
+        return;
+    };
+
+    let hwnd_value = raw_hwnd.0 as isize;
+
+    thread::spawn(move || loop {
+        if DESKTOP_WIDGET_MODE.load(Ordering::SeqCst) {
+            let hwnd = HWND(hwnd_value as *mut std::ffi::c_void);
+
+            unsafe {
+                let is_visible = IsWindowVisible(hwnd).as_bool();
+                let is_minimized = IsIconic(hwnd).as_bool();
+                let desktop_foreground = is_desktop_foreground();
+
+                if is_minimized {
+                    let _ = ShowWindow(hwnd, SW_RESTORE);
+                }
+
+                if !is_visible {
+                    let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+                }
+
+                if desktop_foreground {
+                    // Win + D 이후 바탕화면이 foreground일 때:
+                    // CWA를 바탕화면 위에 보이게 잠깐 topmost로 올림
+                    let _ = SetWindowPos(
+                        hwnd,
+                        HWND_TOPMOST,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+                } else {
+                    // 일반 앱을 보고 있을 때:
+                    // topmost를 해제하고 다시 가장 아래로 내림
+                    let _ = SetWindowPos(
+                        hwnd,
+                        HWND_NOTOPMOST,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+
+                    let _ = SetWindowPos(
+                        hwnd,
+                        HWND_BOTTOM,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+                }
+            }
+        }
+
+        thread::sleep(Duration::from_millis(300));
+    });
+}
+
+        String::from_utf16_lossy(&buffer[..len as usize])
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn is_desktop_foreground() -> bool {
+    unsafe {
+        let foreground = GetForegroundWindow();
+
+        if !is_valid_hwnd(foreground) {
+            return false;
+        }
+
+        let class_name = get_window_class_name(foreground);
+
+        class_name == "Progman"
+            || class_name == "WorkerW"
+            || class_name == "SHELLDLL_DefView"
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn null_hwnd() -> HWND {
+    HWND(std::ptr::null_mut())
+}
+
+#[cfg(target_os = "windows")]
+fn is_valid_hwnd(hwnd: HWND) -> bool {
+    !hwnd.0.is_null()
+}
+
+#[cfg(target_os = "windows")]
+fn find_desktop_workerw() -> Option<HWND> {
+    unsafe {
+        let progman = FindWindowW(w!("Progman"), PCWSTR::null()).ok()?;
+
+        if !is_valid_hwnd(progman) {
+            return None;
+        }
+
+        // WorkerW 생성 유도
+        let mut result: usize = 0;
+        let _ = SendMessageTimeoutW(
+            progman,
+            0x052C,
+            WPARAM(0),
+            LPARAM(0),
+            SMTO_NORMAL,
+            1000,
+            Some(&mut result as *mut usize),
+        );
+
+        // 이번에는 "다음 WorkerW"가 아니라
+        // SHELLDLL_DefView를 포함한 WorkerW를 우선 사용한다.
+        let mut worker = null_hwnd();
+
+        loop {
+            let found_worker =
+                FindWindowExW(null_hwnd(), worker, w!("WorkerW"), PCWSTR::null()).ok();
+
+            let Some(found_worker) = found_worker else {
+                break;
+            };
+
+            if !is_valid_hwnd(found_worker) {
+                break;
+            }
+
+            worker = found_worker;
+
+            let shell_view =
+                FindWindowExW(worker, null_hwnd(), w!("SHELLDLL_DefView"), PCWSTR::null()).ok();
+
+            if let Some(shell_view) = shell_view {
+                if is_valid_hwnd(shell_view) {
+                    return Some(worker);
+                }
+            }
+        }
+
+        // WorkerW를 못 찾으면 Progman에 붙인다.
+        Some(progman)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn attach_window_to_desktop(win: &tauri::WebviewWindow) -> bool {
+    let Ok(raw_hwnd) = win.hwnd() else {
+        return false;
+    };
+
+    let hwnd = HWND(raw_hwnd.0);
+
+    let Some(desktop_parent) = find_desktop_workerw() else {
+        return false;
+    };
+
+    // SetParent 이후 좌표가 꼬이지 않도록 현재 위치/크기를 미리 저장
+    let position = win.outer_position().ok();
+    let size = win.outer_size().ok();
+
+    let x = position.map(|p| p.x).unwrap_or(80);
+    let y = position.map(|p| p.y).unwrap_or(80);
+    let width = size.map(|s| s.width as i32).unwrap_or(900);
+    let height = size.map(|s| s.height as i32).unwrap_or(650);
+
+    unsafe {
+        // 일반 top-level popup 창을 desktop child 창으로 전환
+        let style = GetWindowLongW(hwnd, GWL_STYLE);
+        let new_style = (style & !(WS_POPUP.0 as i32)) | WS_CHILD.0 as i32;
+
+        let _ = SetWindowLongW(hwnd, GWL_STYLE, new_style);
+
+        // 바탕화면 계층에 붙이기
+        let _ = SetParent(hwnd, desktop_parent);
+
+        // 포커스를 빼앗지 않도록 설정
+        let ex_style = GetWindowLongW(hwnd, GWL_EXSTYLE);
+        let _ = SetWindowLongW(hwnd, GWL_EXSTYLE, ex_style | WS_EX_NOACTIVATE.0 as i32);
+
+        // 핵심:
+        // SetParent 후 위치/크기를 다시 강제로 잡아준다.
+        let _ = SetWindowPos(
+            hwnd,
+            null_hwnd(),
+            x,
+            y,
+            width,
+            height,
+            SWP_NOZORDER | SWP_FRAMECHANGED,
+        );
+    }
+
+    let _ = win.show();
+
+    true
+}
+
+#[cfg(target_os = "windows")]
+fn detach_window_from_desktop(win: &tauri::WebviewWindow) -> bool {
+    let Ok(raw_hwnd) = win.hwnd() else {
+        return false;
+    };
+
+    let hwnd = HWND(raw_hwnd.0);
+
+    let position = win.outer_position().ok();
+    let size = win.outer_size().ok();
+
+    let x = position.map(|p| p.x).unwrap_or(80);
+    let y = position.map(|p| p.y).unwrap_or(80);
+    let width = size.map(|s| s.width as i32).unwrap_or(900);
+    let height = size.map(|s| s.height as i32).unwrap_or(650);
+
+    unsafe {
+        // 다시 일반 top-level popup 창으로 복구
+        let style = GetWindowLongW(hwnd, GWL_STYLE);
+        let new_style = (style & !(WS_CHILD.0 as i32)) | WS_POPUP.0 as i32;
+
+        let _ = SetWindowLongW(hwnd, GWL_STYLE, new_style);
+
+        let _ = SetParent(hwnd, null_hwnd());
+
+        let _ = SetWindowPos(
+            hwnd,
+            null_hwnd(),
+            x,
+            y,
+            width,
+            height,
+            SWP_NOZORDER | SWP_FRAMECHANGED,
+        );
+    }
+
+    let _ = win.show();
+
+    true
+}
+
+#[cfg(target_os = "windows")]
+fn start_desktop_widget_watchdog(win: &tauri::WebviewWindow) {
+    if DESKTOP_WIDGET_WATCHDOG_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    let Ok(raw_hwnd) = win.hwnd() else {
+        return;
+    };
+
+    let hwnd_value = raw_hwnd.0 as isize;
+
+    thread::spawn(move || loop {
+        if DESKTOP_WIDGET_MODE.load(Ordering::SeqCst) {
+            let hwnd = HWND(hwnd_value as *mut std::ffi::c_void);
+
+            unsafe {
+                let is_visible = IsWindowVisible(hwnd).as_bool();
+                let is_minimized = IsIconic(hwnd).as_bool();
+                let desktop_foreground = is_desktop_foreground();
+
+                if is_minimized {
+                    let _ = ShowWindow(hwnd, SW_RESTORE);
+                }
+
+                if !is_visible {
+                    let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+                }
+
+                if desktop_foreground {
+                    // Win + D 이후 바탕화면이 foreground일 때:
+                    // CWA를 바탕화면 위에 보이게 잠깐 topmost로 올림
+                    let _ = SetWindowPos(
+                        hwnd,
+                        HWND_TOPMOST,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+                } else {
+                    // 일반 앱을 보고 있을 때:
+                    // topmost를 해제하고 다시 가장 아래로 내림
+                    let _ = SetWindowPos(
+                        hwnd,
+                        HWND_NOTOPMOST,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+
+                    let _ = SetWindowPos(
+                        hwnd,
+                        HWND_BOTTOM,
+                        0,
+                        0,
+                        0,
+                        0,
+                        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
+                    );
+                }
+            }
+        }
+
+        thread::sleep(Duration::from_millis(300));
+    });
+}
 
 pub fn run() {
     tauri::Builder::default()
@@ -29,6 +386,8 @@ pub fn run() {
             // ── 앱 시작 시 메인 창 표시 ──
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
+                #[cfg(target_os = "windows")]
+                start_desktop_widget_watchdog(&win);    
 
                 // ── Windows Aero Snap / Snap Layout 일부 비활성화 ──
                 #[cfg(target_os = "windows")]
@@ -237,6 +596,12 @@ fn set_window_level(app: tauri::AppHandle, level: String) -> bool {
         match level.as_str() {
             // 항상 위
             "top" => {
+                #[cfg(target_os = "windows")]
+                {
+                    DESKTOP_WIDGET_MODE.store(false, Ordering::SeqCst);
+                    let _ = detach_window_from_desktop(&win);
+                }
+
                 let _ = win.set_always_on_bottom(false);
                 let _ = win.set_always_on_top(true);
                 let _ = win.show();
@@ -244,22 +609,27 @@ fn set_window_level(app: tauri::AppHandle, level: String) -> bool {
 
             // 항상 아래
             "bottom" => {
+                #[cfg(target_os = "windows")]
+                {
+                    DESKTOP_WIDGET_MODE.store(true, Ordering::SeqCst);
+                    let _ = detach_window_from_desktop(&win);
+                }
+
                 let _ = win.set_always_on_top(false);
                 let _ = win.set_always_on_bottom(true);
                 let _ = win.show();
             }
 
-            // // 일반 창
-            // "normal" => {
-            //     let _ = win.set_always_on_top(false);
-            //     let _ = win.set_always_on_bottom(false);
-            //     let _ = win.show();
-            // }
-
-            // 잘못된 값이 들어오면 일반 창으로 처리
+            // 잘못된 값 또는 예전 normal 값도 bottom으로 처리
             _ => {
+                #[cfg(target_os = "windows")]
+                {
+                    DESKTOP_WIDGET_MODE.store(true, Ordering::SeqCst);
+                    let _ = detach_window_from_desktop(&win);
+                }
+
                 let _ = win.set_always_on_top(false);
-                let _ = win.set_always_on_bottom(false);
+                let _ = win.set_always_on_bottom(true);
                 let _ = win.show();
             }
         }
@@ -269,7 +639,6 @@ fn set_window_level(app: tauri::AppHandle, level: String) -> bool {
 
     false
 }
-
 // 이전 프론트 코드와의 호환용.
 // 새 코드는 set_window_level("top" | "bottom" | "normal") 사용을 권장.
 #[tauri::command]
@@ -277,7 +646,7 @@ fn set_always_on_top(app: tauri::AppHandle, enabled: bool) -> bool {
     if enabled {
         set_window_level(app, "top".to_string())
     } else {
-        set_window_level(app, "normal".to_string())
+        set_window_level(app, "bottom".to_string())
     }
 }
 
