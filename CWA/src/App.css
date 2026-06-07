@@ -1186,12 +1186,11 @@ html, body, #root {
   max-width:100%;
 }
 
-
-.seg-3 {
+.seg-2x2 {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
 }
 
-.seg-3 .seg-btn + .seg-btn {
+.seg-2x2 .seg-btn + .seg-btn {
   border-left: 1px solid var(--glass-border);
 }

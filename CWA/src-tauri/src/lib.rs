@@ -15,7 +15,6 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
-                let _ = win.set_focus();
 
                 // 중요:
                 // 예전처럼 여기서 set_always_on_bottom(true)를 강제로 호출하지 않는다.
@@ -30,7 +29,6 @@ pub fn run() {
             // ── 앱 시작 시 메인 창 표시 ──
             if let Some(win) = app.get_webview_window("main") {
                 let _ = win.show();
-                let _ = win.set_focus();
 
                 // ── Windows Aero Snap / Snap Layout 일부 비활성화 ──
                 #[cfg(target_os = "windows")]
@@ -109,7 +107,6 @@ pub fn run() {
                                 let _ = win.hide();
                             } else {
                                 let _ = win.show();
-                                let _ = win.set_focus();
 
                                 // 중요:
                                 // 여기서도 항상 아래로 강제하지 않는다.
@@ -159,7 +156,6 @@ pub fn run() {
                                 let _ = win.hide();
                             } else {
                                 let _ = win.show();
-                                let _ = win.set_focus();
 
                                 // 중요:
                                 // 더블클릭으로 열 때도 항상 아래 강제 적용하지 않는다.
@@ -253,12 +249,12 @@ fn set_window_level(app: tauri::AppHandle, level: String) -> bool {
                 let _ = win.show();
             }
 
-            // 일반 창
-            "normal" => {
-                let _ = win.set_always_on_top(false);
-                let _ = win.set_always_on_bottom(false);
-                let _ = win.show();
-            }
+            // // 일반 창
+            // "normal" => {
+            //     let _ = win.set_always_on_top(false);
+            //     let _ = win.set_always_on_bottom(false);
+            //     let _ = win.show();
+            // }
 
             // 잘못된 값이 들어오면 일반 창으로 처리
             _ => {

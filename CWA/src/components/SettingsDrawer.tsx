@@ -48,7 +48,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     onSetSetting("opacity", TOP_MODE_OPACITY);
   }
   };
-  
+
   return (
     <aside className={`settings-drawer glass-panel ${isOpen ? "open" : ""}`}>
       <div className="settings-hdr">
@@ -274,21 +274,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             {settings.autostart ? "시작 프로그램 ON" : "시작 프로그램 OFF"}
           </button>
 
-          <div className="seg-ctrl seg-3">
+          <div className="seg-ctrl seg-2x2">
             <button
               type="button"
               className={`seg-btn ${settings.windowLevel === "bottom" ? "active" : ""}`}
               onClick={() => handleWindowLevelChange("bottom")}
             >
               항상 아래
-            </button>
-
-            <button
-              type="button"
-              className={`seg-btn ${settings.windowLevel === "normal" ? "active" : ""}`}
-              onClick={() => handleWindowLevelChange("normal")}
-            >
-              일반
             </button>
 
             <button
