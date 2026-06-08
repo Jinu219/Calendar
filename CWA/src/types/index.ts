@@ -89,4 +89,5 @@ export interface Memo {
   color: string;
   createdAt: string;
   updatedAt?: string;
+  detached?: boolean;
 }

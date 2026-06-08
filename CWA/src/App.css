@@ -1498,6 +1498,10 @@ html, body, #root {
    Separate Memo Window
 ───────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────
+   Separate Memo Window - bare memo style
+───────────────────────────────────────────── */
+
 .memo-window-root {
   width: 100vw;
   height: 100vh;
@@ -1512,6 +1516,77 @@ html, body, #root {
 .memo-window-root input {
   cursor: auto;
 }
+
+.memo-window-root > .memo-board {
+  width: 100%;
+  height: 100%;
+}
+
+.memo-floating-close-btn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 100;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  color: rgba(31, 28, 52, 0.7);
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(31, 35, 60, 0.14);
+}
+
+.memo-floating-close-btn:hover {
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.memo-action-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.memo-small-action-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(255, 255, 255, 0.48);
+  color: rgba(45, 42, 56, 0.64);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.memo-small-action-btn:hover {
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(45, 42, 56, 0.86);
+}
+
+.memo-board.detached .memo-tabs {
+  display: none;
+}
+
+.memo-board-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.memo-empty-add-btn {
+  border: 0;
+  border-radius: 16px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.58);
+  color: rgba(31, 28, 52, 0.75);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
 
 .memo-window-card {
   width: 100%;
@@ -1620,4 +1695,232 @@ html, body, #root {
   line-height: 1.4;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* ─────────────────────────────────────────────
+   Memo Window / Memo Board Cleanup
+───────────────────────────────────────────── */
+
+.memo-window-root {
+  width: 100vw;
+  height: 100vh;
+  padding: 8px;
+  box-sizing: border-box;
+  background: transparent;
+  cursor: move;
+}
+
+.memo-window-root textarea,
+.memo-window-root button,
+.memo-window-root input {
+  cursor: auto;
+}
+
+.memo-window-root > .memo-board {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.memo-floating-close-btn,
+.memo-window-card,
+.memo-window-titlebar,
+.memo-window-close-btn {
+  display: none !important;
+}
+
+.memo-board {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 12px 26px rgba(31, 35, 60, 0.12);
+  overflow: hidden;
+}
+
+.memo-tabs {
+  height: 44px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 10px 0;
+  flex-shrink: 0;
+}
+
+.memo-tab {
+  min-width: 44px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(80, 80, 120, 0.14);
+  border-bottom: 0;
+  border-radius: 15px 15px 0 0;
+  background: rgba(255, 255, 255, 0.54);
+  color: rgba(38, 38, 56, 0.72);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: grab;
+  transition:
+    transform 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+  touch-action: none;
+}
+
+.memo-tab:active {
+  cursor: grabbing;
+}
+
+.memo-tab:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.memo-tab.active {
+  height: 38px;
+  background: var(--memo-tab-color);
+  color: #2d2a38;
+  box-shadow: 0 -3px 12px rgba(45, 42, 56, 0.08);
+}
+
+.memo-add-tab {
+  margin-left: auto;
+  min-width: 38px;
+  padding: 0;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.memo-paper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 10px 10px;
+  border-radius: 0 20px 20px 20px;
+  background: var(--active-memo-color);
+  border: 1px solid rgba(80, 80, 120, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+}
+
+.memo-board.detached .memo-paper {
+  margin: 10px;
+  border-radius: 20px;
+}
+
+.memo-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  border: 0;
+  outline: none;
+  padding: 16px;
+  background: transparent;
+  color: #2d2a38;
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: inherit;
+}
+
+.memo-textarea::placeholder {
+  color: rgba(45, 42, 56, 0.46);
+}
+
+.memo-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.memo-color-list {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.memo-color-dot {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.74);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(31, 35, 60, 0.12);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.memo-color-dot:hover {
+  transform: scale(1.08);
+}
+
+.memo-color-dot.active {
+  border-color: #5d4dff;
+  box-shadow: 0 0 0 2px rgba(93, 77, 255, 0.16);
+}
+
+.memo-action-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.memo-small-action-btn,
+.memo-delete-btn {
+  min-width: 46px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 11px;
+  background: rgba(255, 255, 255, 0.58);
+  color: rgba(45, 42, 56, 0.68);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 28px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.memo-small-action-btn:hover,
+.memo-delete-btn:hover {
+  background: rgba(255, 255, 255, 0.78);
+  color: rgba(45, 42, 56, 0.9);
+}
+
+.memo-board-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.memo-empty-add-btn {
+  border: 0;
+  border-radius: 16px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.58);
+  color: rgba(31, 28, 52, 0.75);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* 이전 미리보기/스크롤 구조는 숨김 */
+.memo-board-scroll,
+.memo-preview-stack,
+.memo-preview-card {
+  display: none !important;
 }
