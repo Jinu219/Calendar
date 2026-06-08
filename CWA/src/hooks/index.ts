@@ -13,3 +13,4 @@ export { useCalendarModal } from "./useCalendarModal";
 export { useTodoPanelResize } from "./useTodoPanelResize";
 export { useCalendarKeyboardShortcuts } from "./useCalendarKeyboardShortcuts";
 export { usePreventDevToolsShortcuts } from "./usePreventDevToolsShortcuts";
+export { useMemos } from "./useMemos";

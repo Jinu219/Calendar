@@ -1194,3 +1194,430 @@ html, body, #root {
 .seg-2x2 .seg-btn + .seg-btn {
   border-left: 1px solid var(--glass-border);
 }
+
+/* ─────────────────────────────────────────────
+   TodoPanel Add Button
+───────────────────────────────────────────── */
+
+.todo-panel-add-modal-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(127, 92, 255, 0.34);
+}
+
+.todo-panel-add-modal-btn:active {
+  transform: translateY(0);
+  opacity: 0.86;
+}
+
+/* ─────────────────────────────────────────────
+   Memo Board
+───────────────────────────────────────────── */
+
+.memo-board {
+  width: 100%;
+  height: 280px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 12px 26px rgba(31, 35, 60, 0.12);
+  overflow: hidden;
+}
+
+.memo-tabs {
+  height: 44px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px 10px 0;
+  flex-shrink: 0;
+}
+
+.memo-tab {
+  min-width: 44px;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(80, 80, 120, 0.14);
+  border-bottom: 0;
+  border-radius: 15px 15px 0 0;
+  background: rgba(255, 255, 255, 0.54);
+  color: rgba(38, 38, 56, 0.72);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.memo-tab:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.memo-tab.active {
+  height: 38px;
+  background: var(--memo-tab-color);
+  color: #2d2a38;
+  box-shadow: 0 -3px 12px rgba(45, 42, 56, 0.08);
+}
+
+.memo-add-tab {
+  margin-left: auto;
+  min-width: 38px;
+  padding: 0;
+  font-size: 24px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.memo-paper {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 10px 10px;
+  border-radius: 0 20px 20px 20px;
+  background: var(--active-memo-color);
+  border: 1px solid rgba(80, 80, 120, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+}
+
+.memo-textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  resize: none;
+  border: 0;
+  outline: none;
+  padding: 16px;
+  background: transparent;
+  color: #2d2a38;
+  font-size: 13px;
+  line-height: 1.55;
+  font-family: inherit;
+}
+
+.memo-textarea::placeholder {
+  color: rgba(45, 42, 56, 0.46);
+}
+
+.memo-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px 10px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.memo-color-list {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.memo-color-dot {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgba(255, 255, 255, 0.74);
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(31, 35, 60, 0.12);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.memo-color-dot:hover {
+  transform: scale(1.08);
+}
+
+.memo-color-dot.active {
+  border-color: #5d4dff;
+  box-shadow: 0 0 0 2px rgba(93, 77, 255, 0.16);
+}
+
+.memo-delete-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(255, 255, 255, 0.48);
+  color: rgba(45, 42, 56, 0.64);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.memo-delete-btn:hover {
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(45, 42, 56, 0.86);
+}
+
+/* ─────────────────────────────────────────────
+   TodoPanel Action Buttons
+───────────────────────────────────────────── */
+
+.todo-panel {
+  position: relative;
+  overflow: visible;
+}
+
+.todo-panel-action-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 14px;
+}
+
+.todo-panel-main-add-btn {
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 16px;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+  color: #ffffff;
+  cursor: pointer;
+  background: linear-gradient(135deg, #a674ff, #7f5cff);
+  box-shadow: 0 10px 22px rgba(127, 92, 255, 0.28);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.todo-panel-main-add-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(127, 92, 255, 0.34);
+}
+
+.todo-panel-main-add-btn:active {
+  transform: translateY(0);
+  opacity: 0.86;
+}
+
+.todo-panel-memo-toggle {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.32);
+  color: rgba(31, 28, 52, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.todo-panel-memo-toggle:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.todo-panel-memo-toggle.active {
+  color: #ffffff;
+  background: linear-gradient(135deg, #6fd6ff, #7f5cff);
+  box-shadow: 0 10px 20px rgba(127, 92, 255, 0.22);
+}
+
+/* ─────────────────────────────────────────────
+   Memo Flyout
+───────────────────────────────────────────── */
+
+.memo-flyout {
+  position: absolute;
+  top: 86px;
+  left: calc(100% + 14px);
+  right:auto;
+  width: min(320px, 36vw);
+  z-index: 50;
+  animation: memoFlyoutIn 0.16s ease-out;
+}
+
+@keyframes memoFlyoutIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.app-root {
+  position: relative;
+}
+
+.memo-overlay-panel {
+  position: absolute;
+  top: 86px;
+  width: 300px;
+  max-width: 34vw;
+  z-index: 80;
+  pointer-events: auto;
+  animation: memoOverlayIn 0.16s ease-out;
+}
+
+.memo-overlay-panel .memo-board {
+  height: 300px;
+  min-height: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 18px 36px rgba(31, 35, 60, 0.18);
+}
+
+@keyframes memoOverlayIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Separate Memo Window
+───────────────────────────────────────────── */
+
+.memo-window-root {
+  width: 100vw;
+  height: 100vh;
+  padding: 8px;
+  box-sizing: border-box;
+  background: transparent;
+  cursor: move;
+}
+
+.memo-window-root textarea,
+.memo-window-root button,
+.memo-window-root input {
+  cursor: auto;
+}
+
+.memo-window-card {
+  width: 100%;
+  height: 100%;
+  border-radius: 24px;
+  overflow: hidden;
+  background: rgba(236, 239, 248, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.54),
+    0 18px 36px rgba(31, 35, 60, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.memo-window-titlebar {
+  height: 38px;
+  padding: 0 12px 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(31, 28, 52, 0.78);
+  font-size: 13px;
+  font-weight: 800;
+  user-select: none;
+  cursor: move;
+}
+
+.memo-window-close-btn {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.36);
+  color: rgba(31, 28, 52, 0.72);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.memo-window-close-btn:hover {
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.memo-window-card .memo-board {
+  width: calc(100% - 16px);
+  height: calc(100% - 46px);
+  margin: 0 8px 8px;
+  min-height: 0;
+}
+
+.memo-board-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 10px 10px;
+}
+
+.memo-board-scroll .memo-paper {
+  margin: 0;
+  min-height: 210px;
+}
+
+.memo-preview-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.memo-preview-card {
+  width: 100%;
+  min-height: 76px;
+  border: 1px solid rgba(80, 80, 120, 0.12);
+  border-radius: 18px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 8px 18px rgba(31, 35, 60, 0.08);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.memo-preview-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    0 12px 22px rgba(31, 35, 60, 0.12);
+}
+
+.memo-preview-title {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(45, 42, 56, 0.76);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.memo-preview-text {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(45, 42, 56, 0.68);
+  font-size: 12px;
+  line-height: 1.4;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}

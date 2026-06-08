@@ -33,6 +33,21 @@ export const THEME_OPTIONS: ThemeOption[] = [
   { key:"warm"     as ColorTheme, label:"황금", emoji:"✨" },
 ];
 
+export const MEMOS_KEY = "cwa:memos";
+
+export const DEFAULT_MEMO_COLOR = "#fff4a3";
+
+export const MEMO_COLORS = [
+  "#fff4a3",
+  "#ffd6e0",
+  "#d7f9d0",
+  "#cdeffd",
+  "#e4d7ff",
+  "#ffe1b3",
+  "#d9f5ec",
+  "#f3d1ff",
+];
+
 export const TODAY_STYLES: TodayStyleOption[] = [
   { key: "highlight", label: "배경 강조" },
   { key: "glow", label: "빛 효과" },

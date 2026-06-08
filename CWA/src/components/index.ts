@@ -8,3 +8,4 @@ export { TodoPanel } from "./TodoPanel";
 export { SettingsDrawer } from "./SettingsDrawer";
 export { AddEventModal } from "./AddEventModal";
 export { EditTodoModal } from "./EditTodoModal";
+export { MemoBoard } from "./MemoBoard";

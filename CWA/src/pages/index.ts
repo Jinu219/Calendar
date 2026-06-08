@@ -3,3 +3,4 @@
 // ═══════════════════════════════════════════════════════════
 
 export { CalendarPage } from "./CalendarPage";
+export { MemoWindowPage } from "./MemoWindowPage";

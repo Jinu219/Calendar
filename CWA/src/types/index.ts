@@ -82,3 +82,11 @@ export interface MoonPhase {
   name: string;
   emoji: string;
 }
+
+export interface Memo {
+  id: string;
+  content: string;
+  color: string;
+  createdAt: string;
+  updatedAt?: string;
+}
