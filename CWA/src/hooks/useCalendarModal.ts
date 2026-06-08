@@ -46,6 +46,20 @@ export const useCalendarModal = ({
     setModal(MODAL_CLOSED);
   }, []);
 
+  const openAddTodoModal = useCallback((dateStr: string) => {
+  setSelectedDate(dateStr);
+
+  setModal({
+    open: true,
+    date: dateStr,
+    startDate: dateStr,
+    endDate: dateStr,
+    allDay: true,
+    startTime: "09:00",
+    endTime: "10:00",
+    });
+  }, [setSelectedDate]);
+
   const handleDateClick = useCallback((
     dateStr: string,
     allDay: boolean,
@@ -53,29 +67,11 @@ export const useCalendarModal = ({
   ) => {
     setSelectedDate(dateStr);
 
-    setModal({
-      open: true,
-      date: dateStr,
-      startDate: dateStr,
-      endDate: dateStr,
-      allDay,
-      startTime: time?.start ?? "09:00",
-      endTime: time?.end ?? "10:00",
-    });
   }, [setSelectedDate]);
 
   const handleSelect = useCallback((date: string, time: { start: string; end: string }) => {
     setSelectedDate(date);
 
-    setModal({
-      open: true,
-      date,
-      startDate: date,
-      endDate: date,
-      allDay: false,
-      startTime: time.start,
-      endTime: time.end,
-    });
   }, [setSelectedDate]);
 
   const handleAddEventSubmit = useCallback((data: AddEventSubmitData) => {
@@ -99,6 +95,7 @@ export const useCalendarModal = ({
   return {
     modal,
     closeModal,
+    openAddTodoModal,
     handleDateClick,
     handleSelect,
     handleAddEventSubmit,

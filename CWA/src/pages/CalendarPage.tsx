@@ -100,6 +100,7 @@ export const CalendarPage: React.FC = () => {
   const {
     modal,
     closeModal,
+    openAddTodoModal,
     handleDateClick,
     handleSelect,
     handleAddEventSubmit,
@@ -198,6 +199,9 @@ export const CalendarPage: React.FC = () => {
     setEditingTodo(null);
   }, [updateTodo]);
 
+  const handleOpenAddTodoModal = useCallback(() => {
+    openAddTodoModal(selectedDate);
+  }, [openAddTodoModal, selectedDate]);
   // ───────────────────────────────────────────────────────
   // Misc
   // ───────────────────────────────────────────────────────
@@ -258,6 +262,7 @@ export const CalendarPage: React.FC = () => {
             todos={todos}
             settings={settings}
             onAddTodo={addTodo}
+            onOpenAddModel={handleOpenAddTodoModal}
             onToggleDone={toggleDone}
             onDeleteTodo={deleteTodo}
             onEditTodo={setEditingTodo}

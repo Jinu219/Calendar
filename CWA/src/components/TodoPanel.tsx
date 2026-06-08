@@ -21,6 +21,7 @@ interface TodoPanelProps {
     allDay?: boolean;
     todoTime?: string;
   }) => void;
+  onOpenAddModel: () => void;
   onToggleDone: (id: string) => void;
   onDeleteTodo: (id: string) => void;
   onEditTodo: (todo: Todo) => void;
@@ -34,6 +35,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   todos,
   settings,
   onAddTodo,
+  onOpenAddModel,
   onToggleDone,
   onDeleteTodo,
   onEditTodo,
@@ -102,7 +104,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
             onChange={e => setInputVal(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleAddTodo()}
           />
-          <button className="add-btn" onClick={handleAddTodo}>+</button>
+          <button className="add-btn" onClick={onOpenAddModel}>+</button>
         </div>
         <div className="color-row-quick">
           {TODO_COLORS.map(c => (
