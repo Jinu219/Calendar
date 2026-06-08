@@ -153,15 +153,15 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   const handleDatesSet = (info: any) => {
     // Update global API reference
     calendarApiRef = info.view.calendar;
-    
+
     if (info.view.type === "timeGridWeek") {
-      const start = info.view.activeStart;
+      const start = info.view.currentStart;
       const month = start.getMonth() + 1;
       const week = getWeekNumber(start);
       const title = `${month}월 ${week}주차`;
       setCalendarTitle(title);
     } else if (info.view.type === "dayGridMonth") {
-      const start = info.view.activeStart;
+      const start = info.view.currentStart;
       const year = start.getFullYear();
       const month = start.getMonth() + 1;
       const title = `${year}년 ${month}월`;
