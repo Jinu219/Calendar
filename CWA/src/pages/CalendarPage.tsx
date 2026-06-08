@@ -2,7 +2,7 @@
 // CalendarPage Component
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, use } from "react";
 
 import {
   useTodos,
@@ -15,6 +15,7 @@ import {
   useCalendarModal,
   useTodoPanelResize,
   useCalendarKeyboardShortcuts,
+  usePreventDevToolsShortcuts,
 } from "../hooks";
 
 import {
@@ -122,6 +123,8 @@ export const CalendarPage: React.FC = () => {
     addTodo,
     deleteTodo,
   });
+  
+  usePreventDevToolsShortcuts();
 
   // ───────────────────────────────────────────────────────
   // Handlers: view / settings / edit mode
