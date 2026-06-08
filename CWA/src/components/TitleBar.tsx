@@ -34,14 +34,6 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
     e.preventDefault();
   }, []);
 
-  const handleMinimize = useCallback(async () => {
-    try {
-      await appWin.hide();
-    } catch (e) {
-      console.error("Failed to hide window:", e);
-    }
-  }, [appWin]);
-
   const handleDragStart = useCallback(async (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest("button")) {
       return;
@@ -126,13 +118,6 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
           ⚙
         </button>
 
-        <button
-          className="window-btn"
-          title="숨기기"
-          onClick={handleMinimize}
-        >
-          ＿
-        </button>
       </div>
     </header>
   );
