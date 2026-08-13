@@ -2,11 +2,11 @@
 // useSettings Hook
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import type { Settings } from "../types";
 import { loadJson } from "../utils";
 import { DEFAULT_SETTINGS, SETTINGS_KEY, THEMES, WEB_FONTS } from "../constants";
-import { invoke } from "@tauri-apps/api/core";
 
 type LegacySettings = Partial<Settings> & {
   alwaysOnTop?: boolean;
@@ -14,11 +14,32 @@ type LegacySettings = Partial<Settings> & {
 
 const loadSettings = (): Settings => {
   const saved = loadJson<LegacySettings>(SETTINGS_KEY, {});
+  const colorTheme = saved.colorTheme && saved.colorTheme in THEMES
+    ? saved.colorTheme
+    : DEFAULT_SETTINGS.colorTheme;
+  const dayNumberPos = saved.dayNumberPos === "right" ? "right" : "left";
+  const windowLevel = saved.windowLevel === "top" || saved.alwaysOnTop
+    ? "top"
+    : "bottom";
 
   return {
     ...DEFAULT_SETTINGS,
     ...saved,
-    windowLevel: saved.windowLevel ?? (saved.alwaysOnTop ? "top" : DEFAULT_SETTINGS.windowLevel),
+    colorTheme,
+    dayNumberPos,
+    fontFamily: typeof saved.fontFamily === "string"
+      ? saved.fontFamily
+      : DEFAULT_SETTINGS.fontFamily,
+    fontSize: typeof saved.fontSize === "number"
+      ? Math.min(24, Math.max(10, saved.fontSize))
+      : DEFAULT_SETTINGS.fontSize,
+    opacity: typeof saved.opacity === "number"
+      ? Math.min(0.85, Math.max(0.05, saved.opacity))
+      : DEFAULT_SETTINGS.opacity,
+    todoPanelWidth: typeof saved.todoPanelWidth === "number"
+      ? Math.min(480, Math.max(200, saved.todoPanelWidth))
+      : DEFAULT_SETTINGS.todoPanelWidth,
+    windowLevel,
     editMode: saved.editMode ?? DEFAULT_SETTINGS.editMode,
     showOnTaskbar: saved.showOnTaskbar ?? DEFAULT_SETTINGS.showOnTaskbar,
   };
@@ -28,7 +49,27 @@ export function useSettings() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    let active = true;
+
+    invoke<boolean>("get_autostart_status")
+      .then(autostart => {
+        if (active) {
+          setSettings(prev => ({ ...prev, autostart }));
+        }
+      })
+      .catch(error => console.error("Failed to read autostart status:", error));
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.error("Failed to persist settings:", error);
+    }
   }, [settings]);
 
   useEffect(() => {
@@ -82,18 +123,15 @@ export function useSettings() {
   }, []);
 
   const toggleAutostart = useCallback(async () => {
+    const next = !settings.autostart;
+
     try {
-      const next = !settings.autostart;
-
-      if (next) {
-        await invoke("plugin:autostart|enable");
-      } else {
-        await invoke("plugin:autostart|disable");
-      }
-
-      setSetting("autostart", next);
-    } catch {
-      setSetting("autostart", !settings.autostart);
+      const actual = await invoke<boolean>("set_autostart_status", {
+        enabled: next,
+      });
+      setSetting("autostart", actual);
+    } catch (error) {
+      console.error("Failed to update autostart status:", error);
     }
   }, [settings.autostart, setSetting]);
 
@@ -104,7 +142,6 @@ export function useSettings() {
 
   return {
     settings,
-    setSettings,
     setSetting,
     toggleAutostart,
     resetSettings,

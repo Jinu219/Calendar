@@ -1,17 +1,11 @@
-import { useEffect } from "react";
-import type { Todo, RepeatType } from "../types";
-
-interface AddTodoOptions {
-  color?: string;
-  allDay?: boolean;
-  todoTime?: string;
-  startTime?: string;
-  endTime?: string;
-  startDate?: string;
-  endDate?: string;
-  repeat?: RepeatType;
-  repeatEndDate?: string;
-}
+import { useEffect, useRef } from "react";
+import type { AddTodoOptions, Todo } from "../types";
+import {
+  addDays,
+  differenceInCalendarDays,
+  fmtDate,
+  parseLocalDate,
+} from "../utils";
 
 interface UseCalendarKeyboardShortcutsParams {
   todos: Todo[];
@@ -22,6 +16,8 @@ interface UseCalendarKeyboardShortcutsParams {
     options?: AddTodoOptions
   ) => void;
   deleteTodo: (id: string) => void;
+  selectedTodoIds: string[];
+  clearSelection: () => void;
 }
 
 export const useCalendarKeyboardShortcuts = ({
@@ -29,7 +25,11 @@ export const useCalendarKeyboardShortcuts = ({
   selectedDate,
   addTodo,
   deleteTodo,
+  selectedTodoIds,
+  clearSelection,
 }: UseCalendarKeyboardShortcutsParams) => {
+  const copiedTodoIds = useRef<string[]>([]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -42,53 +42,39 @@ export const useCalendarKeyboardShortcuts = ({
         return;
       }
 
-      const calendarWindow = window as any;
-
-      const selectedEvents = (calendarWindow.__selectedEvents || []) as string[];
-      const selectedEventId = calendarWindow.__selectedEventId as string | undefined;
-
       if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedEvents.length > 0) {
+        if (selectedTodoIds.length > 0) {
           e.preventDefault();
-
-          selectedEvents.forEach(id => deleteTodo(id));
-
-          calendarWindow.__selectedEvents = [];
-          calendarWindow.__selectedEventId = null;
-
-          return;
-        }
-
-        if (selectedEventId) {
-          e.preventDefault();
-
-          deleteTodo(selectedEventId);
-
-          calendarWindow.__selectedEventId = null;
+          selectedTodoIds.forEach(id => deleteTodo(id));
+          clearSelection();
         }
       }
 
       if (e.ctrlKey && e.key.toLowerCase() === "c") {
-        if (selectedEvents.length > 0 || selectedEventId) {
-          const idsToCopy = selectedEvents.length > 0
-            ? selectedEvents
-            : [selectedEventId];
-
-          calendarWindow.__copiedEvents = idsToCopy;
+        if (selectedTodoIds.length > 0) {
+          copiedTodoIds.current = selectedTodoIds;
         }
       }
 
       if (e.ctrlKey && e.key.toLowerCase() === "v") {
-        const copiedEvents = (calendarWindow.__copiedEvents || []) as string[];
-
-        if (copiedEvents.length === 0) return;
+        if (copiedTodoIds.current.length === 0) return;
 
         e.preventDefault();
 
-        copiedEvents.forEach(id => {
+        copiedTodoIds.current.forEach(id => {
           const original = todos.find(t => t.id === id);
 
           if (!original) return;
+
+          const originalStart = original.startDate ?? original.date;
+          const originalEnd = original.endDate ?? originalStart;
+          const spanDays = Math.max(
+            0,
+            differenceInCalendarDays(
+              parseLocalDate(originalStart),
+              parseLocalDate(originalEnd)
+            )
+          );
 
           addTodo(original.title, selectedDate, {
             color: original.color,
@@ -97,7 +83,7 @@ export const useCalendarKeyboardShortcuts = ({
             startTime: original.startTime,
             endTime: original.endTime,
             startDate: selectedDate,
-            endDate: selectedDate,
+            endDate: fmtDate(addDays(parseLocalDate(selectedDate), spanDays)),
             repeat: original.repeat,
             repeatEndDate: original.repeatEndDate,
           });
@@ -110,5 +96,12 @@ export const useCalendarKeyboardShortcuts = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [addTodo, deleteTodo, selectedDate, todos]);
+  }, [
+    addTodo,
+    clearSelection,
+    deleteTodo,
+    selectedDate,
+    selectedTodoIds,
+    todos,
+  ]);
 };

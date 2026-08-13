@@ -2,19 +2,35 @@
 // CalendarView Component
 // ═══════════════════════════════════════════════════════════
 
-import React, { useRef, useEffect, useCallback, memo } from "react";
+import React, { memo, useCallback, useEffect, useRef } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
-import { DateSelectArg } from "@fullcalendar/core";
-import { EventInput } from "@fullcalendar/core";
-import type { Settings, MoonPhase } from "../types";
-import { getLunarDateString, getWeekNumber, getLocalToday } from "../utils";
+import interactionPlugin, {
+  type DateClickArg,
+  type EventResizeDoneArg,
+} from "@fullcalendar/interaction";
+import type {
+  CalendarApi,
+  DateSelectArg,
+  DatesSetArg,
+  DayCellContentArg,
+  EventClickArg,
+  EventDropArg,
+  EventInput,
+} from "@fullcalendar/core";
+import type { CalendarViewType, Settings, MoonPhase } from "../types";
+import {
+  addDays,
+  fmtDate,
+  getLocalToday,
+  getLunarDateString,
+  getWeekNumber,
+  parseLocalDate,
+} from "../utils";
 
 interface CalendarViewProps {
-  view: "dayGridMonth" | "timeGridWeek";
-  onViewChange: (view: "dayGridMonth" | "timeGridWeek") => void;
+  view: CalendarViewType;
   events: EventInput[];
   holidays: Record<string, string>;
   settings: Settings;
@@ -24,18 +40,15 @@ interface CalendarViewProps {
   onSelect: (date: string, time: { start: string; end: string }) => void;
   onEventDrop: (todoId: string, newDate: string, newTime?: string) => void;
   onEventClick: (todoId: string, date: string) => void;
-  onEventResize?: (todoId: string, newEndTime: string | undefined) => void;
-  onEventDelete?: (todoId: string) => void;
-  onEventCopy?: (todoId: string, newDate: string) => void;
+  onEventSelectionChange: (todoId: string, additive: boolean) => void;
+  onCalendarApiReady: (api: CalendarApi | null) => void;
+  onVisibleRangeChange: (start: Date, end: Date) => void;
+  onEventResize?: (
+    todoId: string,
+    updates: { endDate?: string; endTime?: string }
+  ) => void;
   editMode: boolean;
-  onToggleTodoPanel?: () => void;
-  isTodoPanelExpanded?: boolean;
 }
-
-// Expose calendar API globally for TitleBar to use
-let calendarApiRef: any = null;
-
-export const getCalendarApi = () => calendarApiRef;
 
 const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   view,
@@ -48,22 +61,21 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   onSelect,
   onEventDrop,
   onEventClick,
+  onEventSelectionChange,
+  onCalendarApiReady,
+  onVisibleRangeChange,
   onEventResize,
-  onEventDelete,
-  onEventCopy,
   editMode,
-  onToggleTodoPanel,
-  isTodoPanelExpanded,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [calendarTitle, setCalendarTitle] = React.useState("");
 
-  // Store calendar API for external access
   useEffect(() => {
-    if (calendarRef.current) {
-      calendarApiRef = calendarRef.current?.getApi();
-    }
-  }, []);
+    const api = calendarRef.current?.getApi() ?? null;
+    onCalendarApiReady(api);
+
+    return () => onCalendarApiReady(null);
+  }, [onCalendarApiReady]);
 
   // Sync view
   useEffect(() => {
@@ -89,7 +101,7 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     calendarRef.current?.getApi().unselect();
   }, [onSelect]);
 
-  const handleEventDrop = useCallback((info: any) => {
+  const handleEventDrop = useCallback((info: EventDropArg) => {
     const todoId = info.event.extendedProps?.todoId;
     const isHoliday = info.event.extendedProps?.isHoliday;
     
@@ -106,7 +118,7 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     }
   }, [onEventDrop]);
 
-  const handleEventClick = useCallback((info: any) => {
+  const handleEventClick = useCallback((info: EventClickArg) => {
     const todoId = info.event.extendedProps?.todoId;
     const isHoliday = info.event.extendedProps?.isHoliday;
     
@@ -116,25 +128,17 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     }
     
     if (todoId) {
-      // Handle Shift+Click for multi-select
-      if (info.jsEvent?.shiftKey) {
-        // Add to selected events array
-        const selected = (window as any).__selectedEvents || [];
-        if (!selected.includes(todoId)) {
-          selected.push(todoId);
-          (window as any).__selectedEvents = selected;
-        }
-      } else {
-        // Single click - select one event
-        (window as any).__selectedEventId = todoId;
-        (window as any).__selectedEvents = [todoId];
+      const additive = info.jsEvent.shiftKey;
+      onEventSelectionChange(todoId, additive);
+
+      if (!additive) {
         const d = info.event.startStr.slice(0, 10);
         onEventClick(todoId, d);
       }
     }
-  }, [onEventClick]);
+  }, [onEventClick, onEventSelectionChange]);
 
-  const handleEventResize = useCallback((info: any) => {
+  const handleEventResize = useCallback((info: EventResizeDoneArg) => {
     const todoId = info.event.extendedProps?.todoId;
     const isHoliday = info.event.extendedProps?.isHoliday;
     
@@ -145,14 +149,22 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     }
     
     if (todoId && onEventResize) {
-      const newEndTime = info.event.endStr ? info.event.endStr.slice(11, 16) : undefined;
-      onEventResize(todoId, newEndTime);
+      const eventEnd = info.event.endStr;
+      const endDate = eventEnd
+        ? info.event.allDay
+          ? fmtDate(addDays(parseLocalDate(eventEnd.slice(0, 10)), -1))
+          : eventEnd.slice(0, 10)
+        : undefined;
+      const endTime = !info.event.allDay && eventEnd
+        ? eventEnd.slice(11, 16)
+        : undefined;
+
+      onEventResize(todoId, { endDate, endTime });
     }
   }, [onEventResize]);
 
-  const handleDatesSet = (info: any) => {
-    // Update global API reference
-    calendarApiRef = info.view.calendar;
+  const handleDatesSet = (info: DatesSetArg) => {
+    onVisibleRangeChange(info.start, info.end);
 
     if (info.view.type === "timeGridWeek") {
       const start = info.view.currentStart;
@@ -171,7 +183,7 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     }
   };
 
-  const dayCellClassNames = (arg: any) => {
+  const dayCellClassNames = (arg: DayCellContentArg) => {
     const cls: string[] = [];
     if (arg.dateStr === selectedDate) cls.push("selected-day");
     const dow = arg.date.getDay();
@@ -181,7 +193,7 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     return cls;
   };
 
-  const dayCellContent = (arg: any) => {
+  const dayCellContent = (arg: DayCellContentArg) => {
     const date = arg.date;
     const dateStr = arg.dateStr;
     const lunarInfo = getLunarDateString(date);

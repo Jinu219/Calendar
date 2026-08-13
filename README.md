@@ -1,81 +1,69 @@
-# 🌸 Calendar
+# Calendar Window App
 
-> Windows Desktop Widget Calendar built with **Tauri v2 + React + TypeScript**
+Windows 바탕화면에서 사용하는 캘린더·할 일·메모 위젯입니다. Tauri v2, React, TypeScript, Rust로 구성되어 있으며 월간/주간 캘린더, 반복 일정, 메모 분리창, 테마, 시작 프로그램, 트레이 동작을 지원합니다.
 
-Calendar는 Windows 환경에서 동작하는 **네이티브 데스크톱 캘린더 위젯 앱**입니다.  
-작업표시줄과 Alt-Tab 목록에 나타나지 않으며, 데스크탑 위젯처럼 항상 맨 뒤에 위치해 일정과 할 일을 관리할 수 있습니다.
+## 주요 기능
 
----
+- 월간·주간 FullCalendar 보기
+- 날짜별 할 일, 시간 일정, 반복 일정, 다일 일정
+- 드래그 이동·크기 변경과 키보드 복사/붙여넣기
+- 여러 메모와 최대 5개의 분리 메모창
+- 5가지 색상 테마, 글꼴, 투명도, 패널 크기 설정
+- Windows 트레이, 시작 프로그램, 항상 위/항상 아래 동작
+- `localStorage` 기반 설정·일정·메모 보존
 
-## ✨ 주요 특징
+## 개발 환경
 
-### 🪟 데스크톱 위젯 모드
-- 항상 맨 뒤(Always-on-bottom) 유지
-- 작업표시줄 및 Alt-Tab 목록 숨김
-- 타이틀바 제거 (커스텀 드래그 바)
-- X 버튼 → 트레이 숨김
-- 트레이 메뉴에서만 완전 종료 가능
-- 단일 인스턴스 (중복 실행 방지)
+- Node.js 20 이상
+- Rust stable 및 Windows MSVC 도구 체인
+- WebView2 Runtime
 
----
+```powershell
+cd CWA
+npm install
+npm run tauri dev
+```
 
-### 📅 캘린더 기능
-- 월간 보기 (항상 6주 고정 옵션)
-- 주간 보기 (09:00 ~ 23:00 시간대)
-- 오늘 날짜 중앙 배지 표시
-- Today 하이라이트 4가지 모드:
-  - 강조 배경
-  - 글로우 효과
-  - 입체 카드
-  - 컬러 테두리
-- 토요일 / 일요일 색상 구분
-- 대한민국 공휴일 (2024~2026) 🎌 자동 표시
+PowerShell 실행 정책이 `npm.ps1`을 막는 환경에서는 `npm.cmd`를 사용하면 됩니다.
 
----
+## 검증과 빌드
 
-### 📝 ToDo & 일정 관리
-- 날짜별 ToDo 관리
-- 시간 입력 지원 (🕐 표시)
-- 드래그로 순서 변경
-- 반복 일정 지원 (매일 / 매주 / 매월)
-- 반복 종료일 설정 가능
-- 주간 뷰에서 시간 드래그 → 일정 생성 모달
-
----
-
-### ⚙ 설정 패널
-- 우측 슬라이드 드로어 UI
-- 색상 테마 5종
-  - 핑크 / 라벤더 / 하늘 / 민트 / 황금빛
-- 투명도 조절 (5% ~ 85%)
-- 글꼴 변경 (시스템 폰트 자동 로드)
-- 날짜 숫자 위치 변경
-- 인접 월 날짜 표시 ON/OFF
-- 시작 프로그램 토글
-
----
-
-### 💾 데이터 영속성
-- localStorage 기반 저장
-  - `cwa-todos-v3`
-  - `cwa-settings-v3`
-- 앱 재실행 시 모든 데이터 자동 복원
-- 창 위치 자동 저장 및 복원
-
----
-
-## 🛠 기술 스택
-
-- **Tauri v2**
-- **Rust (MSVC)**
-- **React + TypeScript**
-- **FullCalendar**
-- **tauri-plugin-autostart**
-- **tauri-plugin-single-instance**
-
----
-
-## 📦 빌드
-
-```bash
+```powershell
+cd CWA
+npm run typecheck
+npm run build
+npm run check:rust
+npm run check
 npm run tauri build
+```
+
+`npm run check`는 TypeScript 검사, Vite 프로덕션 빌드, Rust 포맷 검사와 Clippy를 순서대로 수행합니다.
+
+## 구조
+
+```text
+CWA/
+├── src/
+│   ├── components/   # 캘린더, 할 일, 설정, 메모 UI
+│   ├── hooks/        # 상태, 저장소, 창 동작
+│   ├── pages/        # 메인 창과 메모 창 조합
+│   ├── utils/        # 날짜, 일정 확장, 공휴일, 식별자
+│   ├── constants/    # 테마와 기본값
+│   └── types/        # 공유 TypeScript 타입
+└── src-tauri/
+    ├── src/lib.rs    # 트레이와 Windows 창 동작
+    └── capabilities/ # Tauri 창 권한
+```
+
+자세한 유지보수 맥락은 [PROJECT_PROMPT.md](PROJECT_PROMPT.md)를 참고하세요.
+
+## 저장 데이터
+
+| 키 | 내용 |
+|---|---|
+| `cwa-todos-v4` | 일정과 할 일 |
+| `cwa-settings-v4` | 화면 및 창 설정 |
+| `cwa:memos` | 메모 내용과 순서 |
+| `cwa-win-pos` | 메인 창 위치 |
+
+데이터는 현재 기기의 WebView 로컬 저장소에만 보관됩니다. 앱 데이터나 WebView 캐시를 삭제하기 전에 별도 백업이 필요합니다.

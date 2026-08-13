@@ -5,12 +5,14 @@
 import React, { useCallback, memo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getTodayLabel } from "../utils";
-import { getCalendarApi } from "./CalendarView";
-import type { MoonPhase } from "../types";
+import type { CalendarViewType, MoonPhase } from "../types";
 
 interface TitleBarProps {
-  view: "dayGridMonth" | "timeGridWeek";
-  onViewChange: (view: "dayGridMonth" | "timeGridWeek") => void;
+  view: CalendarViewType;
+  onViewChange: (view: CalendarViewType) => void;
+  onPrevious: () => void;
+  onNext: () => void;
+  onToday: () => void;
   settingsOpen: boolean;
   onSettingsToggle: () => void;
   editMode: boolean;
@@ -21,6 +23,9 @@ interface TitleBarProps {
 export const TitleBar: React.FC<TitleBarProps> = memo(({
   view,
   onViewChange,
+  onPrevious,
+  onNext,
+  onToday,
   settingsOpen,
   onSettingsToggle,
   editMode,
@@ -46,21 +51,6 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
     }
   }, [appWin]);
 
-  const handlePrev = useCallback(() => {
-    const api = getCalendarApi();
-    api?.prev();
-  }, []);
-
-  const handleNext = useCallback(() => {
-    const api = getCalendarApi();
-    api?.next();
-  }, []);
-
-  const handleToday = useCallback(() => {
-    const api = getCalendarApi();
-    api?.today();
-  }, []);
-
   return (
     <header
       className="titlebar"
@@ -72,9 +62,9 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
       </div>
 
       <div className="titlebar-center">
-        <button className="nav-btn" onClick={handlePrev}>◀</button>
-        <button className="today-btn" onClick={handleToday}>오늘</button>
-        <button className="nav-btn" onClick={handleNext}>▶</button>
+        <button className="nav-btn" onClick={onPrevious}>◀</button>
+        <button className="today-btn" onClick={onToday}>오늘</button>
+        <button className="nav-btn" onClick={onNext}>▶</button>
 
         {moonPhase && moonPhase.emoji && (
           <span className="moon-label">

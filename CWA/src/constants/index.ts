@@ -2,20 +2,18 @@
 // Constants
 // ═══════════════════════════════════════════════════════════
 
-import type { 
-  ColorTheme, 
-  DayNumPos, 
-  TodayStyle, 
-  Theme, 
-  ThemeOption, 
+import type {
+  ColorTheme,
+  Settings,
+  Theme,
+  ThemeOption,
   TodayStyleOption,
-  Settings 
 } from "../types";
 
 export const TODO_COLORS = [
-  "#f9a8d4","#a5f3fc","#bbf7d0","#fde68a",
-  "#c4b5fd","#fb923c","#6ee7b7","#fca5a5",
-];
+  "#f9a8d4", "#a5f3fc", "#bbf7d0", "#fde68a",
+  "#c4b5fd", "#fb923c", "#6ee7b7", "#fca5a5",
+] as const;
 
 export const THEMES: Record<ColorTheme, Theme> = {
   pink:     { accent:"#ec4899", mid:"#f9a8d4", border:"rgba(255,200,220,.38)", text:"#2d1520" },
@@ -26,11 +24,11 @@ export const THEMES: Record<ColorTheme, Theme> = {
 };
 
 export const THEME_OPTIONS: ThemeOption[] = [
-  { key:"pink"     as ColorTheme, label:"벚꽃", emoji:"🌸" },
-  { key:"lavender" as ColorTheme, label:"라벤더", emoji:"💜" },
-  { key:"sky"      as ColorTheme, label:"하늘", emoji:"🩵" },
-  { key:"mint"     as ColorTheme, label:"민트", emoji:"🌿" },
-  { key:"warm"     as ColorTheme, label:"황금", emoji:"✨" },
+  { key: "pink", label: "벚꽃", emoji: "🌸" },
+  { key: "lavender", label: "라벤더", emoji: "💜" },
+  { key: "sky", label: "하늘", emoji: "🩵" },
+  { key: "mint", label: "민트", emoji: "🌿" },
+  { key: "warm", label: "황금", emoji: "✨" },
 ];
 
 export const MEMOS_KEY = "cwa:memos";
@@ -46,7 +44,7 @@ export const MEMO_COLORS = [
   "#ffe1b3",
   "#d9f5ec",
   "#f3d1ff",
-];
+] as const;
 
 export const TODAY_STYLES: TodayStyleOption[] = [
   { key: "highlight", label: "배경 강조" },
@@ -88,20 +86,11 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const MODAL_CLOSED = {
-  open: false, 
-  date: "", 
-  startDate: "", 
+  open: false,
+  date: "",
+  startDate: "",
   endDate: "",
-  startTime: "09:00", 
-  endTime: "10:00", 
+  startTime: "09:00",
+  endTime: "10:00",
   allDay: false,
-};
-
-export const getLocalToday = (): string => {
-  const d = new Date();
-  return [
-    d.getFullYear(),
-    String(d.getMonth()+1).padStart(2,"0"),
-    String(d.getDate()).padStart(2,"0"),
-  ].join("-");
 };

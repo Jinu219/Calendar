@@ -2,20 +2,33 @@
 // useHolidays Hook
 // ═══════════════════════════════════════════════════════════
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { fetchHolidays } from "../utils";
 
 export function useHolidays() {
   const [holidays, setHolidays] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    (async () => {
+    let active = true;
+
+    const loadHolidays = async () => {
       const year = new Date().getFullYear();
-      const h1 = await fetchHolidays(year);
-      const h2 = await fetchHolidays(year + 1);
-      setHolidays({ ...h1, ...h2 });
-    })();
+      const [currentYear, nextYear] = await Promise.all([
+        fetchHolidays(year),
+        fetchHolidays(year + 1),
+      ]);
+
+      if (active) {
+        setHolidays({ ...currentYear, ...nextYear });
+      }
+    };
+
+    void loadHolidays();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  return { holidays, setHolidays };
+  return { holidays };
 }

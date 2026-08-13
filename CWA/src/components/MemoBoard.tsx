@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { LogicalPosition } from "@tauri-apps/api/window";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MEMO_COLORS } from "../constants";
 import { useMemos } from "../hooks";
 
@@ -9,11 +9,41 @@ interface MemoBoardProps {
   detached?: boolean;
 }
 
-type DragDetachState = {
+type DragState = {
   memoId: string;
-  startX: number;
-  startY: number;
-  detached: boolean;
+  startScreenX: number;
+  startScreenY: number;
+  droppedOnTab: boolean;
+};
+
+const DETACHED_LABELS = [
+  "memo-detached-1",
+  "memo-detached-2",
+  "memo-detached-3",
+  "memo-detached-4",
+  "memo-detached-5",
+] as const;
+
+const DETACHED_MEMO_WIDTH = 300;
+const DETACHED_MEMO_HEIGHT = 320;
+const WINDOW_MARGIN = 8;
+
+const getAvailableDetachedLabel = async () => {
+  for (const label of DETACHED_LABELS) {
+    if (!await WebviewWindow.getByLabel(label)) {
+      return label;
+    }
+  }
+
+  return null;
+};
+
+const closeCurrentWindow = async () => {
+  try {
+    await getCurrentWindow().close();
+  } catch (error) {
+    console.error("Failed to close memo window:", error);
+  }
 };
 
 export const MemoBoard: React.FC<MemoBoardProps> = ({
@@ -25,18 +55,17 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
     addMemo,
     updateMemo,
     deleteMemo,
-    detachMemo,
-    attachMemo,
+    moveMemo,
   } = useMemos();
 
-  const dragDetachRef = useRef<DragDetachState | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
 
   const visibleMemos = useMemo(() => {
     if (memoId) {
       return memos.filter(memo => memo.id === memoId);
     }
 
-    return memos.filter(memo => !memo.detached);
+    return memos;
   }, [memos, memoId]);
 
   const [activeMemoId, setActiveMemoId] = useState<string | null>(
@@ -67,36 +96,28 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
     screenX: number,
     screenY: number
   ) => {
-    const label = `memo-${targetMemoId}`;
+    const label = await getAvailableDetachedLabel();
 
-    const existing = await WebviewWindow.getByLabel(label);
-
-    if (existing) {
-      await existing.show();
-
-      // 이미 분리창이 있으면 그때만 원래 보드에서 숨김 처리
-      detachMemo(targetMemoId);
+    if (!label) {
+      alert("열 수 있는 메모창 개수를 초과했어요. 기존 메모창을 닫은 뒤 다시 시도해주세요.");
       return;
     }
 
-    const memoWidth = 300;
-    const memoHeight = 320;
-
     const safeX = Math.min(
-      Math.max(8, screenX - memoWidth / 2),
-      window.screen.availWidth - memoWidth - 8
+      Math.max(WINDOW_MARGIN, screenX - DETACHED_MEMO_WIDTH / 2),
+      window.screen.availWidth - DETACHED_MEMO_WIDTH - WINDOW_MARGIN
     );
 
     const safeY = Math.min(
-      Math.max(8, screenY - 34),
-      window.screen.availHeight - memoHeight - 8
+      Math.max(WINDOW_MARGIN, screenY - 36),
+      window.screen.availHeight - DETACHED_MEMO_HEIGHT - WINDOW_MARGIN
     );
 
     const detachedWindow = new WebviewWindow(label, {
-      url: `/?window=memo&detached=true&memoId=${targetMemoId}`,
+      url: `/?window=memo&detached=true&memoId=${encodeURIComponent(targetMemoId)}`,
       title: "CWA Memo",
-      width: memoWidth,
-      height: memoHeight,
+      width: DETACHED_MEMO_WIDTH,
+      height: DETACHED_MEMO_HEIGHT,
       x: safeX,
       y: safeY,
       decorations: false,
@@ -108,79 +129,102 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
       shadow: false,
     });
 
-    detachedWindow.once("tauri://created", async () => {
-      await detachedWindow.setPosition(new LogicalPosition(safeX, safeY));
-      await detachedWindow.show();
-
-      // 중요:
-      // 새 창이 진짜 만들어진 다음에만 원래 메모 보드에서 숨김 처리
-      detachMemo(targetMemoId);
-    });
-
     detachedWindow.once("tauri://error", error => {
-      console.error("Failed to detach memo:", error);
-
-      // 실패하면 원래 보드에 그대로 남아야 하므로 detachMemo 호출 안 함
-      alert(`메모 분리 실패: ${String(error)}`);
+      console.error("Failed to create detached memo window:", error);
+      alert(`메모창 생성 실패: ${String(error)}`);
     });
   };
 
-  const handleTabPointerDown = (
-    event: React.PointerEvent<HTMLButtonElement>,
+  const handleTabClick = (targetMemoId: string) => {
+    if (detached) return;
+
+    setActiveMemoId(targetMemoId);
+  };
+
+  const handleTabDragStart = (
+    event: React.DragEvent<HTMLButtonElement>,
     targetMemoId: string
   ) => {
     if (detached) return;
 
-    dragDetachRef.current = {
+    dragStateRef.current = {
       memoId: targetMemoId,
-      startX: event.clientX,
-      startY: event.clientY,
-      detached: false,
+      startScreenX: event.screenX,
+      startScreenY: event.screenY,
+      droppedOnTab: false,
     };
 
-    event.currentTarget.setPointerCapture(event.pointerId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", targetMemoId);
+
+    try {
+      event.dataTransfer.setDragImage(event.currentTarget, 20, 20);
+    } catch {
+      // ignore drag image errors
+    }
   };
 
-  const handleTabPointerMove = async (
-    event: React.PointerEvent<HTMLButtonElement>
+  const handleTabDragOver = (
+    event: React.DragEvent<HTMLButtonElement>
   ) => {
-    const dragState = dragDetachRef.current;
+    if (detached) return;
 
-    if (!dragState || dragState.detached || detached) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  };
 
-    const distanceX = event.clientX - dragState.startX;
-    const distanceY = event.clientY - dragState.startY;
+  const handleTabDrop = (
+    event: React.DragEvent<HTMLButtonElement>,
+    targetMemoId: string
+  ) => {
+    if (detached) return;
+
+    event.preventDefault();
+
+    const sourceMemoId =
+      event.dataTransfer.getData("text/plain") ||
+      dragStateRef.current?.memoId;
+
+    if (!sourceMemoId || sourceMemoId === targetMemoId) {
+      if (dragStateRef.current) {
+        dragStateRef.current.droppedOnTab = true;
+      }
+      return;
+    }
+
+    if (dragStateRef.current) {
+      dragStateRef.current.droppedOnTab = true;
+    }
+
+    moveMemo(sourceMemoId, targetMemoId);
+    setActiveMemoId(sourceMemoId);
+  };
+
+  const handleTabDragEnd = async (
+    event: React.DragEvent<HTMLButtonElement>
+  ) => {
+    if (detached) return;
+
+    const dragState = dragStateRef.current;
+    dragStateRef.current = null;
+
+    if (!dragState || dragState.droppedOnTab) {
+      return;
+    }
+
+    const distanceX = event.screenX - dragState.startScreenX;
+    const distanceY = event.screenY - dragState.startScreenY;
     const distance = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
 
-    // 너무 조금 움직였을 때는 클릭으로 처리
-    if (distance < 90) return;
-
-    dragState.detached = true;
+    if (distance < 80) {
+      return;
+    }
 
     await createDetachedMemoWindow(
       dragState.memoId,
-      event.screenX,
-      event.screenY
+      event.screenX || dragState.startScreenX + 180,
+      event.screenY || dragState.startScreenY + 80
     );
-  };
-
-  const handleTabPointerUp = (
-    event: React.PointerEvent<HTMLButtonElement>,
-    targetMemoId: string
-  ) => {
-    const dragState = dragDetachRef.current;
-
-    if (!dragState || !dragState.detached) {
-      setActiveMemoId(targetMemoId);
-    }
-
-    dragDetachRef.current = null;
-
-    try {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    } catch {
-      // pointer capture가 없는 경우 무시
-    }
   };
 
   const handleAddMemo = () => {
@@ -188,23 +232,17 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
     setActiveMemoId(newMemoId);
   };
 
-  const handleDeleteMemo = () => {
+  const handleDeleteMemo = async () => {
     if (!activeMemo) return;
 
     deleteMemo(activeMemo.id);
-  };
 
-  const handleAttachMemo = async () => {
-    if (!activeMemo) return;
-
-    attachMemo(activeMemo.id);
-
-    const currentWindow = await WebviewWindow.getByLabel(`memo-${activeMemo.id}`);
-
-    if (currentWindow) {
-      await currentWindow.close();
+    if (detached) {
+      await closeCurrentWindow();
     }
   };
+
+  const handleCloseDetachedWindow = closeCurrentWindow;
 
   if (!activeMemo) {
     return (
@@ -231,14 +269,17 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
             <button
               key={memo.id}
               type="button"
+              draggable
               className={`memo-tab ${
                 memo.id === activeMemo.id ? "active" : ""
               }`}
               style={{ "--memo-tab-color": memo.color } as React.CSSProperties}
-              onPointerDown={event => handleTabPointerDown(event, memo.id)}
-              onPointerMove={handleTabPointerMove}
-              onPointerUp={event => handleTabPointerUp(event, memo.id)}
-              title="클릭하면 선택, 드래그하면 별도 메모로 분리"
+              onClick={() => handleTabClick(memo.id)}
+              onDragStart={event => handleTabDragStart(event, memo.id)}
+              onDragOver={handleTabDragOver}
+              onDrop={event => handleTabDrop(event, memo.id)}
+              onDragEnd={handleTabDragEnd}
+              title="클릭하면 선택, 다른 번호 위에 놓으면 순서 변경, 밖으로 끌면 새 메모창"
             >
               {index + 1}
             </button>
@@ -277,6 +318,7 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
                 style={{ backgroundColor: color }}
                 onClick={() => updateMemo(activeMemo.id, { color })}
                 title="메모 색상 변경"
+                aria-label={`메모 색상을 ${color}로 변경`}
               />
             ))}
           </div>
@@ -286,10 +328,10 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
               <button
                 type="button"
                 className="memo-small-action-btn"
-                onClick={handleAttachMemo}
-                title="현재 메모를 다시 메모 보드로 합치기"
+                onClick={handleCloseDetachedWindow}
+                title="이 메모창 닫기"
               >
-                합치기
+                닫기
               </button>
             )}
 

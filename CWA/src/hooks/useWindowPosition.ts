@@ -10,7 +10,11 @@ export const useWindowPosition = (enabled: boolean) => {
   useEffect(() => {
     const saved = loadJson<{ x: number; y: number } | null>(WIN_POS_KEY, null);
 
-    if (!saved) return;
+    if (
+      !saved ||
+      !Number.isFinite(saved.x) ||
+      !Number.isFinite(saved.y)
+    ) return;
 
     appWin
       .setPosition(new PhysicalPosition(saved.x, saved.y))
@@ -28,13 +32,14 @@ export const useWindowPosition = (enabled: boolean) => {
       }
 
       timer = setTimeout(() => {
-        localStorage.setItem(
-          WIN_POS_KEY,
-          JSON.stringify({
-            x: payload.x,
-            y: payload.y,
-          })
-        );
+        try {
+          localStorage.setItem(
+            WIN_POS_KEY,
+            JSON.stringify({ x: payload.x, y: payload.y })
+          );
+        } catch (error) {
+          console.error("Failed to persist window position:", error);
+        }
       }, 500);
     });
 

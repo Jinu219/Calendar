@@ -1,39 +1,41 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Memo } from "../types";
 import { DEFAULT_MEMO_COLOR, MEMOS_KEY } from "../constants";
-
-const createId = () => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `memo-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
+import { createId } from "../utils";
 
 const nowIso = () => new Date().toISOString();
 
 const createMemo = (): Memo => ({
-  id: createId(),
+  id: createId("memo"),
   content: "",
   color: DEFAULT_MEMO_COLOR,
   createdAt: nowIso(),
   updatedAt: nowIso(),
-  detached: false,
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
 const normalizeMemos = (value: unknown): Memo[] => {
-  if (!Array.isArray(value) || value.length === 0) {
+  if (!Array.isArray(value)) {
     return [createMemo()];
   }
 
-  return value.map((memo: Partial<Memo>) => ({
-    id: memo.id || createId(),
-    content: memo.content || "",
-    color: memo.color || DEFAULT_MEMO_COLOR,
-    createdAt: memo.createdAt || nowIso(),
-    updatedAt: memo.updatedAt || memo.createdAt || nowIso(),
-    detached: memo.detached ?? false,
-  }));
+  const memos = value.filter(isRecord).map(memo => {
+    const createdAt = typeof memo.createdAt === "string"
+      ? memo.createdAt
+      : nowIso();
+
+    return {
+      id: typeof memo.id === "string" ? memo.id : createId("memo"),
+      content: typeof memo.content === "string" ? memo.content : "",
+      color: typeof memo.color === "string" ? memo.color : DEFAULT_MEMO_COLOR,
+      createdAt,
+      updatedAt: typeof memo.updatedAt === "string" ? memo.updatedAt : createdAt,
+    };
+  });
+
+  return memos.length > 0 ? memos : [createMemo()];
 };
 
 const loadMemos = (): Memo[] => {
@@ -54,15 +56,22 @@ export function useMemos() {
   const [memos, setMemos] = useState<Memo[]>(() => loadMemos());
 
   useEffect(() => {
-    localStorage.setItem(MEMOS_KEY, JSON.stringify(memos));
+    try {
+      localStorage.setItem(MEMOS_KEY, JSON.stringify(memos));
+    } catch (error) {
+      console.error("Failed to persist memos:", error);
+    }
   }, [memos]);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== MEMOS_KEY || !event.newValue) return;
+      if (event.key !== MEMOS_KEY) return;
 
       try {
-        setMemos(normalizeMemos(JSON.parse(event.newValue)));
+        setMemos(event.newValue
+          ? normalizeMemos(JSON.parse(event.newValue))
+          : [createMemo()]
+        );
       } catch {
         // ignore invalid external storage changes
       }
@@ -84,7 +93,7 @@ export function useMemos() {
   }, []);
 
   const updateMemo = useCallback(
-    (id: string, patch: Partial<Pick<Memo, "content" | "color" | "detached">>) => {
+    (id: string, patch: Partial<Pick<Memo, "content" | "color">>) => {
       setMemos(prev =>
         prev.map(memo =>
           memo.id === id
@@ -108,20 +117,30 @@ export function useMemos() {
     });
   }, []);
 
-  const detachMemo = useCallback((id: string) => {
-    updateMemo(id, { detached: true });
-  }, [updateMemo]);
+  const moveMemo = useCallback((fromId: string, toId: string) => {
+    if (fromId === toId) return;
 
-  const attachMemo = useCallback((id: string) => {
-    updateMemo(id, { detached: false });
-  }, [updateMemo]);
+    setMemos(prev => {
+      const fromIndex = prev.findIndex(memo => memo.id === fromId);
+      const toIndex = prev.findIndex(memo => memo.id === toId);
+
+      if (fromIndex < 0 || toIndex < 0) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [movedMemo] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, movedMemo);
+
+      return next;
+    });
+  }, []);
 
   return {
     memos,
     addMemo,
     updateMemo,
     deleteMemo,
-    detachMemo,
-    attachMemo,
+    moveMemo,
   };
 }

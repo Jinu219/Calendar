@@ -2,13 +2,17 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main"],
+  "windows": [
+    "main",
+    "memo",
+    "memo-detached-1",
+    "memo-detached-2",
+    "memo-detached-3",
+    "memo-detached-4",
+    "memo-detached-5"
+  ],
   "permissions": [
     "core:default",
-    "autostart:allow-enable",
-    "autostart:allow-disable",
-    "autostart:allow-is-enabled",
-
     "core:webview:allow-create-webview-window",
     "core:webview:allow-webview-show",
     "core:webview:allow-webview-hide",
@@ -21,19 +25,8 @@
     "core:window:allow-close",
     "core:window:allow-hide",
     "core:window:allow-show",
-    "core:window:allow-minimize",
-    "core:window:allow-unminimize",
-    "core:window:allow-maximize",
-    "core:window:allow-unmaximize",
-    "core:window:allow-set-focus",
-    "core:window:allow-set-always-on-bottom",
-    "core:window:allow-set-always-on-top",
     "core:window:allow-set-position",
-    "core:window:allow-set-size",
     "core:window:allow-start-dragging",
-    "core:window:allow-is-visible",
-    "core:window:allow-is-focused",
-    "core:window:allow-is-minimized",
-    "core:window:allow-is-maximized"
+    "core:window:allow-is-visible"
   ]
 }

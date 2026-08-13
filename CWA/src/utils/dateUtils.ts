@@ -2,7 +2,17 @@
 // Date Utility Functions
 // ═══════════════════════════════════════════════════════════
 
-/** Add days to a date */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Parse a YYYY-MM-DD value without applying an implicit UTC offset. */
+export const parseLocalDate = (dateString: string): Date =>
+  new Date(`${dateString}T00:00:00`);
+
+/** Difference in whole calendar days. */
+export const differenceInCalendarDays = (from: Date, to: Date): number =>
+  Math.round((to.getTime() - from.getTime()) / DAY_MS);
+
+/** Add days to a date. */
 export const addDays = (d: Date, n: number): Date => {
   const r = new Date(d);
   r.setDate(r.getDate() + n);
@@ -12,7 +22,18 @@ export const addDays = (d: Date, n: number): Date => {
 /** Add months to a date */
 export const addMonths = (d: Date, n: number): Date => {
   const r = new Date(d);
+  const dayOfMonth = r.getDate();
+
+  r.setDate(1);
   r.setMonth(r.getMonth() + n);
+
+  const lastDayOfTargetMonth = new Date(
+    r.getFullYear(),
+    r.getMonth() + 1,
+    0
+  ).getDate();
+  r.setDate(Math.min(dayOfMonth, lastDayOfTargetMonth));
+
   return r;
 };
 
@@ -25,12 +46,7 @@ export const fmtDate = (d: Date): string => [
 
 /** Get local today's date as YYYY-MM-DD */
 export const getLocalToday = (): string => {
-  const d = new Date();
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, "0"),
-    String(d.getDate()).padStart(2, "0"),
-  ].join("-");
+  return fmtDate(new Date());
 };
 
 /** Load JSON from localStorage with fallback */
@@ -64,13 +80,13 @@ export const getWeekNumber = (date: Date): number => {
 
 /** Format date for display with weekday */
 export const formatDateDisplay = (dateStr: string): string => {
-  return new Date(dateStr + "T00:00:00")
+  return parseLocalDate(dateStr)
     .toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "short" });
 };
 
 /** Format date for display with full weekday */
 export const formatDateDisplayWithWeekday = (dateStr: string): string => {
-  return new Date(dateStr + "T00:00:00")
+  return parseLocalDate(dateStr)
     .toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 };
 

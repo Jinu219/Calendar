@@ -2,9 +2,8 @@
 // CalendarPage Component
 // ═══════════════════════════════════════════════════════════
 
-import React, { useState, useMemo, useCallback } from "react";
-import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { getCurrentWindow, LogicalPosition } from "@tauri-apps/api/window";
+import React, { useCallback, useMemo, useState } from "react";
+import type { CalendarApi } from "@fullcalendar/core";
 
 import {
   useTodos,
@@ -18,6 +17,7 @@ import {
   useTodoPanelResize,
   useCalendarKeyboardShortcuts,
   usePreventDevToolsShortcuts,
+  useMemoWindow,
 } from "../hooks";
 
 import {
@@ -29,18 +29,15 @@ import {
   EditTodoModal,
 } from "../components";
 
-import { expandTodos } from "../utils";
-import { getLocalToday } from "../constants";
-import type { Todo } from "../types";
+import { expandTodos, getLocalToday } from "../utils";
+import type { CalendarViewType, Todo } from "../types";
 
 export const CalendarPage: React.FC = () => {
   // ───────────────────────────────────────────────────────
   // Base state
   // ───────────────────────────────────────────────────────
 
-  const [view, setView] = useState<"dayGridMonth" | "timeGridWeek">(
-    "dayGridMonth"
-  );
+  const [view, setView] = useState<CalendarViewType>("dayGridMonth");
 
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     getLocalToday()
@@ -48,7 +45,16 @@ export const CalendarPage: React.FC = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
-  const [memoOpen, setMemoOpen] = useState(false);
+  const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
+  const [calendarApi, setCalendarApi] = useState<CalendarApi | null>(null);
+  const [visibleRange, setVisibleRange] = useState(() => {
+    const now = new Date();
+    return {
+      start: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+      end: new Date(now.getFullYear(), now.getMonth() + 2, 1),
+    };
+  });
+  const clearTodoSelection = useCallback(() => setSelectedTodoIds([]), []);
 
   // ───────────────────────────────────────────────────────
   // Core hooks
@@ -86,8 +92,8 @@ export const CalendarPage: React.FC = () => {
   const editMode = settings.editMode;
 
   const calendarEvents = useMemo(
-    () => expandTodos(todos, holidays),
-    [todos, holidays]
+    () => expandTodos(todos, holidays, visibleRange.start, visibleRange.end),
+    [todos, holidays, visibleRange]
   );
 
   // ───────────────────────────────────────────────────────
@@ -105,6 +111,8 @@ export const CalendarPage: React.FC = () => {
   });
 
   useWindowPosition(editMode);
+
+  const { memoOpen, toggleMemoWindow } = useMemoWindow();
 
   const {
     modal,
@@ -132,6 +140,8 @@ export const CalendarPage: React.FC = () => {
     selectedDate,
     addTodo,
     deleteTodo,
+    selectedTodoIds,
+    clearSelection: clearTodoSelection,
   });
 
   usePreventDevToolsShortcuts();
@@ -141,7 +151,7 @@ export const CalendarPage: React.FC = () => {
   // ───────────────────────────────────────────────────────
 
   const handleViewChange = useCallback(
-    (nextView: "dayGridMonth" | "timeGridWeek") => {
+    (nextView: CalendarViewType) => {
       setView(nextView);
     },
     []
@@ -159,114 +169,21 @@ export const CalendarPage: React.FC = () => {
     setSetting("editMode", !editMode);
   }, [editMode, setSetting]);
 
-  // ───────────────────────────────────────────────────────
-  // Handlers: memo window
-  // ───────────────────────────────────────────────────────
+  const handleEventSelectionChange = useCallback((todoId: string, additive: boolean) => {
+    setSelectedTodoIds(prev => {
+      if (!additive) return [todoId];
+      return prev.includes(todoId) ? prev : [...prev, todoId];
+    });
+  }, []);
 
-  const toggleMemoBoard = useCallback(async () => {
-    try {
-      const existingMemoWindow = await WebviewWindow.getByLabel("memo");
-
-      if (existingMemoWindow) {
-        const visible = await existingMemoWindow.isVisible();
-
-        if (visible) {
-          await existingMemoWindow.hide();
-          setMemoOpen(false);
-          return;
-        }
-
-        const mainWindow = getCurrentWindow();
-        const mainPosition = await mainWindow.outerPosition();
-        const mainSize = await mainWindow.outerSize();
-
-        const memoWidth = 320;
-        const memoHeight = 360;
-        const gap = 12;
-
-        const screenWidth = window.screen.availWidth;
-        const screenHeight = window.screen.availHeight;
-
-        const wantedX = mainPosition.x + mainSize.width + gap;
-        const wantedY = mainPosition.y + 72;
-
-        const safeX = Math.min(
-          Math.max(8, wantedX),
-          screenWidth - memoWidth - 8
-        );
-
-        const safeY = Math.min(
-          Math.max(8, wantedY),
-          screenHeight - memoHeight - 8
-        );
-
-        await existingMemoWindow.setPosition(new LogicalPosition(safeX, safeY));
-        await existingMemoWindow.show();
-        setMemoOpen(true);
-        return;
+  const handleVisibleRangeChange = useCallback((start: Date, end: Date) => {
+    setVisibleRange(prev => {
+      if (prev.start.getTime() === start.getTime() && prev.end.getTime() === end.getTime()) {
+        return prev;
       }
 
-      const mainWindow = getCurrentWindow();
-      const mainPosition = await mainWindow.outerPosition();
-      const mainSize = await mainWindow.outerSize();
-
-      const memoWidth = 320;
-      const memoHeight = 360;
-      const gap = 12;
-
-      const screenWidth = window.screen.availWidth;
-      const screenHeight = window.screen.availHeight;
-
-      const wantedX = mainPosition.x + mainSize.width + gap;
-      const wantedY = mainPosition.y + 72;
-
-      const safeX = Math.min(
-        Math.max(8, wantedX),
-        screenWidth - memoWidth - 8
-      );
-
-      const safeY = Math.min(
-        Math.max(8, wantedY),
-        screenHeight - memoHeight - 8
-      );
-
-      const memoWindow = new WebviewWindow("memo", {
-        url: "/?window=memo",
-        title: "CWA Memo",
-        width: memoWidth,
-        height: memoHeight,
-        x: safeX,
-        y: safeY,
-        decorations: false,
-        transparent: true,
-        resizable: false,
-        skipTaskbar: true,
-        alwaysOnTop: false,
-        visible: true,
-        shadow: false,
-      });
-
-      memoWindow.once("tauri://created", async () => {
-        await memoWindow.setPosition(new LogicalPosition(safeX, safeY));
-        await memoWindow.show();
-        setMemoOpen(true);
-      });
-
-      memoWindow.once("tauri://destroyed", () => {
-        setMemoOpen(false);
-      });
-
-      memoWindow.once("tauri://error", error => {
-        console.error("Failed to create memo window:", error);
-        alert(`메모 창 생성 실패: ${String(error)}`);
-        setMemoOpen(false);
-      });
-
-    } catch (error) {
-      console.error("Failed to toggle memo window:", error);
-      alert(`메모 창 열기 실패: ${String(error)}`);
-      setMemoOpen(false);
-    }
+      return { start, end };
+    });
   }, []);
 
   // ───────────────────────────────────────────────────────
@@ -283,29 +200,21 @@ export const CalendarPage: React.FC = () => {
 
   const handleEventDrop = useCallback(
     (todoId: string, newDate: string, newTime?: string) => {
+      updateTodoDate(todoId, newDate);
+
       if (newTime) {
         updateTodo(todoId, {
-          date: newDate,
-          startDate: newDate,
           startTime: newTime,
           allDay: false,
         });
-
-        return;
       }
-
-      updateTodoDate(todoId, newDate);
     },
     [updateTodo, updateTodoDate]
   );
 
   const handleEventResize = useCallback(
-    (todoId: string, newEndTime: string | undefined) => {
-      if (!newEndTime) return;
-
-      updateTodo(todoId, {
-        endTime: newEndTime,
-      });
+    (todoId: string, updates: { endDate?: string; endTime?: string }) => {
+      updateTodo(todoId, updates);
     },
     [updateTodo]
   );
@@ -331,14 +240,6 @@ export const CalendarPage: React.FC = () => {
   }, [openAddTodoModal, selectedDate]);
 
   // ───────────────────────────────────────────────────────
-  // Misc
-  // ───────────────────────────────────────────────────────
-
-  const preventContextMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-  }, []);
-
-  // ───────────────────────────────────────────────────────
   // Render
   // ───────────────────────────────────────────────────────
 
@@ -346,11 +247,13 @@ export const CalendarPage: React.FC = () => {
     <div
       className={`app-root today-${settings.todayStyle}`}
       style={{ cursor: isResizing ? "ew-resize" : undefined }}
-      onContextMenu={preventContextMenu}
     >
       <TitleBar
         view={view}
         onViewChange={handleViewChange}
+        onPrevious={() => calendarApi?.prev()}
+        onNext={() => calendarApi?.next()}
+        onToday={() => calendarApi?.today()}
         settingsOpen={settingsOpen}
         onSettingsToggle={toggleSettingsDrawer}
         editMode={editMode}
@@ -365,7 +268,6 @@ export const CalendarPage: React.FC = () => {
         >
           <CalendarView
             view={view}
-            onViewChange={handleViewChange}
             events={calendarEvents}
             holidays={holidays}
             settings={settings}
@@ -375,6 +277,9 @@ export const CalendarPage: React.FC = () => {
             onSelect={handleSelect}
             onEventDrop={handleEventDrop}
             onEventClick={handleEventClick}
+            onEventSelectionChange={handleEventSelectionChange}
+            onCalendarApiReady={setCalendarApi}
+            onVisibleRangeChange={handleVisibleRangeChange}
             onEventResize={handleEventResize}
             editMode={editMode}
           />
@@ -393,7 +298,7 @@ export const CalendarPage: React.FC = () => {
             settings={settings}
             onOpenAddModal={handleOpenAddTodoModal}
             memoOpen={memoOpen}
-            onToggleMemo={toggleMemoBoard}
+            onToggleMemo={toggleMemoWindow}
             onToggleDone={toggleDone}
             onDeleteTodo={deleteTodo}
             onEditTodo={setEditingTodo}

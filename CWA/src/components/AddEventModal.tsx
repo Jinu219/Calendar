@@ -3,30 +3,20 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useEffect, useState } from "react";
-import type { ModalState, RepeatType } from "../types";
-import { TODO_COLORS, getLocalToday } from "../constants";
+import type { EventFormData, ModalState, RepeatType } from "../types";
+import { TODO_COLORS } from "../constants";
+import { getLocalToday } from "../utils";
 
 interface AddEventModalProps {
   isOpen: boolean;
   initialData?: ModalState;
   onClose: () => void;
-  onSubmit: (data: {
-    title: string;
-    date: string;
-    startDate: string;
-    endDate: string;
-    allDay: boolean;
-    startTime: string;
-    endTime: string;
-    color: string;
-    repeat: RepeatType;
-    repeatEndDate: string;
-  }) => void;
+  onSubmit: (data: EventFormData) => void;
 }
 
 const getDefaultModalDate = () => getLocalToday();
 
-const getDefaultFormData = (initialData?: ModalState) => {
+const getDefaultFormData = (initialData?: ModalState): EventFormData => {
   const today = getDefaultModalDate();
 
   return {
@@ -38,7 +28,7 @@ const getDefaultFormData = (initialData?: ModalState) => {
     endTime: initialData?.endTime || "10:00",
     allDay: initialData?.allDay ?? true,
     color: TODO_COLORS[0],
-    repeat: "none" as RepeatType,
+    repeat: "none",
     repeatEndDate: "",
   };
 };
@@ -56,7 +46,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
   const [allDay, setAllDay] = useState(true);
-  const [color, setColor] = useState(TODO_COLORS[0]);
+  const [color, setColor] = useState<string>(TODO_COLORS[0]);
   const [repeat, setRepeat] = useState<RepeatType>("none");
   const [repeatEndDate, setRepeatEndDate] = useState("");
 

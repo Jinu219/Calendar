@@ -1,5 +1,0 @@
-// ═══════════════════════════════════════════════════════════
-// App.tsx - Re-export CalendarPage for backwards compatibility
-// ═══════════════════════════════════════════════════════════
-
-export { CalendarPage as default } from "./pages/CalendarPage";

@@ -2,6 +2,8 @@ import { useEffect } from "react";
 
 export function usePreventDevToolsShortcuts() {
   useEffect(() => {
+    if (import.meta.env.DEV) return;
+
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
 

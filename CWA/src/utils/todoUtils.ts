@@ -2,30 +2,26 @@
 // Todo Utility Functions
 // ═══════════════════════════════════════════════════════════
 
-import { EventInput } from "@fullcalendar/core";
+import type { EventInput } from "@fullcalendar/core";
 import type { Todo, RepeatType } from "../types";
-import { addDays, addMonths, fmtDate } from "./dateUtils";
-
-const DAY_MS = 1000 * 60 * 60 * 24;
-
-const toLocalDate = (dateStr: string): Date => {
-  return new Date(`${dateStr}T00:00:00`);
-};
-
-const diffInDays = (from: Date, to: Date): number => {
-  return Math.round((to.getTime() - from.getTime()) / DAY_MS);
-};
+import {
+  addDays,
+  addMonths,
+  differenceInCalendarDays,
+  fmtDate,
+  parseLocalDate,
+} from "./dateUtils";
 
 const getExclusiveEndDate = (dateStr: string): string => {
-  return fmtDate(addDays(toLocalDate(dateStr), 1));
+  return fmtDate(addDays(parseLocalDate(dateStr), 1));
 };
 
 const isSameOrAfter = (target: string, base: string): boolean => {
-  return toLocalDate(target).getTime() >= toLocalDate(base).getTime();
+  return parseLocalDate(target).getTime() >= parseLocalDate(base).getTime();
 };
 
 const isSameOrBefore = (target: string, cap: string): boolean => {
-  return toLocalDate(target).getTime() <= toLocalDate(cap).getTime();
+  return parseLocalDate(target).getTime() <= parseLocalDate(cap).getTime();
 };
 
 const isDateInRange = (dateStr: string, startDate: string, endDate: string): boolean => {
@@ -57,9 +53,9 @@ export const doesTodoOccurOnDate = (todo: Todo, dateStr: string): boolean => {
     return false;
   }
 
-  const base = toLocalDate(baseDate);
-  const target = toLocalDate(dateStr);
-  const diff = diffInDays(base, target);
+  const base = parseLocalDate(baseDate);
+  const target = parseLocalDate(dateStr);
+  const diff = differenceInCalendarDays(base, target);
 
   if (diff < 0) {
     return false;
@@ -73,7 +69,13 @@ export const doesTodoOccurOnDate = (todo: Todo, dateStr: string): boolean => {
       return diff % 7 === 0;
 
     case "monthly":
-      return base.getDate() === target.getDate();
+      {
+        const monthOffset = (
+          target.getFullYear() - base.getFullYear()
+        ) * 12 + target.getMonth() - base.getMonth();
+
+        return fmtDate(addMonths(base, monthOffset)) === dateStr;
+      }
 
     default:
       return todo.date === dateStr;
@@ -105,23 +107,26 @@ export const getTodosForDate = (todos: Todo[], dateStr: string): Todo[] => {
 /** Expand recurring todos into calendar events */
 export function expandTodos(
   todos: Todo[],
-  holidays: Record<string, string>
+  holidays: Record<string, string>,
+  visibleStart = new Date(new Date().getFullYear(), new Date().getMonth() - 3, 1),
+  visibleEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 7, 1)
 ): EventInput[] {
   const events: EventInput[] = [];
-
-  const now = new Date();
-  const rangeStart = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-  const rangeEnd = new Date(now.getFullYear(), now.getMonth() + 6, 0);
+  const rangeStart = new Date(visibleStart);
+  const rangeEnd = addDays(new Date(visibleEnd), -1);
 
   for (const t of todos) {
     const baseDateStr = t.startDate || t.date;
     const originalEndDateStr = t.endDate || baseDateStr;
-    const base = toLocalDate(baseDateStr);
-    const originalEnd = toLocalDate(originalEndDateStr);
-    const spanDays = Math.max(0, diffInDays(base, originalEnd));
+    const base = parseLocalDate(baseDateStr);
+    const originalEnd = parseLocalDate(originalEndDateStr);
+    const spanDays = Math.max(
+      0,
+      differenceInCalendarDays(base, originalEnd)
+    );
 
     const cap = t.repeatEndDate
-      ? new Date(Math.min(toLocalDate(t.repeatEndDate).getTime(), rangeEnd.getTime()))
+      ? new Date(Math.min(parseLocalDate(t.repeatEndDate).getTime(), rangeEnd.getTime()))
       : rangeEnd;
 
     const push = (d: Date) => {
@@ -165,9 +170,30 @@ export function expandTodos(
 
     let cur = new Date(base);
     let safety = 0;
+    let monthlyOffset = 0;
+
+    if (cur < rangeStart) {
+      if (t.repeat === "daily") {
+        cur = new Date(rangeStart);
+      } else if (t.repeat === "weekly") {
+        const elapsedDays = differenceInCalendarDays(cur, rangeStart);
+        cur = addDays(cur, Math.ceil(elapsedDays / 7) * 7);
+      } else {
+        monthlyOffset = Math.max(
+          0,
+          (rangeStart.getFullYear() - base.getFullYear()) * 12 +
+            rangeStart.getMonth() - base.getMonth() - 1
+        );
+        cur = addMonths(base, monthlyOffset);
+
+        while (cur < rangeStart && safety++ < 5000) {
+          cur = addMonths(base, ++monthlyOffset);
+        }
+      }
+    }
 
     while (cur <= cap && safety++ < 5000) {
-      if (cur >= rangeStart) {
+      if (cur >= rangeStart && cur <= rangeEnd) {
         push(cur);
       }
 
@@ -176,18 +202,17 @@ export function expandTodos(
       } else if (t.repeat === "weekly") {
         cur = addDays(cur, 7);
       } else if (t.repeat === "monthly") {
-        cur = addMonths(cur, 1);
+        cur = addMonths(base, ++monthlyOffset);
       }
     }
   }
 
   // Add holidays as background events
-  const [y1, y2] = [now.getFullYear() - 1, now.getFullYear() + 2];
+  const rangeStartString = fmtDate(rangeStart);
+  const rangeEndString = fmtDate(rangeEnd);
 
   for (const [date, name] of Object.entries(holidays)) {
-    const yr = parseInt(date.slice(0, 4));
-
-    if (yr >= y1 && yr <= y2) {
+    if (date >= rangeStartString && date <= rangeEndString) {
       events.push({
         id: `holiday-${date}`,
         title: ` ${name}`,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getLunarDateString } from "../utils";
+import { fetchMoonPhase, getLunarDateString } from "../utils";
 import type { MoonPhase } from "../types";
 
 export const useMoonAndLunar = (
@@ -16,8 +16,7 @@ export const useMoonAndLunar = (
   useEffect(() => {
     let mounted = true;
 
-    import("../utils/apiUtils")
-      .then(({ fetchMoonPhase }) => fetchMoonPhase())
+    fetchMoonPhase()
       .then(phase => {
         if (mounted) {
           setMoonPhase(phase);

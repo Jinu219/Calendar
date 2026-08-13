@@ -1,31 +1,6 @@
 import { useCallback, useState } from "react";
 import { MODAL_CLOSED } from "../constants";
-import type { ModalState, RepeatType } from "../types";
-
-interface AddTodoOptions {
-  color?: string;
-  allDay?: boolean;
-  todoTime?: string;
-  startTime?: string;
-  endTime?: string;
-  startDate?: string;
-  endDate?: string;
-  repeat?: RepeatType;
-  repeatEndDate?: string;
-}
-
-interface AddEventSubmitData {
-  title: string;
-  date: string;
-  startDate: string;
-  endDate: string;
-  allDay: boolean;
-  startTime: string;
-  endTime: string;
-  color: string;
-  repeat: RepeatType;
-  repeatEndDate: string;
-}
+import type { AddTodoOptions, EventFormData, ModalState } from "../types";
 
 interface UseCalendarModalParams {
   addTodo: (
@@ -47,34 +22,28 @@ export const useCalendarModal = ({
   }, []);
 
   const openAddTodoModal = useCallback((dateStr: string) => {
-  setSelectedDate(dateStr);
+    setSelectedDate(dateStr);
 
-  setModal({
-    open: true,
-    date: dateStr,
-    startDate: dateStr,
-    endDate: dateStr,
-    allDay: true,
-    startTime: "09:00",
-    endTime: "10:00",
+    setModal({
+      open: true,
+      date: dateStr,
+      startDate: dateStr,
+      endDate: dateStr,
+      allDay: true,
+      startTime: "09:00",
+      endTime: "10:00",
     });
   }, [setSelectedDate]);
 
-  const handleDateClick = useCallback((
-    dateStr: string,
-    allDay: boolean,
-    time?: { start: string; end: string }
-  ) => {
+  const handleDateClick = useCallback((dateStr: string) => {
     setSelectedDate(dateStr);
-
   }, [setSelectedDate]);
 
-  const handleSelect = useCallback((date: string, time: { start: string; end: string }) => {
+  const handleSelect = useCallback((date: string) => {
     setSelectedDate(date);
-
   }, [setSelectedDate]);
 
-  const handleAddEventSubmit = useCallback((data: AddEventSubmitData) => {
+  const handleAddEventSubmit = useCallback((data: EventFormData) => {
     const baseDate = data.startDate || data.date;
 
     addTodo(data.title, baseDate, {

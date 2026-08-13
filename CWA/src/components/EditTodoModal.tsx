@@ -5,6 +5,12 @@
 import React, { useEffect, useState } from "react";
 import type { Todo } from "../types";
 import { TODO_COLORS } from "../constants";
+import {
+  addDays,
+  differenceInCalendarDays,
+  fmtDate,
+  parseLocalDate,
+} from "../utils";
 
 interface EditTodoModalProps {
   todo: Todo | null;
@@ -52,6 +58,29 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
     });
   };
 
+  const handleDateChange = (nextDate: string) => {
+    setFormTodo(prev => {
+      if (!prev) return prev;
+
+      const currentStart = prev.startDate ?? prev.date;
+      const currentEnd = prev.endDate ?? currentStart;
+      const spanDays = Math.max(
+        0,
+        differenceInCalendarDays(
+          parseLocalDate(currentStart),
+          parseLocalDate(currentEnd)
+        )
+      );
+
+      return {
+        ...prev,
+        date: nextDate,
+        startDate: nextDate,
+        endDate: fmtDate(addDays(parseLocalDate(nextDate), spanDays)),
+      };
+    });
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box glass-panel" onClick={e => e.stopPropagation()}>
@@ -76,8 +105,8 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
               <input
                 type="date"
                 className="time-input"
-                value={formTodo.date}
-                onChange={e => updateField("date", e.target.value)}
+                value={formTodo.startDate ?? formTodo.date}
+                onChange={e => handleDateChange(e.target.value)}
               />
             </label>
           </div>

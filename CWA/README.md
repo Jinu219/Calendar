@@ -1,7 +1,11 @@
-# Tauri + React + Typescript
+# CWA application package
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+실행·빌드 방법과 프로젝트 설명은 상위 [README](../README.md)를 참고하세요.
 
-## Recommended IDE Setup
+자주 사용하는 명령:
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+```powershell
+npm run tauri dev
+npm run check
+npm run tauri build
+```

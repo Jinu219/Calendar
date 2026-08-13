@@ -12,10 +12,12 @@ export const useWindowBehavior = ({
   showOnTaskbar,
 }: UseWindowBehaviorParams) => {
   useEffect(() => {
-    invoke("set_window_level", { level: windowLevel }).catch(console.error);
+    invoke<boolean>("set_window_level", { level: windowLevel })
+      .catch(error => console.error("Failed to update window level:", error));
   }, [windowLevel]);
 
   useEffect(() => {
-    invoke("set_show_on_taskbar", { show: showOnTaskbar }).catch(console.error);
+    invoke<boolean>("set_show_on_taskbar", { show: showOnTaskbar })
+      .catch(error => console.error("Failed to update taskbar visibility:", error));
   }, [showOnTaskbar]);
 };

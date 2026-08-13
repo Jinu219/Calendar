@@ -7,6 +7,19 @@ export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm";
 export type DayNumPos = "left" | "right";
 export type TodayStyle = "highlight" | "glow" | "elevated" | "border";
 export type WindowLevel = "bottom" | "top";
+export type CalendarViewType = "dayGridMonth" | "timeGridWeek";
+
+export interface AddTodoOptions {
+  color?: string;
+  allDay?: boolean;
+  todoTime?: string;
+  startTime?: string;
+  endTime?: string;
+  startDate?: string;
+  endDate?: string;
+  repeat?: RepeatType;
+  repeatEndDate?: string;
+}
 
 export interface Todo {
   id: string;
@@ -54,10 +67,23 @@ export interface ModalState {
   allDay: boolean;
 }
 
-export interface HolidayAPIItem {
-  dateName: string;
-  localeDate: string;
-  isHoliday: boolean;
+export interface EventFormData {
+  title: string;
+  date: string;
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  startTime: string;
+  endTime: string;
+  color: string;
+  repeat: RepeatType;
+  repeatEndDate: string;
+}
+
+export interface HolidayApiItem {
+  date: string;
+  localName: string;
+  globalName: string;
 }
 
 export interface Theme {
@@ -88,6 +114,5 @@ export interface Memo {
   content: string;
   color: string;
   createdAt: string;
-  updatedAt?: string;
-  detached?: boolean;
+  updatedAt: string;
 }

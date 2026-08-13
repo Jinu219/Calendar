@@ -14,3 +14,4 @@ export { useTodoPanelResize } from "./useTodoPanelResize";
 export { useCalendarKeyboardShortcuts } from "./useCalendarKeyboardShortcuts";
 export { usePreventDevToolsShortcuts } from "./usePreventDevToolsShortcuts";
 export { useMemos } from "./useMemos";
+export { useMemoWindow } from "./useMemoWindow";
