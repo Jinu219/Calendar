@@ -19,6 +19,9 @@ export const useCalendarModal = ({
 }: UseCalendarModalParams) => {
   const [modal, setModal] = useState<ModalState>(MODAL_CLOSED);
 
+  // "all" (both kinds visible) still needs one concrete kind to create when adding.
+  const effectiveKind = addMode === "todo" ? "todo" : "schedule";
+
   const closeModal = useCallback(() => {
     setModal(MODAL_CLOSED);
   }, []);
@@ -34,16 +37,17 @@ export const useCalendarModal = ({
       allDay: true,
       startTime: "09:00",
       endTime: "10:00",
-      mode: addMode,
+      mode: effectiveKind,
     });
-  }, [setSelectedDate, addMode]);
+  }, [setSelectedDate, effectiveKind]);
 
   const handleDateClick = useCallback((dateStr: string) => {
     setSelectedDate(dateStr);
 
     // In todo mode, a click is the primary way to add a task for that day.
-    // In schedule mode, a click only selects the date (use the + button or a
-    // week-view time drag to add a timed event) so browsing stays lightweight.
+    // Otherwise a click only selects the date (use the + button or a
+    // week/month drag to add a timed or multi-day event) so browsing stays
+    // lightweight.
     if (addMode === "todo") {
       setModal({
         open: true,
@@ -58,20 +62,24 @@ export const useCalendarModal = ({
     }
   }, [setSelectedDate, addMode]);
 
-  const handleSelect = useCallback((date: string, time: { start: string; end: string }) => {
-    setSelectedDate(date);
+  const handleSelect = useCallback((
+    startDate: string,
+    endDate: string,
+    time?: { start: string; end: string }
+  ) => {
+    setSelectedDate(startDate);
 
-    // Dragging a time range only makes sense for timed events.
-    if (addMode !== "schedule") return;
+    // Dragging a range only makes sense for timed/multi-day events.
+    if (addMode === "todo") return;
 
     setModal({
       open: true,
-      date,
-      startDate: date,
-      endDate: date,
-      allDay: false,
-      startTime: time.start,
-      endTime: time.end,
+      date: startDate,
+      startDate,
+      endDate,
+      allDay: !time,
+      startTime: time?.start ?? "09:00",
+      endTime: time?.end ?? "10:00",
       mode: "schedule",
     });
   }, [setSelectedDate, addMode]);
@@ -88,6 +96,7 @@ export const useCalendarModal = ({
       endDate: data.endDate || data.startDate || baseDate,
       repeat: data.repeat,
       repeatEndDate: data.repeatEndDate || undefined,
+      kind: data.kind,
     });
 
     setSelectedDate(baseDate);

@@ -115,6 +115,12 @@ export async function fetchHolidays(year: number): Promise<Record<string, string
     for (const item of data) {
       if (!item.date) continue;
 
+      // Our own Korean-law substitute-holiday computation is more reliable than
+      // the API for this specific nuance (nager.at sometimes reports a
+      // substitute date under the same unmarked name as the original holiday,
+      // e.g. plain "개천절" on both dates) — don't let it clobber our label.
+      if (holidays[item.date]?.includes("대체공휴일")) continue;
+
       const rawName = item.localName || item.globalName;
       const isSubstitute = /대체|alternative|substitute/i.test(rawName);
 

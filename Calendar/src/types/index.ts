@@ -7,9 +7,11 @@ export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm" | "mono";
 export type DayNumPos = "left" | "right";
 export type TodayStyle = "highlight" | "glow" | "elevated" | "border";
 export type WindowLevel = "bottom" | "top";
-export type CalendarViewType = "dayGridMonth" | "timeGridWeek";
-/** Which kind of item the calendar's click/drag interactions create. */
-export type AddMode = "schedule" | "todo";
+export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeline";
+/** Which kind of item a todo is, or that the calendar's click/drag creates. */
+export type ItemKind = "schedule" | "todo";
+/** The title bar's kind filter: a single kind, or "all" to show both. */
+export type AddMode = ItemKind | "all";
 
 export interface AddTodoOptions {
   color?: string;
@@ -21,6 +23,7 @@ export interface AddTodoOptions {
   endDate?: string;
   repeat?: RepeatType;
   repeatEndDate?: string;
+  kind?: ItemKind;
 }
 
 export interface Todo {
@@ -40,6 +43,9 @@ export interface Todo {
   sortOrder: number;
   /** Occurrence start dates (YYYY-MM-DD) skipped for a recurring todo. */
   exceptions?: string[];
+  /** Whether this was added as a timed "schedule" item or a plain "todo". Missing on
+   *  data saved before this existed; treat as "schedule" in that case. */
+  kind?: ItemKind;
 }
 
 export interface Settings {
@@ -72,7 +78,7 @@ export interface ModalState {
   startTime: string;
   endTime: string;
   allDay: boolean;
-  mode: AddMode;
+  mode: ItemKind;
 }
 
 export interface EventFormData {
@@ -86,6 +92,7 @@ export interface EventFormData {
   color: string;
   repeat: RepeatType;
   repeatEndDate: string;
+  kind: ItemKind;
 }
 
 export interface HolidayApiItem {

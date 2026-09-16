@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useEffect, useState } from "react";
-import type { AddMode, EventFormData, ModalState, RepeatType } from "../types";
+import type { EventFormData, ItemKind, ModalState, RepeatType } from "../types";
 import { TODO_COLORS } from "../constants";
 import { getLocalToday } from "../utils";
 
@@ -18,7 +18,8 @@ const getDefaultModalDate = () => getLocalToday();
 
 const getDefaultFormData = (initialData?: ModalState): EventFormData => {
   const today = getDefaultModalDate();
-  const isTodoMode = (initialData?.mode ?? "schedule") === "todo";
+  const mode = initialData?.mode ?? "schedule";
+  const isTodoMode = mode === "todo";
 
   return {
     title: "",
@@ -31,6 +32,7 @@ const getDefaultFormData = (initialData?: ModalState): EventFormData => {
     color: TODO_COLORS[0],
     repeat: "none",
     repeatEndDate: "",
+    kind: mode,
   };
 };
 
@@ -50,7 +52,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   const [color, setColor] = useState<string>(TODO_COLORS[0]);
   const [repeat, setRepeat] = useState<RepeatType>("none");
   const [repeatEndDate, setRepeatEndDate] = useState("");
-  const [mode, setMode] = useState<AddMode>("schedule");
+  const [mode, setMode] = useState<ItemKind>("schedule");
 
   const resetForm = (data?: ModalState) => {
     const defaults = getDefaultFormData(data);
@@ -104,6 +106,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
       color,
       repeat,
       repeatEndDate,
+      kind: mode,
     });
 
     resetForm();

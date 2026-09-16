@@ -104,6 +104,7 @@ export const useCalendarKeyboardShortcuts = ({
             todoTime: original.todoTime,
             startTime: original.startTime,
             endTime: original.endTime,
+            kind: original.kind,
             startDate: selectedDate,
             endDate: fmtDate(addDays(parseLocalDate(selectedDate), spanDays)),
             repeat: original.repeat,

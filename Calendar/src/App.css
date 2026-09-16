@@ -370,20 +370,7 @@ html, body, #root {
 /* ════════════════════════════════════════════
    Calendar
    ════════════════════════════════════════════ */
-.calendar-wrap { flex:1; min-width:0;  border-radius:var(--radius-md); position: relative; margin-top: 20px; }
-
-.calendar-custom-title {
-  position: absolute;
-  top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  z-index: 100;
-  pointer-events: none;
-  padding: 8px 16px;
-}
+.calendar-wrap { flex:1; min-width:0;  border-radius:var(--radius-md); position: relative; }
 
 .edit-mode-badge {
   position:absolute; top:6px; left:50%; transform:translateX(-50%);
@@ -585,9 +572,17 @@ html, body, #root {
 .fc .fc-event {
   border:none !important; border-radius:4px !important;
   font-size:10px !important; font-weight:500 !important;
-  padding:1px 4px !important; cursor:pointer;
+  padding:0px 3px !important; margin:1px 2px !important; cursor:pointer;
   transition:transform .1s, opacity .1s;
 }
+.fc .fc-event-main-frame { padding:0 !important; margin:0 !important; min-width:0; }
+.fc .fc-event-time {
+  padding:0 !important; margin:0 3px 0 0 !important;
+  flex-shrink:0; white-space:nowrap;
+}
+.fc .fc-event-title-container { padding:0 !important; margin:0 !important; min-width:0; }
+.fc .fc-event-title { padding:0 !important; margin:0 !important; }
+.fc .fc-daygrid-event-dot { display:none; }
 
 /* Limit events in day grid to prevent cell expansion */
 /* .fc .fc-daygrid-day-events {
@@ -1985,4 +1980,68 @@ html, body, #root {
 
 .memo-window-drag-handle:active {
   cursor: grabbing !important;
+}
+
+/* ════════════════════════════════════════════
+   Timeline view (horizontal Gantt-style)
+   ════════════════════════════════════════════ */
+.timeline-view {
+  flex: 1; min-width: 0; border-radius: var(--radius-md);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+.timeline-scroll { flex: 1; overflow: auto; }
+
+.timeline-header {
+  display: grid; position: sticky; top: 0; z-index: 2;
+  background: var(--glass-bg); backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.timeline-day-header {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 6px 2px; border: none; border-left: 1px solid color-mix(in srgb, var(--glass-border) 60%, transparent);
+  background: transparent; cursor: pointer; font-family: var(--font);
+  transition: background .15s;
+}
+.timeline-day-header:hover { background: rgba(255,255,255,.22); }
+.timeline-day-header.selected { background: color-mix(in srgb, var(--mid) 30%, transparent); }
+.timeline-day-header.sunday .timeline-weekday,
+.timeline-day-header.sunday .timeline-day-number { color: #ef4444; }
+.timeline-day-header.saturday .timeline-weekday,
+.timeline-day-header.saturday .timeline-day-number { color: #3b82f6; }
+
+.timeline-weekday { font-size: 9px; color: var(--text-secondary); }
+.timeline-day-number { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.timeline-day-number.today-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--mid), var(--accent)); color: #fff;
+}
+
+.timeline-body { position: relative; padding: 6px 0; }
+
+.timeline-row { display: grid; height: 24px; align-items: center; }
+
+.timeline-bar {
+  grid-row: 1; height: 18px; min-width: 18px; border: none; border-radius: 9px;
+  padding: 0 8px; margin: 0 1px; cursor: pointer;
+  display: flex; align-items: center; justify-content: flex-start;
+  font-family: var(--font); font-size: 10px; font-weight: 600; color: #1a1a2e;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+  transition: transform .1s, opacity .1s;
+  position: relative; z-index: 1;
+}
+.timeline-bar:hover { transform: translateY(-1px); opacity: .88; z-index: 2; }
+.timeline-bar.done { opacity: .5; }
+.timeline-bar.done .timeline-bar-title { text-decoration: line-through; }
+
+/* A bar too narrow for its own title (e.g. a 1-day item) lets the label spill
+   past its right edge instead of hiding it — the rest of that row is empty. */
+.timeline-bar-title {
+  white-space: nowrap; overflow: visible;
+}
+
+.timeline-empty {
+  text-align: center; color: var(--text-secondary); font-size: 12px; padding: 30px 0;
 }

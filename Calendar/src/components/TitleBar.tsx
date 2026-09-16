@@ -80,7 +80,7 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
       </div>
 
       <div className="titlebar-right">
-        <div className="view-switch" title="달력에서 클릭·드래그했을 때 무엇을 추가할지 정합니다">
+        <div className="view-switch" title="무엇을 보고, 클릭·드래그했을 때 무엇을 추가할지 정합니다">
           <button
             className={addMode === "schedule" ? "active" : ""}
             onClick={() => onAddModeChange("schedule")}
@@ -93,6 +93,13 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
             onClick={() => onAddModeChange("todo")}
           >
             할일
+          </button>
+
+          <button
+            className={addMode === "all" ? "active" : ""}
+            onClick={() => onAddModeChange("all")}
+          >
+            전체
           </button>
         </div>
 
@@ -109,6 +116,13 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
             onClick={() => onViewChange("timeGridWeek")}
           >
             주간
+          </button>
+
+          <button
+            className={view === "timeline" ? "active" : ""}
+            onClick={() => onViewChange("timeline")}
+          >
+            타임라인
           </button>
         </div>
 

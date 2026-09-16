@@ -25,19 +25,18 @@ import {
   fmtDate,
   getLocalToday,
   getLunarDateString,
-  getWeekNumber,
   parseLocalDate,
 } from "../utils";
 
 interface CalendarViewProps {
-  view: CalendarViewType;
+  view: Exclude<CalendarViewType, "timeline">;
   events: EventInput[];
   holidays: Record<string, string>;
   settings: Settings;
   selectedDate: string;
   moonPhase: MoonPhase;
   onDateClick: (dateStr: string, allDay: boolean, time?: { start: string; end: string }) => void;
-  onSelect: (date: string, time: { start: string; end: string }) => void;
+  onSelect: (startDate: string, endDate: string, time?: { start: string; end: string }) => void;
   onEventDrop: (todoId: string, newDate: string, newTime?: string) => void;
   onEventClick: (todoId: string, date: string) => void;
   onEventSelectionChange: (todoId: string, additive: boolean) => void;
@@ -70,7 +69,6 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   calendarMode,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
-  const [calendarTitle, setCalendarTitle] = React.useState("");
 
   useEffect(() => {
     const api = calendarRef.current?.getApi() ?? null;
@@ -97,9 +95,19 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   }, [onDateClick]);
 
   const handleSelect = useCallback((info: DateSelectArg) => {
-    if (info.view.type !== "timeGridWeek") return;
-    const d = info.startStr.slice(0, 10);
-    onSelect(d, { start: info.startStr.slice(11, 16), end: info.endStr.slice(11, 16) });
+    const startDate = info.startStr.slice(0, 10);
+
+    if (info.view.type === "timeGridWeek") {
+      onSelect(startDate, startDate, {
+        start: info.startStr.slice(11, 16),
+        end: info.endStr.slice(11, 16),
+      });
+    } else {
+      // Month view selections are whole days with an exclusive end date.
+      const endDate = fmtDate(addDays(parseLocalDate(info.endStr.slice(0, 10)), -1));
+      onSelect(startDate, endDate < startDate ? startDate : endDate);
+    }
+
     calendarRef.current?.getApi().unselect();
   }, [onSelect]);
 
@@ -167,22 +175,6 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
 
   const handleDatesSet = (info: DatesSetArg) => {
     onVisibleRangeChange(info.start, info.end);
-
-    if (info.view.type === "timeGridWeek") {
-      const start = info.view.currentStart;
-      const month = start.getMonth() + 1;
-      const week = getWeekNumber(start);
-      const title = `${month}월 ${week}주차`;
-      setCalendarTitle(title);
-    } else if (info.view.type === "dayGridMonth") {
-      const start = info.view.currentStart;
-      const year = start.getFullYear();
-      const month = start.getMonth() + 1;
-      const title = `${year}년 ${month}월`;
-      setCalendarTitle(title);
-    } else {
-      setCalendarTitle("");
-    }
   };
 
   const dayCellClassNames = (arg: DayCellContentArg) => {
@@ -223,8 +215,6 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
           ✏ 편집 모드 — 경계 드래그로 패널 너비 조절
         </div>
       )}
-      {/* Custom title display */}
-      <div className="calendar-custom-title">{calendarTitle || ' '}</div>
       <FullCalendar
         ref={calendarRef}
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -238,12 +228,14 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
         slotMinTime="09:00:00"
         slotMaxTime="23:00:00"
         slotLabelFormat={{ hour: "2-digit", minute: "2-digit", hour12: false }}
+        eventTimeFormat={{ hour: "2-digit", minute: "2-digit", hour12: !settings.use24Hour, meridiem: false }}
         slotDuration="00:30:00"
         allDaySlot={true}
         allDayText=""
         nowIndicator={true}
-        selectable={view === "timeGridWeek" && calendarMode === "schedule"}
+        selectable={calendarMode !== "todo"}
         selectMirror={true}
+        selectMinDistance={8}
         events={events}
         showNonCurrentDates={true}
         fixedWeekCount={settings.showOverflow}

@@ -26,6 +26,7 @@ import {
 import {
   TitleBar,
   CalendarView,
+  TimelineView,
   TodoPanel,
   SettingsDrawer,
   AddEventModal,
@@ -50,6 +51,7 @@ export const CalendarPage: React.FC = () => {
 
   const [view, setView] = useState<CalendarViewType>("dayGridMonth");
   const [addMode, setAddMode] = useState<AddMode>("schedule");
+  const [timelineAnchor, setTimelineAnchor] = useState<string>(() => getLocalToday());
 
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     getLocalToday()
@@ -111,9 +113,16 @@ export const CalendarPage: React.FC = () => {
 
   const editMode = settings.editMode;
 
+  // Filtered by the schedule/todo/all title-bar toggle for display. Mutation
+  // hooks (useTodos, reminders) always operate on the full, unfiltered list.
+  const visibleTodos = useMemo(
+    () => addMode === "all" ? todos : todos.filter(t => (t.kind ?? "schedule") === addMode),
+    [todos, addMode]
+  );
+
   const calendarEvents = useMemo(
-    () => expandTodos(todos, holidays, visibleRange.start, visibleRange.end),
-    [todos, holidays, visibleRange]
+    () => expandTodos(visibleTodos, holidays, visibleRange.start, visibleRange.end),
+    [visibleTodos, holidays, visibleRange]
   );
 
   // ───────────────────────────────────────────────────────
@@ -174,7 +183,7 @@ export const CalendarPage: React.FC = () => {
   }, [canRedo, redo]);
 
   useCalendarKeyboardShortcuts({
-    todos,
+    todos: visibleTodos,
     selectedDate,
     addTodo,
     deleteTodo,
@@ -335,9 +344,27 @@ export const CalendarPage: React.FC = () => {
       <TitleBar
         view={view}
         onViewChange={handleViewChange}
-        onPrevious={() => calendarApi?.prev()}
-        onNext={() => calendarApi?.next()}
-        onToday={() => calendarApi?.today()}
+        onPrevious={() => {
+          if (view === "timeline") {
+            setTimelineAnchor(d => fmtDate(addDays(parseLocalDate(d), -7)));
+          } else {
+            calendarApi?.prev();
+          }
+        }}
+        onNext={() => {
+          if (view === "timeline") {
+            setTimelineAnchor(d => fmtDate(addDays(parseLocalDate(d), 7)));
+          } else {
+            calendarApi?.next();
+          }
+        }}
+        onToday={() => {
+          if (view === "timeline") {
+            setTimelineAnchor(getLocalToday());
+          } else {
+            calendarApi?.today();
+          }
+        }}
         settingsOpen={settingsOpen}
         onSettingsToggle={toggleSettingsDrawer}
         editMode={editMode}
@@ -352,24 +379,34 @@ export const CalendarPage: React.FC = () => {
           className="app-body"
           style={{ userSelect: isResizing ? "none" : undefined }}
         >
-          <CalendarView
-            view={view}
-            events={calendarEvents}
-            holidays={holidays}
-            settings={settings}
-            selectedDate={selectedDate}
-            moonPhase={moonPhase}
-            onDateClick={handleDateClick}
-            onSelect={handleSelect}
-            onEventDrop={handleEventDrop}
-            onEventClick={handleEventClick}
-            onEventSelectionChange={handleEventSelectionChange}
-            onCalendarApiReady={setCalendarApi}
-            onVisibleRangeChange={handleVisibleRangeChange}
-            onEventResize={handleEventResize}
-            editMode={editMode}
-            calendarMode={addMode}
-          />
+          {view === "timeline" ? (
+            <TimelineView
+              todos={visibleTodos}
+              anchorDate={timelineAnchor}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              onEditTodo={handleEditTodo}
+            />
+          ) : (
+            <CalendarView
+              view={view}
+              events={calendarEvents}
+              holidays={holidays}
+              settings={settings}
+              selectedDate={selectedDate}
+              moonPhase={moonPhase}
+              onDateClick={handleDateClick}
+              onSelect={handleSelect}
+              onEventDrop={handleEventDrop}
+              onEventClick={handleEventClick}
+              onEventSelectionChange={handleEventSelectionChange}
+              onCalendarApiReady={setCalendarApi}
+              onVisibleRangeChange={handleVisibleRangeChange}
+              onEventResize={handleEventResize}
+              editMode={editMode}
+              calendarMode={addMode}
+            />
+          )}
 
           <div
             className={`resize-handle ${editMode ? "visible" : ""} ${
@@ -381,7 +418,7 @@ export const CalendarPage: React.FC = () => {
 
           <TodoPanel
             selectedDate={selectedDate}
-            todos={todos}
+            todos={visibleTodos}
             settings={settings}
             addMode={addMode}
             onOpenAddModal={handleOpenAddTodoModal}

@@ -41,6 +41,7 @@ const loadTodos = (): Todo[] => {
       todoTime: todo.todoTime,
       repeatEndDate: todo.repeatEndDate,
       exceptions: Array.isArray(todo.exceptions) ? todo.exceptions : undefined,
+      kind: todo.kind === "todo" ? "todo" : "schedule",
     }));
 };
 
@@ -145,6 +146,7 @@ export function useTodos() {
           startDate: options?.startDate,
           endDate: options?.endDate,
           repeatEndDate: options?.repeatEndDate,
+          kind: options?.kind ?? "schedule",
           sortOrder: maxOrder + 1,
         },
       ];
