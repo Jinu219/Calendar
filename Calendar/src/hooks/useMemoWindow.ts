@@ -49,7 +49,7 @@ export const useMemoWindow = () => {
       const position = await getMemoWindowPosition();
       const memoWindow = new WebviewWindow(MEMO_WINDOW_LABEL, {
         url: "/?window=memo",
-        title: "CWA Memo",
+        title: "Calendar Memo",
         width: MEMO_WINDOW_WIDTH,
         height: MEMO_WINDOW_HEIGHT,
         x: position.x,

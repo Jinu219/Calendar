@@ -2,7 +2,7 @@
 
 ## 제품
 
-CWA는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 닫을 때 종료하지 않고 트레이로 숨기지만, 동적으로 생성한 메모창은 닫을 때 반드시 파괴되어 창 라벨을 반환해야 한다.
+Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 닫을 때 종료하지 않고 트레이로 숨기지만, 동적으로 생성한 메모창은 닫을 때 반드시 파괴되어 창 라벨을 반환해야 한다.
 
 ## 기술 구성
 
@@ -13,11 +13,11 @@ CWA는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 닫을 
 
 ## 코드 책임
 
-- `CWA/src/pages/CalendarPage.tsx`: 메인 기능 조합만 담당한다.
-- `CWA/src/components`: 표현과 사용자 입력을 담당한다.
-- `CWA/src/hooks`: 저장 상태 및 Tauri 창과 연결되는 부수 효과를 담당한다.
-- `CWA/src/utils`: React와 무관한 날짜·일정·공휴일 로직을 담당한다.
-- `CWA/src-tauri/src/lib.rs`: Windows 네이티브 창 정책과 트레이를 담당한다.
+- `Calendar/src/pages/CalendarPage.tsx`: 메인 기능 조합만 담당한다.
+- `Calendar/src/components`: 표현과 사용자 입력을 담당한다.
+- `Calendar/src/hooks`: 저장 상태 및 Tauri 창과 연결되는 부수 효과를 담당한다.
+- `Calendar/src/utils`: React와 무관한 날짜·일정·공휴일 로직을 담당한다.
+- `Calendar/src-tauri/src/lib.rs`: Windows 네이티브 창 정책과 트레이를 담당한다.
 
 ## 유지해야 할 불변 조건
 
@@ -33,7 +33,7 @@ CWA는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 닫을 
 
 ## 검증 기준
 
-변경 후 `CWA`에서 `npm run check`를 실행한다. 창 동작 변경은 가능하면 `npm run tauri dev`에서 다음을 수동 확인한다.
+변경 후 `Calendar`에서 `npm run check`를 실행한다. 창 동작 변경은 가능하면 `npm run tauri dev`에서 다음을 수동 확인한다.
 
 - 메인 창 닫기 → 트레이로 숨김
 - 메모창 닫기 → 실제 파괴 후 같은 슬롯 재사용

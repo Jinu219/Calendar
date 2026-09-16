@@ -1,12 +1,12 @@
 [package]
-name = "cwa"
+name = "calendar"
 version = "0.1.0"
-description = "CWA Calendar Widget"
+description = "Calendar Widget"
 authors = []
 edition = "2021"
 
 [lib]
-name = "cwa_lib"
+name = "calendar_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

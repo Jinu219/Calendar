@@ -23,7 +23,7 @@ Windows 바탕화면에서 사용하는 캘린더·할 일·메모 위젯입니�
 - WebView2 Runtime
 
 ```powershell
-cd CWA
+cd Calendar
 npm install
 npm run tauri dev
 ```
@@ -33,7 +33,7 @@ PowerShell 실행 정책이 `npm.ps1`을 막는 환경에서는 `npm.cmd`를 사
 ## 검증과 빌드
 
 ```powershell
-cd CWA
+cd Calendar
 npm run typecheck
 npm run build
 npm run check:rust
@@ -46,7 +46,7 @@ npm run tauri build
 ## 구조
 
 ```text
-CWA/
+Calendar/
 ├── src/
 │   ├── components/   # 캘린더, 할 일, 설정, 메모 UI
 │   ├── hooks/        # 상태, 저장소, 창 동작

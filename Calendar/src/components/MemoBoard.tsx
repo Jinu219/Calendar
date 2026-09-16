@@ -115,7 +115,7 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
 
     const detachedWindow = new WebviewWindow(label, {
       url: `/?window=memo&detached=true&memoId=${encodeURIComponent(targetMemoId)}`,
-      title: "CWA Memo",
+      title: "Calendar Memo",
       width: DETACHED_MEMO_WIDTH,
       height: DETACHED_MEMO_HEIGHT,
       x: safeX,

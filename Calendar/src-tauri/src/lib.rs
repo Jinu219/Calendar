@@ -199,7 +199,7 @@ fn configure_tray(app: &mut tauri::App) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("main_tray")
         .icon(icon)
-        .tooltip("CWA Calendar")
+        .tooltip("Calendar")
         .menu(&menu)
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id().as_ref() {

@@ -35,7 +35,7 @@ export function useBackup() {
     try {
       const path = await save({
         title: "데이터 백업 내보내기",
-        defaultPath: `cwa-backup-${new Date().toISOString().slice(0, 10)}.json`,
+        defaultPath: `calendar-backup-${new Date().toISOString().slice(0, 10)}.json`,
         filters: [{ name: "JSON", extensions: ["json"] }],
       });
 
