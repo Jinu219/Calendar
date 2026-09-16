@@ -897,6 +897,14 @@ html, body, #root {
   background: rgba(255,255,255,.28);
 }
 
+.settings-drawer .edit-mode-btn:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.btn-row { display:flex; gap:8px; }
+.btn-row .edit-mode-btn { width:auto; flex:1; }
+
 .settings-drawer .edit-mode-btn.on,
 .settings-drawer .edit-mode-btn.active {
   background: linear-gradient(135deg,var(--mid),var(--accent));
@@ -1133,6 +1141,24 @@ html, body, #root {
   transition:transform .12s, box-shadow .12s;
 }
 .modal-confirm:hover { transform:translateY(-1px); box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 45%,transparent); }
+
+.scope-modal .modal-box { width:300px; }
+.scope-modal-actions { justify-content:center; }
+.scope-modal-actions .modal-cancel,
+.scope-modal-actions .modal-confirm { flex:1; text-align:center; }
+
+/* ════════════════════════════════════════════
+   Toast
+   ════════════════════════════════════════════ */
+.toast-container {
+  position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+  z-index:2000; pointer-events:none; animation:fadeIn .15s;
+}
+.toast-bubble {
+  padding:8px 16px; border-radius:999px; font-size:12px;
+  font-weight:600; color:var(--text-primary); white-space:nowrap;
+  box-shadow:0 6px 20px rgba(0,0,0,.18);
+}
 
 /* ════════════════════════════════════════════
    Global scrollbar

@@ -45,6 +45,10 @@ export const doesTodoOccurOnDate = (todo: Todo, dateStr: string): boolean => {
     return isDateInRange(dateStr, baseDate, endDate);
   }
 
+  if (todo.exceptions?.includes(dateStr)) {
+    return false;
+  }
+
   if (!isSameOrAfter(dateStr, baseDate)) {
     return false;
   }
@@ -131,6 +135,11 @@ export function expandTodos(
 
     const push = (d: Date) => {
       const occurrenceStartDate = fmtDate(d);
+
+      if (t.exceptions?.includes(occurrenceStartDate)) {
+        return;
+      }
+
       const occurrenceEndDate = fmtDate(addDays(d, spanDays));
 
       events.push({

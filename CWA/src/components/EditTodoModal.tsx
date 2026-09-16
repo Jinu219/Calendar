@@ -16,12 +16,14 @@ interface EditTodoModalProps {
   todo: Todo | null;
   onClose: () => void;
   onSave: (updatedTodo: Todo) => void;
+  scopeLabel?: string;
 }
 
 export const EditTodoModal: React.FC<EditTodoModalProps> = ({
   todo,
   onClose,
   onSave,
+  scopeLabel,
 }) => {
   const [formTodo, setFormTodo] = useState<Todo | null>(todo);
 
@@ -85,7 +87,7 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box glass-panel" onClick={e => e.stopPropagation()}>
         <div className="modal-hdr">
-          <span>✏ 일정 수정</span>
+          <span>✏ 일정 수정{scopeLabel ? ` · ${scopeLabel}` : ""}</span>
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 

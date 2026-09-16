@@ -83,7 +83,12 @@ export const DEFAULT_SETTINGS: Settings = {
   editMode: false,
   showOnTaskbar: false,
   windowLevel: "bottom",
+
+  remindersEnabled: true,
+  reminderMinutesBefore: 10,
 };
+
+export const REMINDER_LEAD_OPTIONS = [0, 5, 10, 30, 60] as const;
 
 export const MODAL_CLOSED = {
   open: false,

@@ -42,6 +42,10 @@ const loadSettings = (): Settings => {
     windowLevel,
     editMode: saved.editMode ?? DEFAULT_SETTINGS.editMode,
     showOnTaskbar: saved.showOnTaskbar ?? DEFAULT_SETTINGS.showOnTaskbar,
+    remindersEnabled: saved.remindersEnabled ?? DEFAULT_SETTINGS.remindersEnabled,
+    reminderMinutesBefore: typeof saved.reminderMinutesBefore === "number"
+      ? saved.reminderMinutesBefore
+      : DEFAULT_SETTINGS.reminderMinutesBefore,
   };
 };
 

@@ -244,6 +244,10 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec![]),
         ))
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
                 let _ = window.show();
@@ -271,6 +275,8 @@ pub fn run() {
             set_autostart_status,
             set_window_level,
             set_show_on_taskbar,
+            write_text_file,
+            read_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 앱 실행 실패");
@@ -327,6 +333,18 @@ fn set_show_on_taskbar(app: AppHandle, show: bool) -> bool {
     };
 
     window.set_skip_taskbar(!show).is_ok()
+}
+
+/// Write text to a path the user chose via a native save dialog.
+#[tauri::command]
+fn write_text_file(path: String, contents: String) -> Result<(), String> {
+    std::fs::write(path, contents).map_err(|err| err.to_string())
+}
+
+/// Read text from a path the user chose via a native open dialog.
+#[tauri::command]
+fn read_text_file(path: String) -> Result<String, String> {
+    std::fs::read_to_string(path).map_err(|err| err.to_string())
 }
 
 #[cfg(test)]

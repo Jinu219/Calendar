@@ -4,7 +4,8 @@
 
 import React from "react";
 import type { Settings, MoonPhase, DayNumPos, WindowLevel } from "../types";
-import { THEME_OPTIONS, TODAY_STYLES } from "../constants";
+import { THEME_OPTIONS, TODAY_STYLES, REMINDER_LEAD_OPTIONS } from "../constants";
+import type { UpdateStatus } from "../hooks/useAutoUpdate";
 
 
 interface SettingsDrawerProps {
@@ -19,6 +20,13 @@ interface SettingsDrawerProps {
   onFontSearchChange: (search: string) => void;
   moonPhase: MoonPhase;
   lunarDate: string;
+  onExportData: () => Promise<boolean>;
+  onImportData: () => Promise<boolean>;
+  isExporting: boolean;
+  isImporting: boolean;
+  updateStatus: UpdateStatus;
+  onCheckForUpdate: () => void;
+  onInstallUpdate: () => void;
 }
 
 export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
@@ -33,12 +41,47 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   onFontSearchChange,
   moonPhase,
   lunarDate,
+  onExportData,
+  onImportData,
+  isExporting,
+  isImporting,
+  updateStatus,
+  onCheckForUpdate,
+  onInstallUpdate,
 }) => {
   const handleReset = () => {
     if (window.confirm("설정을 초기화하시겠습니까?")) {
       onResetSettings();
     }
   };
+
+  const handleImportClick = () => {
+    if (
+      window.confirm(
+        "백업 파일을 가져오면 현재 일정·메모·설정이 모두 덮어써집니다. 계속할까요?"
+      )
+    ) {
+      void onImportData();
+    }
+  };
+
+  const updateStatusLabel = (() => {
+    switch (updateStatus.state) {
+      case "checking":
+        return "확인 중…";
+      case "up-to-date":
+        return "최신 버전입니다";
+      case "available":
+        return `새 버전 ${updateStatus.version} 발견`;
+      case "installing":
+        return "다운로드 및 설치 중…";
+      case "error":
+        return `확인 실패: ${updateStatus.message}`;
+      default:
+        return "";
+    }
+  })();
+
   const TOP_MODE_OPACITY = 0.16;
 
   const handleWindowLevelChange = (level: WindowLevel) => {
@@ -392,6 +435,116 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
               선택 날짜 음력: {lunarDate}
             </div>
           )}
+        </section>
+
+        {/* ─────────────────────────────────────────────
+            Reminders
+            ───────────────────────────────────────────── */}
+
+        <section className="sg">
+          <div className="sg-label">알림</div>
+
+          <div className="seg-ctrl">
+            <button
+              type="button"
+              className={`seg-btn ${settings.remindersEnabled ? "active" : ""}`}
+              onClick={() => onSetSetting("remindersEnabled", true)}
+            >
+              알림 ON
+            </button>
+
+            <button
+              type="button"
+              className={`seg-btn ${!settings.remindersEnabled ? "active" : ""}`}
+              onClick={() => onSetSetting("remindersEnabled", false)}
+            >
+              알림 OFF
+            </button>
+          </div>
+
+          {settings.remindersEnabled && (
+            <>
+              <div className="sg-label" style={{ marginTop: 8 }}>몇 분 전에 알릴까요</div>
+
+              <div className="seg-ctrl seg-2x2">
+                {REMINDER_LEAD_OPTIONS.map(minutes => (
+                  <button
+                    key={minutes}
+                    type="button"
+                    className={`seg-btn ${settings.reminderMinutesBefore === minutes ? "active" : ""}`}
+                    onClick={() => onSetSetting("reminderMinutesBefore", minutes)}
+                  >
+                    {minutes === 0 ? "정시" : `${minutes}분 전`}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          <p className="sg-hint">
+            시간이 지정된 일정과 할 일에 대해 Windows 알림을 보냅니다. 앱이 트레이에 있어도 동작합니다.
+          </p>
+        </section>
+
+        {/* ─────────────────────────────────────────────
+            Backup
+            ───────────────────────────────────────────── */}
+
+        <section className="sg">
+          <div className="sg-label">데이터 백업</div>
+
+          <div className="btn-row">
+            <button
+              type="button"
+              className="edit-mode-btn"
+              disabled={isExporting}
+              onClick={() => void onExportData()}
+            >
+              {isExporting ? "내보내는 중…" : "내보내기"}
+            </button>
+
+            <button
+              type="button"
+              className="edit-mode-btn"
+              disabled={isImporting}
+              onClick={handleImportClick}
+            >
+              {isImporting ? "가져오는 중…" : "가져오기"}
+            </button>
+          </div>
+
+          <p className="sg-hint">
+            일정, 메모, 설정을 하나의 JSON 파일로 내보내거나 복원합니다. PC를 옮기거나 앱을 재설치하기 전에 내보내기를 권장합니다.
+          </p>
+        </section>
+
+        {/* ─────────────────────────────────────────────
+            Update
+            ───────────────────────────────────────────── */}
+
+        <section className="sg">
+          <div className="sg-label">업데이트</div>
+
+          {updateStatus.state === "available" ? (
+            <button
+              type="button"
+              className="edit-mode-btn on"
+              onClick={onInstallUpdate}
+            >
+              업데이트 설치 후 재시작
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="edit-mode-btn"
+              disabled={updateStatus.state === "checking" || updateStatus.state === "installing"}
+              onClick={onCheckForUpdate}
+            >
+              업데이트 확인
+            </button>
+          )}
+
+          {updateStatusLabel && <p className="sg-hint">{updateStatusLabel}</p>}
         </section>
 
         {/* ─────────────────────────────────────────────

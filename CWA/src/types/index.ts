@@ -36,6 +36,8 @@ export interface Todo {
   repeat: RepeatType;
   repeatEndDate?: string;
   sortOrder: number;
+  /** Occurrence start dates (YYYY-MM-DD) skipped for a recurring todo. */
+  exceptions?: string[];
 }
 
 export interface Settings {
@@ -55,6 +57,9 @@ export interface Settings {
   editMode: boolean;
   showOnTaskbar: boolean;
   windowLevel: WindowLevel;
+
+  remindersEnabled: boolean;
+  reminderMinutesBefore: number;
 }
 
 export interface ModalState {

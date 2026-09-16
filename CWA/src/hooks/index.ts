@@ -15,3 +15,6 @@ export { useCalendarKeyboardShortcuts } from "./useCalendarKeyboardShortcuts";
 export { usePreventDevToolsShortcuts } from "./usePreventDevToolsShortcuts";
 export { useMemos } from "./useMemos";
 export { useMemoWindow } from "./useMemoWindow";
+export { useBackup } from "./useBackup";
+export { useReminders } from "./useReminders";
+export { useAutoUpdate } from "./useAutoUpdate";

@@ -18,6 +18,8 @@ interface UseCalendarKeyboardShortcutsParams {
   deleteTodo: (id: string) => void;
   selectedTodoIds: string[];
   clearSelection: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
 }
 
 export const useCalendarKeyboardShortcuts = ({
@@ -27,6 +29,8 @@ export const useCalendarKeyboardShortcuts = ({
   deleteTodo,
   selectedTodoIds,
   clearSelection,
+  onUndo,
+  onRedo,
 }: UseCalendarKeyboardShortcutsParams) => {
   const copiedTodoIds = useRef<string[]>([]);
 
@@ -48,6 +52,24 @@ export const useCalendarKeyboardShortcuts = ({
           selectedTodoIds.forEach(id => deleteTodo(id));
           clearSelection();
         }
+      }
+
+      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === "z") {
+        if (onUndo) {
+          e.preventDefault();
+          onUndo();
+        }
+        return;
+      }
+
+      if (
+        onRedo &&
+        ((e.ctrlKey && e.key.toLowerCase() === "y") ||
+          (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "z"))
+      ) {
+        e.preventDefault();
+        onRedo();
+        return;
       }
 
       if (e.ctrlKey && e.key.toLowerCase() === "c") {
@@ -100,6 +122,8 @@ export const useCalendarKeyboardShortcuts = ({
     addTodo,
     clearSelection,
     deleteTodo,
+    onRedo,
+    onUndo,
     selectedDate,
     selectedTodoIds,
     todos,

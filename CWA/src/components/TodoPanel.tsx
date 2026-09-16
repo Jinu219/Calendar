@@ -10,6 +10,7 @@ import {
   getTodoRepeatLabel,
   getTodosForDate,
 } from "../utils/todoUtils";
+import { RecurrenceScopeModal, type RecurrenceScope } from "./RecurrenceScopeModal";
 
 interface TodoPanelProps {
   selectedDate: string;
@@ -20,7 +21,8 @@ interface TodoPanelProps {
   onToggleMemo: () => void;
   onToggleDone: (id: string) => void;
   onDeleteTodo: (id: string) => void;
-  onEditTodo: (todo: Todo) => void;
+  onDeleteOccurrence: (id: string, occurrenceDate: string) => void;
+  onEditTodo: (todo: Todo, occurrenceDate?: string) => void;
   onMoveTodo: (fromId: string, toId: string) => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
@@ -35,14 +37,51 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   onToggleMemo,
   onToggleDone,
   onDeleteTodo,
+  onDeleteOccurrence,
   onEditTodo,
   onMoveTodo,
 }) => {
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
+  const [scopeAction, setScopeAction] = useState<{ type: "edit" | "delete"; todo: Todo } | null>(null);
 
   const selectedTodos = getTodosForDate(todos, selectedDate);
   const fmtSelectedDate = formatDateDisplayWithWeekday(selectedDate);
+
+  const handleEditClick = (todo: Todo) => {
+    if (todo.repeat !== "none") {
+      setScopeAction({ type: "edit", todo });
+      return;
+    }
+
+    onEditTodo(todo);
+  };
+
+  const handleDeleteClick = (todo: Todo) => {
+    if (todo.repeat !== "none") {
+      setScopeAction({ type: "delete", todo });
+      return;
+    }
+
+    onDeleteTodo(todo.id);
+  };
+
+  const handleScopeChoice = (scope: RecurrenceScope) => {
+    if (!scopeAction) return;
+    const { type, todo } = scopeAction;
+
+    if (type === "delete") {
+      if (scope === "this") {
+        onDeleteOccurrence(todo.id, selectedDate);
+      } else {
+        onDeleteTodo(todo.id);
+      }
+    } else {
+      onEditTodo(todo, scope === "this" ? selectedDate : undefined);
+    }
+
+    setScopeAction(null);
+  };
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, id: string) => {
     setDragId(id);
@@ -119,7 +158,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
               draggable={!isVirtualOccurrence}
               title={
                 isVirtualOccurrence
-                  ? "반복 일정입니다. 수정/삭제는 전체 반복 일정에 적용됩니다."
+                  ? "반복 일정입니다. 수정/삭제 시 이 날짜만 또는 전체를 선택할 수 있습니다."
                   : undefined
               }
               onDragStart={event => {
@@ -140,7 +179,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
               }}
               onContextMenu={event => {
                 event.preventDefault();
-                onEditTodo(todo);
+                handleEditClick(todo);
               }}
             >
               <span className="drag-handle">
@@ -174,7 +213,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
               <button
                 type="button"
                 className="edit-btn"
-                onClick={() => onEditTodo(todo)}
+                onClick={() => handleEditClick(todo)}
               >
                 ✏
               </button>
@@ -182,7 +221,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
               <button
                 type="button"
                 className="delete-btn"
-                onClick={() => onDeleteTodo(todo.id)}
+                onClick={() => handleDeleteClick(todo)}
               >
                 ×
               </button>
@@ -197,6 +236,13 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
           {selectedTodos.length}
         </div>
       )}
+
+      <RecurrenceScopeModal
+        open={scopeAction !== null}
+        actionLabel={scopeAction?.type === "delete" ? "삭제" : "수정"}
+        onChoose={handleScopeChoice}
+        onCancel={() => setScopeAction(null)}
+      />
     </div>
   );
 };

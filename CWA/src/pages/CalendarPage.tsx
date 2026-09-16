@@ -18,6 +18,9 @@ import {
   useCalendarKeyboardShortcuts,
   usePreventDevToolsShortcuts,
   useMemoWindow,
+  useBackup,
+  useReminders,
+  useAutoUpdate,
 } from "../hooks";
 
 import {
@@ -27,9 +30,17 @@ import {
   SettingsDrawer,
   AddEventModal,
   EditTodoModal,
+  Toast,
 } from "../components";
 
-import { expandTodos, getLocalToday } from "../utils";
+import {
+  expandTodos,
+  getLocalToday,
+  addDays,
+  differenceInCalendarDays,
+  fmtDate,
+  parseLocalDate,
+} from "../utils";
 import type { CalendarViewType, Todo } from "../types";
 
 export const CalendarPage: React.FC = () => {
@@ -45,7 +56,9 @@ export const CalendarPage: React.FC = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
+  const [editingOccurrenceDate, setEditingOccurrenceDate] = useState<string | null>(null);
   const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [calendarApi, setCalendarApi] = useState<CalendarApi | null>(null);
   const [visibleRange, setVisibleRange] = useState(() => {
     const now = new Date();
@@ -68,6 +81,12 @@ export const CalendarPage: React.FC = () => {
     deleteTodo,
     moveTodo,
     updateTodoDate,
+    deleteOccurrence,
+    editOccurrence,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
   } = useTodos();
 
   const {
@@ -114,6 +133,11 @@ export const CalendarPage: React.FC = () => {
 
   const { memoOpen, toggleMemoWindow } = useMemoWindow();
 
+  const { exportData, importData, isExporting, isImporting } = useBackup();
+  const { status: updateStatus, checkForUpdate, installUpdate } = useAutoUpdate();
+
+  useReminders(todos, settings);
+
   const {
     modal,
     closeModal,
@@ -135,6 +159,18 @@ export const CalendarPage: React.FC = () => {
     setTodoPanelWidth: width => setSetting("todoPanelWidth", width),
   });
 
+  const handleUndo = useCallback(() => {
+    if (!canUndo) return;
+    undo();
+    setToastMessage("실행 취소됨 (Ctrl+Z)");
+  }, [canUndo, undo]);
+
+  const handleRedo = useCallback(() => {
+    if (!canRedo) return;
+    redo();
+    setToastMessage("다시 실행됨 (Ctrl+Y)");
+  }, [canRedo, redo]);
+
   useCalendarKeyboardShortcuts({
     todos,
     selectedDate,
@@ -142,6 +178,8 @@ export const CalendarPage: React.FC = () => {
     deleteTodo,
     selectedTodoIds,
     clearSelection: clearTodoSelection,
+    onUndo: handleUndo,
+    onRedo: handleRedo,
   });
 
   usePreventDevToolsShortcuts();
@@ -225,14 +263,54 @@ export const CalendarPage: React.FC = () => {
 
   const closeEditTodoModal = useCallback(() => {
     setEditingTodo(null);
+    setEditingOccurrenceDate(null);
+  }, []);
+
+  const handleEditTodo = useCallback((todo: Todo, occurrenceDate?: string) => {
+    if (!occurrenceDate) {
+      setEditingTodo(todo);
+      setEditingOccurrenceDate(null);
+      return;
+    }
+
+    const currentStart = todo.startDate ?? todo.date;
+    const currentEnd = todo.endDate ?? currentStart;
+    const spanDays = Math.max(
+      0,
+      differenceInCalendarDays(parseLocalDate(currentStart), parseLocalDate(currentEnd))
+    );
+    const occurrenceEndDate = fmtDate(addDays(parseLocalDate(occurrenceDate), spanDays));
+
+    setEditingTodo({
+      ...todo,
+      date: occurrenceDate,
+      startDate: occurrenceDate,
+      endDate: occurrenceEndDate,
+    });
+    setEditingOccurrenceDate(occurrenceDate);
   }, []);
 
   const handleSaveEditTodo = useCallback(
     (todo: Todo) => {
-      updateTodo(todo.id, todo);
+      if (editingOccurrenceDate) {
+        editOccurrence(todo.id, editingOccurrenceDate, {
+          title: todo.title,
+          color: todo.color,
+          allDay: todo.allDay,
+          startTime: todo.startTime,
+          endTime: todo.endTime,
+          date: todo.date,
+          startDate: todo.startDate,
+          endDate: todo.endDate,
+        });
+      } else {
+        updateTodo(todo.id, todo);
+      }
+
       setEditingTodo(null);
+      setEditingOccurrenceDate(null);
     },
-    [updateTodo]
+    [editOccurrence, editingOccurrenceDate, updateTodo]
   );
 
   const handleOpenAddTodoModal = useCallback(() => {
@@ -301,7 +379,8 @@ export const CalendarPage: React.FC = () => {
             onToggleMemo={toggleMemoWindow}
             onToggleDone={toggleDone}
             onDeleteTodo={deleteTodo}
-            onEditTodo={setEditingTodo}
+            onDeleteOccurrence={deleteOccurrence}
+            onEditTodo={handleEditTodo}
             onMoveTodo={moveTodo}
           />
         </div>
@@ -319,6 +398,13 @@ export const CalendarPage: React.FC = () => {
         onFontSearchChange={setFontSearch}
         moonPhase={moonPhase}
         lunarDate={lunarDate}
+        onExportData={exportData}
+        onImportData={importData}
+        isExporting={isExporting}
+        isImporting={isImporting}
+        updateStatus={updateStatus}
+        onCheckForUpdate={checkForUpdate}
+        onInstallUpdate={installUpdate}
       />
 
       <AddEventModal
@@ -332,7 +418,10 @@ export const CalendarPage: React.FC = () => {
         todo={editingTodo}
         onClose={closeEditTodoModal}
         onSave={handleSaveEditTodo}
+        scopeLabel={editingOccurrenceDate ? "이 날짜만" : undefined}
       />
+
+      <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
     </div>
   );
 };

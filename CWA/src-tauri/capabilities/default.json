@@ -27,6 +27,11 @@
     "core:window:allow-show",
     "core:window:allow-set-position",
     "core:window:allow-start-dragging",
-    "core:window:allow-is-visible"
+    "core:window:allow-is-visible",
+
+    "dialog:default",
+    "notification:default",
+    "updater:default",
+    "process:default"
   ]
 }
