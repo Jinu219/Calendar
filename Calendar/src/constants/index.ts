@@ -4,6 +4,7 @@
 
 import type {
   ColorTheme,
+  ModalState,
   Settings,
   Theme,
   ThemeOption,
@@ -16,11 +17,12 @@ export const TODO_COLORS = [
 ] as const;
 
 export const THEMES: Record<ColorTheme, Theme> = {
-  pink:     { accent:"#ec4899", mid:"#f9a8d4", border:"rgba(255,200,220,.38)", text:"#2d1520" },
-  lavender: { accent:"#8b5cf6", mid:"#c4b5fd", border:"rgba(196,181,253,.38)", text:"#1e1030" },
-  sky:      { accent:"#0ea5e9", mid:"#7dd3fc", border:"rgba(125,211,252,.38)", text:"#0c2d3e" },
-  mint:     { accent:"#10b981", mid:"#6ee7b7", border:"rgba(110,231,183,.38)", text:"#0d2a1e" },
-  warm:     { accent:"#f59e0b", mid:"#fcd34d", border:"rgba(252,211,77,.38)",  text:"#2a1a05" },
+  pink:     { accent:"#ec4899", mid:"#f9a8d4", border:"rgba(255,200,220,.38)", text:"#2d1520", bg:"255,245,248" },
+  lavender: { accent:"#8b5cf6", mid:"#c4b5fd", border:"rgba(196,181,253,.38)", text:"#1e1030", bg:"255,245,248" },
+  sky:      { accent:"#0ea5e9", mid:"#7dd3fc", border:"rgba(125,211,252,.38)", text:"#0c2d3e", bg:"255,245,248" },
+  mint:     { accent:"#10b981", mid:"#6ee7b7", border:"rgba(110,231,183,.38)", text:"#0d2a1e", bg:"255,245,248" },
+  warm:     { accent:"#f59e0b", mid:"#fcd34d", border:"rgba(252,211,77,.38)",  text:"#2a1a05", bg:"255,245,248" },
+  mono:     { accent:"#4b5563", mid:"#9ca3af", border:"rgba(148,163,184,.38)", text:"#18181b", bg:"228,228,231" },
 };
 
 export const THEME_OPTIONS: ThemeOption[] = [
@@ -29,6 +31,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
   { key: "sky", label: "하늘", emoji: "🩵" },
   { key: "mint", label: "민트", emoji: "🌿" },
   { key: "warm", label: "황금", emoji: "✨" },
+  { key: "mono", label: "흑백", emoji: "⚫" },
 ];
 
 export const MEMOS_KEY = "cwa:memos";
@@ -90,7 +93,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export const REMINDER_LEAD_OPTIONS = [0, 5, 10, 30, 60] as const;
 
-export const MODAL_CLOSED = {
+export const MODAL_CLOSED: ModalState = {
   open: false,
   date: "",
   startDate: "",
@@ -98,4 +101,5 @@ export const MODAL_CLOSED = {
   startTime: "09:00",
   endTime: "10:00",
   allDay: false,
+  mode: "schedule",
 };

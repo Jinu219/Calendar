@@ -227,11 +227,17 @@ export function expandTodos(
         title: ` ${name}`,
         date,
         allDay: true,
+        editable: false,
+        startEditable: false,
+        durationEditable: false,
         backgroundColor: "rgba(239,68,68,0.18)",
         borderColor: "transparent",
         textColor: "#dc2626",
         classNames: ["holiday-event"],
         display: "block",
+        extendedProps: {
+          isHoliday: true,
+        },
       });
     }
   }

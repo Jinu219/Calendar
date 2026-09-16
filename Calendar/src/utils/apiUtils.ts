@@ -1,4 +1,5 @@
 import type { HolidayApiItem, MoonPhase } from "../types";
+import { addDays, fmtDate, parseLocalDate } from "./dateUtils";
 
 const HOLIDAY_API_URL = "https://date.nager.at/api/v3/PublicHolidays";
 const SYNODIC_MONTH_DAYS = 29.53058867;
@@ -31,6 +32,34 @@ const addThreeDayHoliday = (
   holidays[dates[2]] = `${name} 다음날`;
 };
 
+const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6;
+};
+
+/**
+ * Korean substitute-holiday rule (대체공휴일): when every day of a holiday's range can
+ * fall on a weekend, the next date that is neither a weekend nor already a holiday
+ * becomes a substitute holiday. New Year's Day, Memorial Day, and Christmas are
+ * excluded by law, so they're simply never passed in here.
+ */
+const applySubstituteHoliday = (
+  holidays: Record<string, string>,
+  name: string,
+  dates: string[]
+) => {
+  const fallsOnWeekend = dates.some(d => isWeekend(parseLocalDate(d)));
+  if (!fallsOnWeekend) return;
+
+  let candidate = addDays(parseLocalDate(dates[dates.length - 1]), 1);
+
+  while (isWeekend(candidate) || holidays[fmtDate(candidate)]) {
+    candidate = addDays(candidate, 1);
+  }
+
+  holidays[fmtDate(candidate)] = `${name} 대체공휴일`;
+};
+
 const getFallbackHolidays = (year: number): Record<string, string> => {
   const holidays: Record<string, string> = {
     [`${year}-01-01`]: "신정",
@@ -45,6 +74,28 @@ const getFallbackHolidays = (year: number): Record<string, string> => {
 
   addThreeDayHoliday(holidays, LUNAR_NEW_YEAR_DATES[year], "설날");
   addThreeDayHoliday(holidays, CHUSEOK_DATES[year], "추석");
+
+  // 법정 대체공휴일 대상 공휴일만, 실제 달력상 날짜 순으로 정렬해 순차 적용
+  // (뒤에 처리되는 항목이 앞서 지정된 대체공휴일과 겹치지 않도록)
+  const substituteEligible: { name: string; dates: string[] }[] = [
+    { name: "삼일절", dates: [`${year}-03-01`] },
+    { name: "어린이날", dates: [`${year}-05-05`] },
+    { name: "광복절", dates: [`${year}-08-15`] },
+    { name: "개천절", dates: [`${year}-10-03`] },
+    { name: "한글날", dates: [`${year}-10-09`] },
+  ];
+
+  if (LUNAR_NEW_YEAR_DATES[year]) {
+    substituteEligible.push({ name: "설날", dates: LUNAR_NEW_YEAR_DATES[year] });
+  }
+
+  if (CHUSEOK_DATES[year]) {
+    substituteEligible.push({ name: "추석", dates: CHUSEOK_DATES[year] });
+  }
+
+  substituteEligible
+    .sort((a, b) => a.dates[0].localeCompare(b.dates[0]))
+    .forEach(({ name, dates }) => applySubstituteHoliday(holidays, name, dates));
 
   return holidays;
 };
@@ -62,9 +113,14 @@ export async function fetchHolidays(year: number): Promise<Record<string, string
     const data = await response.json() as HolidayApiItem[];
 
     for (const item of data) {
-      if (item.date) {
-        holidays[item.date] = item.localName || item.globalName;
-      }
+      if (!item.date) continue;
+
+      const rawName = item.localName || item.globalName;
+      const isSubstitute = /대체|alternative|substitute/i.test(rawName);
+
+      holidays[item.date] = isSubstitute && !rawName.includes("대체")
+        ? `${rawName} (대체공휴일)`
+        : rawName;
     }
   } catch (error) {
     console.warn("Holiday API failed; using fallback data.", error);

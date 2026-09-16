@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useState, DragEvent } from "react";
-import type { Todo, Settings } from "../types";
+import type { AddMode, Todo, Settings } from "../types";
 import { formatDateDisplayWithWeekday } from "../utils";
 import {
   getTodoTimeDisplay,
@@ -16,6 +16,7 @@ interface TodoPanelProps {
   selectedDate: string;
   todos: Todo[];
   settings: Settings;
+  addMode: AddMode;
   onOpenAddModal: () => void;
   memoOpen: boolean;
   onToggleMemo: () => void;
@@ -32,6 +33,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   selectedDate,
   todos,
   settings,
+  addMode,
   onOpenAddModal,
   memoOpen,
   onToggleMemo,
@@ -126,7 +128,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
           type="button"
           className="todo-panel-main-add-btn"
           onClick={onOpenAddModal}
-          title="일정 추가"
+          title={addMode === "todo" ? "할 일 추가" : "일정 추가"}
         >
           +
         </button>
@@ -181,6 +183,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
                 event.preventDefault();
                 handleEditClick(todo);
               }}
+              onClick={() => onToggleDone(todo.id)}
             >
               <span className="drag-handle">
                 {isVirtualOccurrence ? "↻" : "⠿"}
@@ -189,7 +192,10 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
               <button
                 type="button"
                 className="check-btn"
-                onClick={() => onToggleDone(todo.id)}
+                onClick={event => {
+                  event.stopPropagation();
+                  onToggleDone(todo.id);
+                }}
               >
                 {todo.done ? "✅" : ""}
               </button>
@@ -213,7 +219,10 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
               <button
                 type="button"
                 className="edit-btn"
-                onClick={() => handleEditClick(todo)}
+                onClick={event => {
+                  event.stopPropagation();
+                  handleEditClick(todo);
+                }}
               >
                 ✏
               </button>
@@ -221,7 +230,10 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
               <button
                 type="button"
                 className="delete-btn"
-                onClick={() => handleDeleteClick(todo)}
+                onClick={event => {
+                  event.stopPropagation();
+                  handleDeleteClick(todo);
+                }}
               >
                 ×
               </button>

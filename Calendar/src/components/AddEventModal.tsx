@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useEffect, useState } from "react";
-import type { EventFormData, ModalState, RepeatType } from "../types";
+import type { AddMode, EventFormData, ModalState, RepeatType } from "../types";
 import { TODO_COLORS } from "../constants";
 import { getLocalToday } from "../utils";
 
@@ -18,6 +18,7 @@ const getDefaultModalDate = () => getLocalToday();
 
 const getDefaultFormData = (initialData?: ModalState): EventFormData => {
   const today = getDefaultModalDate();
+  const isTodoMode = (initialData?.mode ?? "schedule") === "todo";
 
   return {
     title: "",
@@ -26,7 +27,7 @@ const getDefaultFormData = (initialData?: ModalState): EventFormData => {
     endDate: initialData?.endDate || initialData?.date || today,
     startTime: initialData?.startTime || "09:00",
     endTime: initialData?.endTime || "10:00",
-    allDay: initialData?.allDay ?? true,
+    allDay: isTodoMode ? true : initialData?.allDay ?? true,
     color: TODO_COLORS[0],
     repeat: "none",
     repeatEndDate: "",
@@ -49,6 +50,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
   const [color, setColor] = useState<string>(TODO_COLORS[0]);
   const [repeat, setRepeat] = useState<RepeatType>("none");
   const [repeatEndDate, setRepeatEndDate] = useState("");
+  const [mode, setMode] = useState<AddMode>("schedule");
 
   const resetForm = (data?: ModalState) => {
     const defaults = getDefaultFormData(data);
@@ -63,6 +65,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     setColor(defaults.color);
     setRepeat(defaults.repeat);
     setRepeatEndDate(defaults.repeatEndDate);
+    setMode(data?.mode ?? "schedule");
   };
 
   useEffect(() => {
@@ -88,15 +91,16 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
 
     const submitStartDate = startDate || date;
     const submitEndDate = endDate || submitStartDate;
+    const submitAllDay = mode === "todo" ? true : allDay;
 
     onSubmit({
       title: trimmedTitle,
       date: submitStartDate,
       startDate: submitStartDate,
       endDate: submitEndDate,
-      allDay,
-      startTime: allDay ? "09:00" : startTime,
-      endTime: allDay ? "10:00" : endTime,
+      allDay: submitAllDay,
+      startTime: submitAllDay ? "09:00" : startTime,
+      endTime: submitAllDay ? "10:00" : endTime,
       color,
       repeat,
       repeatEndDate,
@@ -122,7 +126,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
     <div className="modal-overlay" onClick={handleClose}>
       <div className="modal-box glass-panel" onClick={e => e.stopPropagation()}>
         <div className="modal-hdr">
-          <span>시간 일정 추가</span>
+          <span>{mode === "todo" ? "할 일 추가" : "시간 일정 추가"}</span>
           <button className="modal-close" onClick={handleClose}>✕</button>
         </div>
 
@@ -130,7 +134,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
           <div className="modal-date-preview">
             {startDate}
             {startDate !== endDate && ` ~ ${endDate}`}
-            {!allDay && ` ${startTime} ~ ${endTime}`}
+            {mode !== "todo" && !allDay && ` ${startTime} ~ ${endTime}`}
           </div>
 
           <input
@@ -154,7 +158,7 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             </label>
 
             <label className="time-lbl">
-              종료일
+              {mode === "todo" ? "마감일" : "종료일"}
               <input
                 type="date"
                 className="time-input"
@@ -165,38 +169,46 @@ export const AddEventModal: React.FC<AddEventModalProps> = ({
             </label>
           </div>
 
-          <div className="modal-times">
-            <label className="time-lbl">
-              시작
-              <input
-                type="time"
-                className="time-input"
-                value={startTime}
-                disabled={allDay}
-                onChange={e => setStartTime(e.target.value)}
-              />
-            </label>
+          {mode === "todo" && (
+            <p className="sg-hint" style={{ margin: 0 }}>
+              마감일까지 매일 할 일 목록과 달력에 계속 표시됩니다.
+            </p>
+          )}
 
-            <label className="time-lbl">
-              종료
-              <input
-                type="time"
-                className="time-input"
-                value={endTime}
-                disabled={allDay}
-                onChange={e => setEndTime(e.target.value)}
-              />
-            </label>
+          {mode !== "todo" && (
+            <div className="modal-times">
+              <label className="time-lbl">
+                시작
+                <input
+                  type="time"
+                  className="time-input"
+                  value={startTime}
+                  disabled={allDay}
+                  onChange={e => setStartTime(e.target.value)}
+                />
+              </label>
 
-            <label className="allday-lbl">
-              <input
-                type="checkbox"
-                checked={allDay}
-                onChange={e => setAllDay(e.target.checked)}
-              />
-              종일
-            </label>
-          </div>
+              <label className="time-lbl">
+                종료
+                <input
+                  type="time"
+                  className="time-input"
+                  value={endTime}
+                  disabled={allDay}
+                  onChange={e => setEndTime(e.target.value)}
+                />
+              </label>
+
+              <label className="allday-lbl">
+                <input
+                  type="checkbox"
+                  checked={allDay}
+                  onChange={e => setAllDay(e.target.checked)}
+                />
+                종일
+              </label>
+            </div>
+          )}
 
           <div className="color-row-setting" style={{ padding: "2px 0" }}>
             {TODO_COLORS.map(c => (

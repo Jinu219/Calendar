@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useEffect, useState } from "react";
-import type { Todo } from "../types";
+import type { RepeatType, Todo } from "../types";
 import { TODO_COLORS } from "../constants";
 import {
   addDays,
@@ -83,6 +83,10 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
     });
   };
 
+  const handleDueDateChange = (nextEndDate: string) => {
+    updateField("endDate", nextEndDate || undefined);
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box glass-panel" onClick={e => e.stopPropagation()}>
@@ -111,7 +115,21 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
                 onChange={e => handleDateChange(e.target.value)}
               />
             </label>
+
+            <label className="time-lbl">
+              마감일
+              <input
+                type="date"
+                className="time-input"
+                value={formTodo.endDate ?? formTodo.startDate ?? formTodo.date}
+                min={formTodo.startDate ?? formTodo.date}
+                onChange={e => handleDueDateChange(e.target.value)}
+              />
+            </label>
           </div>
+          <p className="sg-hint" style={{ margin: 0 }}>
+            마감일까지 매일 할 일 목록과 달력에 계속 표시됩니다.
+          </p>
 
           <div className="modal-times">
             <label className="time-lbl">
@@ -157,6 +175,39 @@ export const EditTodoModal: React.FC<EditTodoModalProps> = ({
               />
             ))}
           </div>
+
+          {!scopeLabel && (
+            <>
+              <div className="repeat-row">
+                <span className="repeat-label">반복</span>
+                <select
+                  className="repeat-select"
+                  value={formTodo.repeat}
+                  onChange={e => updateField("repeat", e.target.value as RepeatType)}
+                >
+                  <option value="none">없음</option>
+                  <option value="daily">매일</option>
+                  <option value="weekly">매주</option>
+                  <option value="monthly">매월</option>
+                </select>
+              </div>
+
+              {formTodo.repeat !== "none" && (
+                <div className="modal-times">
+                  <label className="time-lbl">
+                    반복 종료일
+                    <input
+                      type="date"
+                      className="time-input"
+                      value={formTodo.repeatEndDate ?? ""}
+                      min={formTodo.startDate ?? formTodo.date}
+                      onChange={e => updateField("repeatEndDate", e.target.value || undefined)}
+                    />
+                  </label>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="modal-actions">
             <button className="modal-cancel" onClick={onClose}>취소</button>

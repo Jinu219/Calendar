@@ -84,7 +84,7 @@ export function useSettings() {
     s.setProperty("--mid", t.mid);
     s.setProperty("--glass-border", t.border);
     s.setProperty("--text-primary", t.text);
-    s.setProperty("--glass-bg", `rgba(255,245,248,${settings.opacity})`);
+    s.setProperty("--glass-bg", `rgba(${t.bg},${settings.opacity})`);
   }, [settings.colorTheme, settings.opacity]);
 
   useEffect(() => {

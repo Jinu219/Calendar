@@ -5,7 +5,7 @@
 import React, { useCallback, memo } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getTodayLabel } from "../utils";
-import type { CalendarViewType, MoonPhase } from "../types";
+import type { AddMode, CalendarViewType, MoonPhase } from "../types";
 
 interface TitleBarProps {
   view: CalendarViewType;
@@ -18,6 +18,8 @@ interface TitleBarProps {
   editMode: boolean;
   onEditModeToggle: () => void;
   moonPhase?: MoonPhase;
+  addMode: AddMode;
+  onAddModeChange: (mode: AddMode) => void;
 }
 
 export const TitleBar: React.FC<TitleBarProps> = memo(({
@@ -31,6 +33,8 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
   editMode,
   onEditModeToggle,
   moonPhase,
+  addMode,
+  onAddModeChange,
 }) => {
   const appWin = getCurrentWindow();
   const todayLabel = getTodayLabel();
@@ -76,6 +80,22 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
       </div>
 
       <div className="titlebar-right">
+        <div className="view-switch" title="달력에서 클릭·드래그했을 때 무엇을 추가할지 정합니다">
+          <button
+            className={addMode === "schedule" ? "active" : ""}
+            onClick={() => onAddModeChange("schedule")}
+          >
+            일정
+          </button>
+
+          <button
+            className={addMode === "todo" ? "active" : ""}
+            onClick={() => onAddModeChange("todo")}
+          >
+            할일
+          </button>
+        </div>
+
         <div className="view-switch">
           <button
             className={view === "dayGridMonth" ? "active" : ""}

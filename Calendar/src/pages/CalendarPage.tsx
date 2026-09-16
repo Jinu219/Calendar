@@ -41,7 +41,7 @@ import {
   fmtDate,
   parseLocalDate,
 } from "../utils";
-import type { CalendarViewType, Todo } from "../types";
+import type { AddMode, CalendarViewType, Todo } from "../types";
 
 export const CalendarPage: React.FC = () => {
   // ───────────────────────────────────────────────────────
@@ -49,6 +49,7 @@ export const CalendarPage: React.FC = () => {
   // ───────────────────────────────────────────────────────
 
   const [view, setView] = useState<CalendarViewType>("dayGridMonth");
+  const [addMode, setAddMode] = useState<AddMode>("schedule");
 
   const [selectedDate, setSelectedDate] = useState<string>(() =>
     getLocalToday()
@@ -148,6 +149,7 @@ export const CalendarPage: React.FC = () => {
   } = useCalendarModal({
     addTodo,
     setSelectedDate,
+    addMode,
   });
 
   const {
@@ -206,6 +208,10 @@ export const CalendarPage: React.FC = () => {
   const toggleEditMode = useCallback(() => {
     setSetting("editMode", !editMode);
   }, [editMode, setSetting]);
+
+  const handleAddModeChange = useCallback((mode: AddMode) => {
+    setAddMode(mode);
+  }, []);
 
   const handleEventSelectionChange = useCallback((todoId: string, additive: boolean) => {
     setSelectedTodoIds(prev => {
@@ -337,6 +343,8 @@ export const CalendarPage: React.FC = () => {
         editMode={editMode}
         onEditModeToggle={toggleEditMode}
         moonPhase={moonPhase}
+        addMode={addMode}
+        onAddModeChange={handleAddModeChange}
       />
 
       <div className="glass-panel main-panel">
@@ -360,6 +368,7 @@ export const CalendarPage: React.FC = () => {
             onVisibleRangeChange={handleVisibleRangeChange}
             onEventResize={handleEventResize}
             editMode={editMode}
+            calendarMode={addMode}
           />
 
           <div
@@ -374,6 +383,7 @@ export const CalendarPage: React.FC = () => {
             selectedDate={selectedDate}
             todos={todos}
             settings={settings}
+            addMode={addMode}
             onOpenAddModal={handleOpenAddTodoModal}
             memoOpen={memoOpen}
             onToggleMemo={toggleMemoWindow}

@@ -3,11 +3,13 @@
 // ═══════════════════════════════════════════════════════════
 
 export type RepeatType = "none" | "daily" | "weekly" | "monthly";
-export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm";
+export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm" | "mono";
 export type DayNumPos = "left" | "right";
 export type TodayStyle = "highlight" | "glow" | "elevated" | "border";
 export type WindowLevel = "bottom" | "top";
 export type CalendarViewType = "dayGridMonth" | "timeGridWeek";
+/** Which kind of item the calendar's click/drag interactions create. */
+export type AddMode = "schedule" | "todo";
 
 export interface AddTodoOptions {
   color?: string;
@@ -70,6 +72,7 @@ export interface ModalState {
   startTime: string;
   endTime: string;
   allDay: boolean;
+  mode: AddMode;
 }
 
 export interface EventFormData {
@@ -96,6 +99,8 @@ export interface Theme {
   mid: string;
   border: string;
   text: string;
+  /** "r,g,b" used for the translucent glass panel background. */
+  bg: string;
 }
 
 export interface ThemeOption {

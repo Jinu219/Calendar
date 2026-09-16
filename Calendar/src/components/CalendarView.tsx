@@ -19,7 +19,7 @@ import type {
   EventDropArg,
   EventInput,
 } from "@fullcalendar/core";
-import type { CalendarViewType, Settings, MoonPhase } from "../types";
+import type { AddMode, CalendarViewType, Settings, MoonPhase } from "../types";
 import {
   addDays,
   fmtDate,
@@ -48,6 +48,7 @@ interface CalendarViewProps {
     updates: { endDate?: string; endTime?: string }
   ) => void;
   editMode: boolean;
+  calendarMode: AddMode;
 }
 
 const CalendarViewComponent: React.FC<CalendarViewProps> = ({
@@ -66,6 +67,7 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   onVisibleRangeChange,
   onEventResize,
   editMode,
+  calendarMode,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
   const [calendarTitle, setCalendarTitle] = React.useState("");
@@ -240,7 +242,7 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
         allDaySlot={true}
         allDayText=""
         nowIndicator={true}
-        selectable={view === "timeGridWeek"}
+        selectable={view === "timeGridWeek" && calendarMode === "schedule"}
         selectMirror={true}
         events={events}
         showNonCurrentDates={true}

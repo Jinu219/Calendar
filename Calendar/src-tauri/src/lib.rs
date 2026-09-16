@@ -1,6 +1,6 @@
 use std::{
     sync::{
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicIsize, Ordering},
         Mutex,
     },
     thread,
@@ -16,12 +16,13 @@ use tauri_plugin_autostart::ManagerExt;
 
 #[cfg(target_os = "windows")]
 use windows::Win32::{
-    Foundation::HWND,
+    Foundation::{HWND, LPARAM, LRESULT, WPARAM},
     UI::WindowsAndMessaging::{
-        GetClassNameW, GetForegroundWindow, GetWindowLongW, IsIconic, SetWindowLongW, SetWindowPos,
-        ShowWindow, GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, HWND_NOTOPMOST, HWND_TOPMOST,
-        SWP_NOACTIVATE, SWP_NOMOVE, SWP_NOSIZE, SW_RESTORE, WS_EX_NOACTIVATE, WS_MAXIMIZEBOX,
-        WS_THICKFRAME,
+        CallWindowProcW, DefWindowProcW, GetClassNameW, GetForegroundWindow, GetWindowLongW,
+        IsIconic, SetWindowLongPtrW, SetWindowLongW, SetWindowPos, ShowWindow, GWLP_WNDPROC,
+        GWL_EXSTYLE, GWL_STYLE, HWND_BOTTOM, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOACTIVATE,
+        SWP_NOMOVE, SWP_NOSIZE, SW_RESTORE, WINDOWPOS, WM_WINDOWPOSCHANGING, WNDPROC,
+        WS_EX_NOACTIVATE, WS_MAXIMIZEBOX, WS_THICKFRAME,
     },
 };
 
@@ -36,6 +37,13 @@ static DESKTOP_WIDGET_MODE: AtomicBool = AtomicBool::new(true);
 
 #[cfg(target_os = "windows")]
 static DESKTOP_WIDGET_WATCHDOG_STARTED: AtomicBool = AtomicBool::new(false);
+
+/// The window's intended (width, height); anything else is a Windows Snap resize.
+#[cfg(target_os = "windows")]
+static FIXED_WINDOW_SIZE: Mutex<(i32, i32)> = Mutex::new((0, 0));
+
+#[cfg(target_os = "windows")]
+static ORIGINAL_WNDPROC: AtomicIsize = AtomicIsize::new(0);
 
 fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
     app.get_webview_window(MAIN_WINDOW_LABEL)
@@ -99,6 +107,41 @@ fn is_desktop_foreground() -> bool {
     )
 }
 
+/// Vetoes any Windows Snap resize attempt (dragging to a screen edge, Win+Arrow, the
+/// Snap Layouts flyout) by forcing the window back to its fixed size on every
+/// WM_WINDOWPOSCHANGING. Position changes (ordinary dragging) are left untouched.
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn snap_lock_wndproc(
+    hwnd: HWND,
+    msg: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+) -> LRESULT {
+    if msg == WM_WINDOWPOSCHANGING {
+        let pos = lparam.0 as *mut WINDOWPOS;
+
+        if !pos.is_null() {
+            if let Ok(size) = FIXED_WINDOW_SIZE.lock() {
+                let (width, height) = *size;
+
+                if width > 0 && height > 0 {
+                    (*pos).cx = width;
+                    (*pos).cy = height;
+                }
+            }
+        }
+    }
+
+    let original = ORIGINAL_WNDPROC.load(Ordering::SeqCst);
+
+    if original != 0 {
+        let original_proc: WNDPROC = std::mem::transmute(original);
+        CallWindowProcW(original_proc, hwnd, msg, wparam, lparam)
+    } else {
+        DefWindowProcW(hwnd, msg, wparam, lparam)
+    }
+}
+
 #[cfg(target_os = "windows")]
 fn configure_main_window(window: &WebviewWindow) -> bool {
     let Ok(raw_hwnd) = window.hwnd() else {
@@ -121,6 +164,18 @@ fn configure_main_window(window: &WebviewWindow) -> bool {
             GWL_EXSTYLE,
             extended_style | WS_EX_NOACTIVATE.0 as i32,
         );
+    }
+
+    if let Ok(size) = window.outer_size() {
+        if let Ok(mut fixed) = FIXED_WINDOW_SIZE.lock() {
+            *fixed = (size.width as i32, size.height as i32);
+        }
+
+        unsafe {
+            let previous =
+                SetWindowLongPtrW(hwnd, GWLP_WNDPROC, snap_lock_wndproc as *const () as isize);
+            ORIGINAL_WNDPROC.store(previous, Ordering::SeqCst);
+        }
     }
 
     true
@@ -267,6 +322,19 @@ pub fn run() {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
+                }
+            }
+
+            // Moving the window to a monitor with a different DPI scale legitimately
+            // needs a resize; re-sync the snap-lock's fixed size so that isn't vetoed.
+            #[cfg(target_os = "windows")]
+            if window.label() == MAIN_WINDOW_LABEL {
+                if let WindowEvent::ScaleFactorChanged { .. } = event {
+                    if let Ok(size) = window.outer_size() {
+                        if let Ok(mut fixed) = FIXED_WINDOW_SIZE.lock() {
+                            *fixed = (size.width as i32, size.height as i32);
+                        }
+                    }
                 }
             }
         })
