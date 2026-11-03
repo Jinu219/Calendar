@@ -12,6 +12,8 @@ export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeline";
 export type ItemKind = "schedule" | "todo";
 /** The title bar's kind filter: a single kind, or "all" to show both. */
 export type AddMode = ItemKind | "all";
+/** Whether a change to a recurring item applies to one occurrence or the whole series. */
+export type RecurrenceScope = "this" | "all";
 
 export interface AddTodoOptions {
   color?: string;
@@ -32,6 +34,7 @@ export interface Todo {
   startDate?: string;
   endDate?: string;
   title: string;
+  /** Completion of a one-off todo. Recurring todos track completion per occurrence in `doneDates`. */
   done: boolean;
   color: string;
   allDay: boolean;
@@ -43,9 +46,38 @@ export interface Todo {
   sortOrder: number;
   /** Occurrence start dates (YYYY-MM-DD) skipped for a recurring todo. */
   exceptions?: string[];
+  /** Occurrence start dates (YYYY-MM-DD) marked done for a recurring todo. */
+  doneDates?: string[];
   /** Whether this was added as a timed "schedule" item or a plain "todo". Missing on
    *  data saved before this existed; treat as "schedule" in that case. */
   kind?: ItemKind;
+}
+
+/** One concrete occurrence of a todo: the todo itself plus the start date of that occurrence. */
+export interface OccurrenceRef {
+  todoId: string;
+  occurrenceDate: string;
+}
+
+/** A todo as it appears on a particular day of the agenda. */
+export interface AgendaItem {
+  todo: Todo;
+  /** Start date of the occurrence covering the agenda day. */
+  occurrenceDate: string;
+  occurrenceEndDate: string;
+  done: boolean;
+  /** 1-based day of a multi-day occurrence, and its length in days. */
+  dayIndex: number;
+  totalDays: number;
+}
+
+/** Where and when one occurrence sits on the calendar. End date is inclusive. */
+export interface EventTiming {
+  startDate: string;
+  endDate: string;
+  allDay: boolean;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface Settings {
@@ -132,4 +164,12 @@ export interface Memo {
   color: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ToastMessage {
+  /** Increments per toast so an identical message still restarts the timer. */
+  id: number;
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
 }

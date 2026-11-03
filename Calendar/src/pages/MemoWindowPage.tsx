@@ -25,6 +25,7 @@ export const MemoWindowPage: React.FC = () => {
         type="button"
         className="memo-window-drag-handle"
         onMouseDown={handleStartDrag}
+        aria-label="메모창 이동"
         title="드래그해서 메모창 이동"
       >
         ⋮⋮

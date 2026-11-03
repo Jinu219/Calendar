@@ -16,7 +16,7 @@ const createMemo = (): Memo => ({
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const normalizeMemos = (value: unknown): Memo[] => {
+export const normalizeMemos = (value: unknown): Memo[] => {
   if (!Array.isArray(value)) {
     return [createMemo()];
   }

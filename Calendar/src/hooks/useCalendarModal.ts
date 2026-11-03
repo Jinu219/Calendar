@@ -41,27 +41,7 @@ export const useCalendarModal = ({
     });
   }, [setSelectedDate, effectiveKind]);
 
-  const handleDateClick = useCallback((dateStr: string) => {
-    setSelectedDate(dateStr);
-
-    // In todo mode, a click is the primary way to add a task for that day.
-    // Otherwise a click only selects the date (use the + button or a
-    // week/month drag to add a timed or multi-day event) so browsing stays
-    // lightweight.
-    if (addMode === "todo") {
-      setModal({
-        open: true,
-        date: dateStr,
-        startDate: dateStr,
-        endDate: dateStr,
-        allDay: true,
-        startTime: "09:00",
-        endTime: "10:00",
-        mode: "todo",
-      });
-    }
-  }, [setSelectedDate, addMode]);
-
+  /** A drag over days (month) or hours (week) opens the add form for that range. */
   const handleSelect = useCallback((
     startDate: string,
     endDate: string,
@@ -107,7 +87,6 @@ export const useCalendarModal = ({
     modal,
     closeModal,
     openAddTodoModal,
-    handleDateClick,
     handleSelect,
     handleAddEventSubmit,
   };

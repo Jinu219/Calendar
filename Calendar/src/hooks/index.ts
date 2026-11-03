@@ -18,3 +18,5 @@ export { useMemoWindow } from "./useMemoWindow";
 export { useBackup } from "./useBackup";
 export { useReminders } from "./useReminders";
 export { useAutoUpdate } from "./useAutoUpdate";
+export { useToday } from "./useToday";
+export { useToast } from "./useToast";

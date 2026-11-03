@@ -6,48 +6,60 @@ import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { Settings } from "../types";
 import { loadJson } from "../utils";
-import { DEFAULT_SETTINGS, SETTINGS_KEY, THEMES, WEB_FONTS } from "../constants";
+import {
+  DEFAULT_SETTINGS,
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
+  SETTINGS_KEY,
+  THEMES,
+  TODAY_STYLES,
+  WEB_FONTS,
+} from "../constants";
 
 type LegacySettings = Partial<Settings> & {
   alwaysOnTop?: boolean;
 };
 
-const loadSettings = (): Settings => {
-  const saved = loadJson<LegacySettings>(SETTINGS_KEY, {});
-  const colorTheme = saved.colorTheme && saved.colorTheme in THEMES
-    ? saved.colorTheme
-    : DEFAULT_SETTINGS.colorTheme;
-  const dayNumberPos = saved.dayNumberPos === "right" ? "right" : "left";
-  const windowLevel = saved.windowLevel === "top" || saved.alwaysOnTop
-    ? "top"
-    : "bottom";
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/**
+ * Only known keys with the right type survive, so leftovers from older versions
+ * (e.g. `alwaysOnTop`) or a hand-edited backup can't leak into the settings.
+ */
+export const normalizeSettings = (value: unknown): Settings => {
+  const saved = (typeof value === "object" && value !== null ? value : {}) as LegacySettings;
+  const pick = <K extends keyof Settings>(key: K): Settings[K] =>
+    typeof saved[key] === typeof DEFAULT_SETTINGS[key]
+      ? saved[key] as Settings[K]
+      : DEFAULT_SETTINGS[key];
 
   return {
     ...DEFAULT_SETTINGS,
-    ...saved,
-    colorTheme,
-    dayNumberPos,
-    fontFamily: typeof saved.fontFamily === "string"
-      ? saved.fontFamily
-      : DEFAULT_SETTINGS.fontFamily,
-    fontSize: typeof saved.fontSize === "number"
-      ? Math.min(24, Math.max(10, saved.fontSize))
-      : DEFAULT_SETTINGS.fontSize,
-    opacity: typeof saved.opacity === "number"
-      ? Math.min(0.85, Math.max(0.05, saved.opacity))
-      : DEFAULT_SETTINGS.opacity,
-    todoPanelWidth: typeof saved.todoPanelWidth === "number"
-      ? Math.min(480, Math.max(200, saved.todoPanelWidth))
-      : DEFAULT_SETTINGS.todoPanelWidth,
-    windowLevel,
-    editMode: saved.editMode ?? DEFAULT_SETTINGS.editMode,
-    showOnTaskbar: saved.showOnTaskbar ?? DEFAULT_SETTINGS.showOnTaskbar,
-    remindersEnabled: saved.remindersEnabled ?? DEFAULT_SETTINGS.remindersEnabled,
-    reminderMinutesBefore: typeof saved.reminderMinutesBefore === "number"
-      ? saved.reminderMinutesBefore
-      : DEFAULT_SETTINGS.reminderMinutesBefore,
+    colorTheme: saved.colorTheme && saved.colorTheme in THEMES
+      ? saved.colorTheme
+      : DEFAULT_SETTINGS.colorTheme,
+    dayNumberPos: saved.dayNumberPos === "right" ? "right" : "left",
+    fontFamily: pick("fontFamily"),
+    fontSize: clamp(pick("fontSize"), FONT_SIZE_MIN, FONT_SIZE_MAX),
+    showOverflow: pick("showOverflow"),
+    todayStyle: TODAY_STYLES.some(style => style.key === saved.todayStyle)
+      ? saved.todayStyle as Settings["todayStyle"]
+      : DEFAULT_SETTINGS.todayStyle,
+    opacity: clamp(pick("opacity"), 0.05, 0.85),
+    todoPanelWidth: clamp(pick("todoPanelWidth"), 200, 480),
+    useLunar: pick("useLunar"),
+    use24Hour: pick("use24Hour"),
+    showMoonPhase: pick("showMoonPhase"),
+    editMode: pick("editMode"),
+    showOnTaskbar: pick("showOnTaskbar"),
+    windowLevel: saved.windowLevel === "top" || saved.alwaysOnTop ? "top" : "bottom",
+    remindersEnabled: pick("remindersEnabled"),
+    reminderMinutesBefore: clamp(pick("reminderMinutesBefore"), 0, 24 * 60),
   };
 };
+
+const loadSettings = (): Settings =>
+  normalizeSettings(loadJson<unknown>(SETTINGS_KEY, {}));
 
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(() => loadSettings());

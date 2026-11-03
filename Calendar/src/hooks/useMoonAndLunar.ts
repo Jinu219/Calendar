@@ -1,43 +1,22 @@
-import { useEffect, useState } from "react";
-import { fetchMoonPhase, getLunarDateString } from "../utils";
-import type { MoonPhase } from "../types";
+import { useMemo } from "react";
+import { calculateMoonPhase, getLunarDateString, parseLocalDate } from "../utils";
 
 export const useMoonAndLunar = (
+  today: string,
   selectedDate: string,
   useLunar: boolean
 ) => {
-  const [moonPhase, setMoonPhase] = useState<MoonPhase>({
-    name: "",
-    emoji: "",
-  });
+  // Evaluated at noon so the phase reflects the day rather than midnight.
+  const moonPhase = useMemo(() => {
+    const noon = parseLocalDate(today);
+    noon.setHours(12);
+    return calculateMoonPhase(noon);
+  }, [today]);
 
-  const [lunarDate, setLunarDate] = useState("");
-
-  useEffect(() => {
-    let mounted = true;
-
-    fetchMoonPhase()
-      .then(phase => {
-        if (mounted) {
-          setMoonPhase(phase);
-        }
-      })
-      .catch(console.error);
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!useLunar) {
-      setLunarDate("");
-      return;
-    }
-
-    const date = new Date(`${selectedDate}T00:00:00`);
-    setLunarDate(getLunarDateString(date));
-  }, [selectedDate, useLunar]);
+  const lunarDate = useMemo(
+    () => (useLunar ? getLunarDateString(parseLocalDate(selectedDate)) : ""),
+    [selectedDate, useLunar]
+  );
 
   return {
     moonPhase,

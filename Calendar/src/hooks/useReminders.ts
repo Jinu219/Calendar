@@ -9,25 +9,30 @@ import {
   sendNotification,
 } from "@tauri-apps/plugin-notification";
 import type { Settings, Todo } from "../types";
-import { getTodosForDate, getLocalToday } from "../utils";
+import {
+  getAgendaForDate,
+  getLocalToday,
+  getTodoStartTime,
+  parseLocalDate,
+  shiftDate,
+  timeToMinutes,
+} from "../utils";
 
 const CHECK_INTERVAL_MS = 20_000;
+// WebView timers are throttled to about once a minute while the widget sits
+// hidden in the tray, and the PC may sleep. Anything due within this window
+// since the last check is still announced instead of silently skipped.
+const MAX_CATCH_UP_MS = 10 * 60_000;
 
-const getEffectiveTime = (todo: Todo): string | undefined => {
-  if (todo.todoTime) return todo.todoTime;
-  if (!todo.allDay && todo.startTime) return todo.startTime;
-  return undefined;
-};
-
-const subtractMinutes = (dateStr: string, timeStr: string, minutes: number): Date => {
-  const [hours, mins] = timeStr.split(":").map(Number);
-  const target = new Date(`${dateStr}T00:00:00`);
-  target.setHours(hours, mins - minutes, 0, 0);
-  return target;
+const reminderTime = (dateStr: string, time: string, minutesBefore: number): number => {
+  const at = parseLocalDate(dateStr);
+  at.setMinutes(timeToMinutes(time) - minutesBefore);
+  return at.getTime();
 };
 
 export const useReminders = (todos: Todo[], settings: Settings) => {
   const firedRef = useRef<Set<string>>(new Set());
+  const lastCheckRef = useRef<number | null>(null);
   const todosRef = useRef(todos);
   const settingsRef = useRef(settings);
 
@@ -40,9 +45,13 @@ export const useReminders = (todos: Todo[], settings: Settings) => {
     let cancelled = false;
 
     const ensurePermission = async () => {
-      const granted = await isPermissionGranted();
-      if (!granted && !cancelled) {
-        await requestPermission();
+      try {
+        const granted = await isPermissionGranted();
+        if (!granted && !cancelled) {
+          await requestPermission();
+        }
+      } catch (error) {
+        console.error("Failed to check notification permission:", error);
       }
     };
 
@@ -52,33 +61,41 @@ export const useReminders = (todos: Todo[], settings: Settings) => {
       const currentSettings = settingsRef.current;
       if (!currentSettings.remindersEnabled) return;
 
-      const granted = await isPermissionGranted();
-      if (!granted) return;
+      const now = Date.now();
+      const since = Math.max(lastCheckRef.current ?? now - CHECK_INTERVAL_MS, now - MAX_CATCH_UP_MS);
+      lastCheckRef.current = now;
 
+      try {
+        if (!await isPermissionGranted()) return;
+      } catch {
+        return;
+      }
+
+      const lead = currentSettings.reminderMinutesBefore;
       const today = getLocalToday();
-      const todosToday = getTodosForDate(todosRef.current, today);
-      const now = new Date();
 
-      for (const todo of todosToday) {
-        if (todo.done) continue;
+      // Tomorrow too: a 00:05 item with a 10-minute lead is announced tonight.
+      for (const date of [today, shiftDate(today, 1)]) {
+        for (const item of getAgendaForDate(todosRef.current, date)) {
+          // Multi-day items are announced once, on the day they start.
+          if (item.done || item.occurrenceDate !== date) continue;
 
-        const time = getEffectiveTime(todo);
-        if (!time) continue;
+          const time = getTodoStartTime(item.todo);
+          if (!time) continue;
 
-        const fireKey = `${todo.id}__${today}__${time}`;
-        if (firedRef.current.has(fireKey)) continue;
+          const fireKey = `${item.todo.id}__${date}__${time}__${lead}`;
+          if (firedRef.current.has(fireKey)) continue;
 
-        const notifyAt = subtractMinutes(today, time, currentSettings.reminderMinutesBefore);
-        const diffMs = now.getTime() - notifyAt.getTime();
+          const notifyAt = reminderTime(date, time, lead);
+          if (notifyAt <= since || notifyAt > now) continue;
 
-        if (diffMs >= 0 && diffMs < CHECK_INTERVAL_MS) {
           firedRef.current.add(fireKey);
 
-          const body = currentSettings.reminderMinutesBefore > 0
-            ? `${time} 일정이 ${currentSettings.reminderMinutesBefore}분 후 시작해요`
-            : `${time} 일정이 지금 시작해요`;
+          const body = lead > 0
+            ? `${time} 시작 · ${lead}분 전 알림`
+            : `${time} 지금 시작해요`;
 
-          sendNotification({ title: todo.title, body });
+          sendNotification({ title: item.todo.title, body });
         }
       }
     };

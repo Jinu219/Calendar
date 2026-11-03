@@ -3,26 +3,50 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useEffect } from "react";
+import type { ToastMessage } from "../types";
 
 interface ToastProps {
-  message: string | null;
+  toast: ToastMessage | null;
   onDismiss: () => void;
-  duration?: number;
 }
 
-export const Toast: React.FC<ToastProps> = ({ message, onDismiss, duration = 2200 }) => {
+const DURATION_MS = 2400;
+// Long enough to actually reach the "실행 취소" button.
+const DURATION_WITH_ACTION_MS = 5000;
+
+export const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
   useEffect(() => {
-    if (!message) return;
+    if (!toast) return;
 
-    const timer = window.setTimeout(onDismiss, duration);
+    const timer = window.setTimeout(
+      onDismiss,
+      toast.onAction ? DURATION_WITH_ACTION_MS : DURATION_MS
+    );
     return () => window.clearTimeout(timer);
-  }, [message, duration, onDismiss]);
-
-  if (!message) return null;
+    // Restart only for a new toast, not on every parent render.
+  }, [toast?.id]);
 
   return (
-    <div className="toast-container">
-      <div className="toast-bubble glass-panel">{message}</div>
+    // The live region stays mounted so screen readers announce each new message.
+    <div className="toast-container" role="status" aria-live="polite">
+      {toast && (
+        <div className="toast-bubble glass-panel" key={toast.id}>
+          <span>{toast.message}</span>
+
+          {toast.onAction && toast.actionLabel && (
+            <button
+              type="button"
+              className="toast-action"
+              onClick={() => {
+                toast.onAction?.();
+                onDismiss();
+              }}
+            >
+              {toast.actionLabel}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 };

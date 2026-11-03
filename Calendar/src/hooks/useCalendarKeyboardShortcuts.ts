@@ -1,116 +1,168 @@
 import { useEffect, useRef } from "react";
-import type { AddTodoOptions, Todo } from "../types";
-import {
-  addDays,
-  differenceInCalendarDays,
-  fmtDate,
-  parseLocalDate,
-} from "../utils";
+import type { CalendarViewType } from "../types";
 
-interface UseCalendarKeyboardShortcutsParams {
-  todos: Todo[];
-  selectedDate: string;
-  addTodo: (
-    title: string,
-    date: string,
-    options?: AddTodoOptions
-  ) => void;
-  deleteTodo: (id: string) => void;
-  selectedTodoIds: string[];
-  clearSelection: () => void;
-  onUndo?: () => void;
-  onRedo?: () => void;
+export interface CalendarShortcutHandlers {
+  hasSelection: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+  onToday: () => void;
+  onViewChange: (view: CalendarViewType) => void;
+  onNewItem: () => void;
+  onFocusQuickAdd: () => void;
+  onToggleSelected: () => void;
+  onEditSelected: () => void;
+  onDeleteSelected: () => void;
+  onCopy: () => void;
+  onPaste: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onEscape: () => void;
+  onShowHelp: () => void;
 }
 
-export const useCalendarKeyboardShortcuts = ({
-  todos,
-  selectedDate,
-  addTodo,
-  deleteTodo,
-  selectedTodoIds,
-  clearSelection,
-  onUndo,
-  onRedo,
-}: UseCalendarKeyboardShortcutsParams) => {
-  const copiedTodoIds = useRef<string[]>([]);
+const VIEW_BY_DIGIT: Record<string, CalendarViewType> = {
+  Digit1: "dayGridMonth",
+  Digit2: "timeGridWeek",
+  Digit3: "timeline",
+  Numpad1: "dayGridMonth",
+  Numpad2: "timeGridWeek",
+  Numpad3: "timeline",
+};
+
+const isTextEntry = (el: HTMLElement | null): boolean =>
+  !!el && (
+    el.tagName === "INPUT" ||
+    el.tagName === "TEXTAREA" ||
+    el.tagName === "SELECT" ||
+    el.isContentEditable
+  );
+
+/**
+ * App-wide keyboard shortcuts (see KEYBOARD_SHORTCUTS for the user-facing list).
+ * Letter keys are matched by `event.code` so they also work while the Korean
+ * IME is in 한글 mode. Open dialogs handle their own keys.
+ */
+export const useCalendarKeyboardShortcuts = (handlers: CalendarShortcutHandlers) => {
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
+      if (e.defaultPrevented || e.isComposing) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
 
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
+      const h = handlersRef.current;
+      const target = e.target instanceof HTMLElement ? e.target : null;
+      const typing = isTextEntry(target);
+
+      if (e.key === "Escape") {
+        if (typing) target?.blur();
+        h.onEscape();
         return;
       }
 
-      if (e.key === "Delete" || e.key === "Backspace") {
-        if (selectedTodoIds.length > 0) {
-          e.preventDefault();
-          selectedTodoIds.forEach(id => deleteTodo(id));
-          clearSelection();
+      if (typing) return;
+
+      if (e.ctrlKey || e.metaKey) {
+        switch (e.code) {
+          case "KeyZ":
+            e.preventDefault();
+            if (e.shiftKey) h.onRedo();
+            else h.onUndo();
+            return;
+          case "KeyY":
+            e.preventDefault();
+            h.onRedo();
+            return;
+          case "KeyC":
+            if (h.hasSelection) h.onCopy();
+            return;
+          case "KeyV":
+            e.preventDefault();
+            h.onPaste();
+            return;
+          default:
+            return;
         }
       }
 
-      if (e.ctrlKey && !e.shiftKey && e.key.toLowerCase() === "z") {
-        if (onUndo) {
-          e.preventDefault();
-          onUndo();
-        }
-        return;
-      }
+      if (e.altKey) return;
 
-      if (
-        onRedo &&
-        ((e.ctrlKey && e.key.toLowerCase() === "y") ||
-          (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === "z"))
-      ) {
+      // "?" is Shift+/ on most layouts, but not all report it as e.key "?".
+      if (e.key === "F1" || (e.code === "Slash" && e.shiftKey)) {
         e.preventDefault();
-        onRedo();
+        h.onShowHelp();
         return;
       }
 
-      if (e.ctrlKey && e.key.toLowerCase() === "c") {
-        if (selectedTodoIds.length > 0) {
-          copiedTodoIds.current = selectedTodoIds;
-        }
+      // Enter/Space already activate a focused button; don't double up.
+      const onControl = !!target?.closest("button, a, [role='button']");
+
+      switch (e.key) {
+        case "ArrowLeft":
+        case "PageUp":
+          e.preventDefault();
+          h.onPrevious();
+          return;
+        case "ArrowRight":
+        case "PageDown":
+          e.preventDefault();
+          h.onNext();
+          return;
+        case "Delete":
+        case "Backspace":
+          if (h.hasSelection) {
+            e.preventDefault();
+            h.onDeleteSelected();
+          }
+          return;
+        case "Enter":
+        case " ":
+          if (h.hasSelection && !onControl) {
+            e.preventDefault();
+            h.onToggleSelected();
+          }
+          return;
+        case "F2":
+          if (h.hasSelection) {
+            e.preventDefault();
+            h.onEditSelected();
+          }
+          return;
+        case "?":
+          e.preventDefault();
+          h.onShowHelp();
+          return;
+        case "/":
+          e.preventDefault();
+          h.onFocusQuickAdd();
+          return;
       }
 
-      if (e.ctrlKey && e.key.toLowerCase() === "v") {
-        if (copiedTodoIds.current.length === 0) return;
+      if (e.shiftKey) return;
 
+      const view = VIEW_BY_DIGIT[e.code];
+      if (view) {
         e.preventDefault();
+        h.onViewChange(view);
+        return;
+      }
 
-        copiedTodoIds.current.forEach(id => {
-          const original = todos.find(t => t.id === id);
-
-          if (!original) return;
-
-          const originalStart = original.startDate ?? original.date;
-          const originalEnd = original.endDate ?? originalStart;
-          const spanDays = Math.max(
-            0,
-            differenceInCalendarDays(
-              parseLocalDate(originalStart),
-              parseLocalDate(originalEnd)
-            )
-          );
-
-          addTodo(original.title, selectedDate, {
-            color: original.color,
-            allDay: original.allDay,
-            todoTime: original.todoTime,
-            startTime: original.startTime,
-            endTime: original.endTime,
-            kind: original.kind,
-            startDate: selectedDate,
-            endDate: fmtDate(addDays(parseLocalDate(selectedDate), spanDays)),
-            repeat: original.repeat,
-            repeatEndDate: original.repeatEndDate,
-          });
-        });
+      switch (e.code) {
+        case "KeyT":
+          e.preventDefault();
+          h.onToday();
+          return;
+        case "KeyN":
+          e.preventDefault();
+          h.onNewItem();
+          return;
+        case "KeyE":
+          if (h.hasSelection) {
+            e.preventDefault();
+            h.onEditSelected();
+          }
+          return;
       }
     };
 
@@ -119,14 +171,5 @@ export const useCalendarKeyboardShortcuts = ({
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [
-    addTodo,
-    clearSelection,
-    deleteTodo,
-    onRedo,
-    onUndo,
-    selectedDate,
-    selectedTodoIds,
-    todos,
-  ]);
+  }, []);
 };

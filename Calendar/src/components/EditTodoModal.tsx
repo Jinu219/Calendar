@@ -2,219 +2,134 @@
 // EditTodoModal Component
 // ═══════════════════════════════════════════════════════════
 
-import React, { useEffect, useState } from "react";
-import type { RepeatType, Todo } from "../types";
-import { TODO_COLORS } from "../constants";
-import {
-  addDays,
-  differenceInCalendarDays,
-  fmtDate,
-  parseLocalDate,
-} from "../utils";
+import React, { useState } from "react";
+import type { EventFormData, Todo } from "../types";
+import { getDefaultEndTime, getTodoStartDate, isOccurrenceDone } from "../utils";
+import { EventForm, validateEventForm } from "./EventForm";
+import { ModalShell } from "./ModalShell";
 
 interface EditTodoModalProps {
   todo: Todo | null;
   onClose: () => void;
-  onSave: (updatedTodo: Todo) => void;
+  onSave: (id: string, updates: Partial<Todo>) => void;
+  onDelete: (todo: Todo) => void;
+  /** Set when only one occurrence of a recurring todo is being edited. */
   scopeLabel?: string;
 }
 
-export const EditTodoModal: React.FC<EditTodoModalProps> = ({
+const toFormData = (todo: Todo): EventFormData => {
+  const startDate = getTodoStartDate(todo);
+  const startTime = todo.startTime || "09:00";
+
+  return {
+    title: todo.title,
+    date: startDate,
+    startDate,
+    endDate: todo.endDate || startDate,
+    allDay: todo.allDay,
+    startTime,
+    endTime: todo.endTime || getDefaultEndTime(startTime),
+    color: todo.color,
+    repeat: todo.repeat,
+    repeatEndDate: todo.repeatEndDate ?? "",
+    kind: todo.kind ?? "schedule",
+  };
+};
+
+/**
+ * One-off todos keep a single done flag, recurring ones a done flag per
+ * occurrence. Switching between the two carries the first occurrence's state over.
+ */
+const completionUpdates = (todo: Todo, form: EventFormData): Partial<Todo> => {
+  const wasRecurring = todo.repeat !== "none";
+  const isRecurring = form.repeat !== "none";
+
+  if (!wasRecurring && isRecurring) {
+    return { done: false, doneDates: todo.done ? [form.startDate] : undefined };
+  }
+
+  if (wasRecurring && !isRecurring) {
+    return { done: isOccurrenceDone(todo, getTodoStartDate(todo)), doneDates: undefined };
+  }
+
+  return {};
+};
+
+const toTodoUpdates = (form: EventFormData): Partial<Todo> => {
+  const allDay = form.kind === "todo" ? true : form.allDay;
+
+  return {
+    title: form.title.trim(),
+    kind: form.kind,
+    color: form.color,
+    date: form.startDate,
+    startDate: form.startDate,
+    endDate: form.endDate || form.startDate,
+    allDay,
+    startTime: allDay ? undefined : form.startTime,
+    endTime: allDay ? undefined : form.endTime,
+    repeat: form.repeat,
+    repeatEndDate: form.repeat !== "none" && form.repeatEndDate ? form.repeatEndDate : undefined,
+  };
+};
+
+const EditTodoModalContent: React.FC<EditTodoModalProps & { todo: Todo }> = ({
   todo,
   onClose,
   onSave,
+  onDelete,
   scopeLabel,
 }) => {
-  const [formTodo, setFormTodo] = useState<Todo | null>(todo);
-
-  useEffect(() => {
-    setFormTodo(todo);
-  }, [todo]);
-
-  if (!todo || !formTodo) return null;
-
-  const updateField = <K extends keyof Todo>(key: K, value: Todo[K]) => {
-    setFormTodo(prev => {
-      if (!prev) return prev;
-
-      return {
-        ...prev,
-        [key]: value,
-      };
-    });
-  };
+  const [form, setForm] = useState<EventFormData>(() => toFormData(todo));
+  const [error, setError] = useState<string | null>(null);
 
   const handleSave = () => {
-    const trimmedTitle = formTodo.title.trim();
+    const problem = validateEventForm(form);
 
-    if (!trimmedTitle) {
-      onClose();
+    if (problem) {
+      setError(problem);
       return;
     }
 
-    onSave({
-      ...formTodo,
-      title: trimmedTitle,
-      startTime: formTodo.allDay ? undefined : formTodo.startTime,
-      endTime: formTodo.allDay ? undefined : formTodo.endTime,
-    });
-  };
+    // Editing a single occurrence never changes the series' repetition.
+    const updates = scopeLabel
+      ? toTodoUpdates(form)
+      : { ...toTodoUpdates(form), ...completionUpdates(todo, form) };
 
-  const handleDateChange = (nextDate: string) => {
-    setFormTodo(prev => {
-      if (!prev) return prev;
+    if (scopeLabel) {
+      delete updates.repeat;
+      delete updates.repeatEndDate;
+    }
 
-      const currentStart = prev.startDate ?? prev.date;
-      const currentEnd = prev.endDate ?? currentStart;
-      const spanDays = Math.max(
-        0,
-        differenceInCalendarDays(
-          parseLocalDate(currentStart),
-          parseLocalDate(currentEnd)
-        )
-      );
-
-      return {
-        ...prev,
-        date: nextDate,
-        startDate: nextDate,
-        endDate: fmtDate(addDays(parseLocalDate(nextDate), spanDays)),
-      };
-    });
-  };
-
-  const handleDueDateChange = (nextEndDate: string) => {
-    updateField("endDate", nextEndDate || undefined);
+    onSave(todo.id, updates);
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box glass-panel" onClick={e => e.stopPropagation()}>
-        <div className="modal-hdr">
-          <span>✏ 일정 수정{scopeLabel ? ` · ${scopeLabel}` : ""}</span>
-          <button className="modal-close" onClick={onClose}>✕</button>
-        </div>
-
-        <div className="modal-body">
-          <input
-            className="todo-input modal-input"
-            placeholder="일정 제목…"
-            value={formTodo.title}
-            autoFocus
-            onChange={e => updateField("title", e.target.value)}
-            onKeyDown={e => e.key === "Enter" && handleSave()}
-          />
-
-          <div className="modal-times">
-            <label className="time-lbl">
-              시작일
-              <input
-                type="date"
-                className="time-input"
-                value={formTodo.startDate ?? formTodo.date}
-                onChange={e => handleDateChange(e.target.value)}
-              />
-            </label>
-
-            <label className="time-lbl">
-              마감일
-              <input
-                type="date"
-                className="time-input"
-                value={formTodo.endDate ?? formTodo.startDate ?? formTodo.date}
-                min={formTodo.startDate ?? formTodo.date}
-                onChange={e => handleDueDateChange(e.target.value)}
-              />
-            </label>
-          </div>
-          <p className="sg-hint" style={{ margin: 0 }}>
-            마감일까지 매일 할 일 목록과 달력에 계속 표시됩니다.
-          </p>
-
-          <div className="modal-times">
-            <label className="time-lbl">
-              시작
-              <input
-                type="time"
-                className="time-input"
-                value={formTodo.startTime || ""}
-                disabled={formTodo.allDay}
-                onChange={e => updateField("startTime", e.target.value)}
-              />
-            </label>
-
-            <label className="time-lbl">
-              종료
-              <input
-                type="time"
-                className="time-input"
-                value={formTodo.endTime || ""}
-                disabled={formTodo.allDay}
-                onChange={e => updateField("endTime", e.target.value)}
-              />
-            </label>
-
-            <label className="allday-lbl">
-              <input
-                type="checkbox"
-                checked={formTodo.allDay}
-                onChange={e => updateField("allDay", e.target.checked)}
-              />
-              종일
-            </label>
-          </div>
-
-          <div className="color-row-setting" style={{ padding: "2px 0" }}>
-            {TODO_COLORS.map(c => (
-              <button
-                key={c}
-                type="button"
-                className={`color-dot-setting ${formTodo.color === c ? "selected" : ""}`}
-                style={{ background: c }}
-                onClick={() => updateField("color", c)}
-              />
-            ))}
-          </div>
-
-          {!scopeLabel && (
-            <>
-              <div className="repeat-row">
-                <span className="repeat-label">반복</span>
-                <select
-                  className="repeat-select"
-                  value={formTodo.repeat}
-                  onChange={e => updateField("repeat", e.target.value as RepeatType)}
-                >
-                  <option value="none">없음</option>
-                  <option value="daily">매일</option>
-                  <option value="weekly">매주</option>
-                  <option value="monthly">매월</option>
-                </select>
-              </div>
-
-              {formTodo.repeat !== "none" && (
-                <div className="modal-times">
-                  <label className="time-lbl">
-                    반복 종료일
-                    <input
-                      type="date"
-                      className="time-input"
-                      value={formTodo.repeatEndDate ?? ""}
-                      min={formTodo.startDate ?? formTodo.date}
-                      onChange={e => updateField("repeatEndDate", e.target.value || undefined)}
-                    />
-                  </label>
-                </div>
-              )}
-            </>
-          )}
-
-          <div className="modal-actions">
-            <button className="modal-cancel" onClick={onClose}>취소</button>
-            <button className="modal-confirm" onClick={handleSave}>저장</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ModalShell
+      title={`✏ ${form.kind === "todo" ? "할 일" : "일정"} 수정${scopeLabel ? ` · ${scopeLabel}` : ""}`}
+      onClose={onClose}
+    >
+      <EventForm
+        value={form}
+        onChange={patch => {
+          setForm(prev => ({ ...prev, ...patch }));
+          setError(null);
+        }}
+        error={error}
+        showRepeat={!scopeLabel}
+        submitLabel="저장"
+        onCancel={onClose}
+        onSubmit={handleSave}
+        secondaryActions={
+          <button type="button" className="modal-danger" onClick={() => onDelete(todo)}>
+            삭제
+          </button>
+        }
+      />
+    </ModalShell>
   );
 };
+
+export const EditTodoModal: React.FC<EditTodoModalProps> = ({ todo, ...props }) =>
+  // Keyed by id so switching straight to another todo starts a fresh form.
+  todo ? <EditTodoModalContent key={todo.id} todo={todo} {...props} /> : null;

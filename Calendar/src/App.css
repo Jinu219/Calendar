@@ -11,9 +11,17 @@
   --glass-blur:      20px;
   --glass-shadow:    0 8px 36px rgba(180,80,110,0.18);
   --text-primary:    #2d1520;
-  --text-secondary:  rgba(45,21,32,0.55);
+  /* 0.55 was too faint on the translucent glass; 0.7 keeps hint text legible. */
+  --text-secondary:  rgba(45,21,32,0.7);
   --font:            'Noto Sans KR', sans-serif;
   --font-size:       14px;
+  /* Text sizes derived from the 글꼴 크기 setting (values in comments are at 14px).
+     Nothing goes below 10px, the smallest size that stays readable on the glass. */
+  --fs-2xs:          max(10px, calc(var(--font-size) * 0.7));   /* 10px   */
+  --fs-xs:           max(10px, calc(var(--font-size) * 0.75));  /* 10.5px */
+  --fs-sm:           calc(var(--font-size) * 0.82);             /* 11.5px */
+  --fs-md:           calc(var(--font-size) * 0.88);             /* 12.3px */
+  --fs-lg:           calc(var(--font-size) * 0.95);             /* 13.3px */
   --day-num-justify: flex-start;
   --radius-lg:       18px;
   --radius-md:       12px;
@@ -62,8 +70,7 @@ html, body, #root {
    - Keeps compatibility with old class names:
      .title-bar / .tb-left / .tb-today / .tb-right
    ════════════════════════════════════════════ */
-.titlebar,
-.title-bar {
+.titlebar {
   height: 42px;
   padding: 0 12px;
   display: flex;
@@ -80,26 +87,13 @@ html, body, #root {
   box-shadow: var(--glass-shadow);
 }
 
-.titlebar-left,
-.tb-left {
+.titlebar-left {
   display: flex;
   align-items: center;
   gap: 7px;
   flex: 0 0 auto;
   min-width: 96px;
 }
-
-.app-logo {
-  font-size: 18px;
-  filter: drop-shadow(0 1px 3px color-mix(in srgb, var(--accent) 40%, transparent));
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: background .15s;
-}
-.app-logo:hover { background: rgba(255,255,255,0.15); }
 
 .app-title {
   font-family: 'Playfair Display', serif;
@@ -110,8 +104,7 @@ html, body, #root {
   white-space: nowrap;
 }
 
-.titlebar-center,
-.tb-today {
+.titlebar-center {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
@@ -121,8 +114,7 @@ html, body, #root {
   overflow: hidden;
 }
 
-.titlebar-right,
-.tb-right {
+.titlebar-right {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -131,14 +123,13 @@ html, body, #root {
   min-width: max-content;
 }
 
-.today-label,
-.tb-today-text {
+.today-label {
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-primary);
   background: color-mix(in srgb, var(--mid) 25%, white 15%);
@@ -148,8 +139,7 @@ html, body, #root {
   letter-spacing: .3px;
 }
 
-.moon-label,
-.tb-moon {
+.moon-label {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -158,13 +148,12 @@ html, body, #root {
   text-overflow: ellipsis;
   white-space: nowrap;
 
-  font-size: 12px;
+  font-size: var(--fs-md);
   color: var(--text-secondary);
 }
 
 /* View switch */
-.view-switch,
-.view-switcher {
+.view-switch {
   display: flex;
   gap: 4px;
   flex: 0 0 auto;
@@ -173,14 +162,13 @@ html, body, #root {
   padding: 3px;
 }
 
-.view-switch button,
-.view-btn {
+.view-switch button {
   padding: 3px 12px;
   min-width: 42px;
   border: none;
   border-radius: 24px;
   font-family: var(--font);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
@@ -188,37 +176,26 @@ html, body, #root {
   transition: all .18s;
 }
 
-.view-switch button.active,
-.view-btn.active {
+.view-switch button.active {
   background: linear-gradient(135deg, var(--mid), var(--accent));
   color: #fff;
   box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 38%, transparent);
 }
 
-.view-switch button:hover:not(.active),
-.view-btn:hover:not(.active) {
+.view-switch button:hover:not(.active) {
   background: rgba(255,200,220,.22);
   color: var(--text-primary);
 }
 
 /* Navigation */
-.tb-nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(255,200,220,.15);
-  border-radius: 30px;
-  padding: 3px;
-}
 
 .titlebar .nav-btn,
-.title-bar .nav-btn,
 .nav-btn {
   padding: 3px 10px;
   border: none;
   border-radius: 24px;
   font-family: var(--font);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--text-secondary);
   background: transparent;
@@ -227,19 +204,17 @@ html, body, #root {
 }
 
 .titlebar .nav-btn:hover,
-.title-bar .nav-btn:hover,
 .nav-btn:hover {
   background: rgba(255,200,220,.22);
   color: var(--text-primary);
 }
 
-.today-btn,
-.nav-today {
+.today-btn {
   padding: 3px 12px;
   border: none;
   border-radius: 24px;
   font-family: var(--font);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--text-primary);
   background: rgba(255,255,255,.18);
@@ -247,15 +222,12 @@ html, body, #root {
   transition: all .18s;
 }
 
-.today-btn:hover,
-.nav-today:hover {
+.today-btn:hover {
   background: color-mix(in srgb, var(--mid) 24%, white 12%);
 }
 
 /* Window / titlebar icon buttons */
-.settings-btn,
-.window-btn,
-.wc-btn {
+.settings-btn {
   width: 28px;
   height: 28px;
   border: none;
@@ -265,7 +237,7 @@ html, body, #root {
   justify-content: center;
 
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--fs-md);
   line-height: 1;
   cursor: pointer;
   background: rgba(255,255,255,.15);
@@ -273,29 +245,22 @@ html, body, #root {
   transition: background .15s, transform .1s, color .15s;
 }
 
-.settings-btn:hover,
-.window-btn:hover,
-.wc-btn:hover,
-.gear-btn:hover {
+.settings-btn:hover {
   background: color-mix(in srgb, var(--accent) 20%, white 20%);
 }
 
-.settings-btn.active,
-.gear-on {
+.settings-btn.active {
   background: linear-gradient(135deg, var(--mid), var(--accent));
   color: #fff;
 }
 
-.window-btn:active,
-.settings-btn:active,
-.wc-btn:active {
+.settings-btn:active {
   transform: scale(.92);
 }
 
 /* Titlebar edit/resize mode button.
    Scoped to .titlebar so it does not conflict with SettingsDrawer's .edit-mode-btn. */
-.titlebar .edit-mode-btn,
-.title-bar .edit-mode-btn {
+.titlebar .edit-mode-btn {
   width: 28px;
   min-width: 28px;
   height: 28px;
@@ -309,22 +274,19 @@ html, body, #root {
   background: rgba(255,255,255,.15);
   color: var(--text-primary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--font-size);
   opacity: 0.82;
   transition: all 0.18s ease;
 }
 
-.titlebar .edit-mode-btn:hover,
-.title-bar .edit-mode-btn:hover {
+.titlebar .edit-mode-btn:hover {
   opacity: 1;
   background: rgba(255, 255, 255, 0.35);
   border-color: var(--glass-border);
 }
 
 .titlebar .edit-mode-btn.active,
-.title-bar .edit-mode-btn.active,
-.titlebar .edit-mode-btn.on,
-.title-bar .edit-mode-btn.on {
+.titlebar .edit-mode-btn.on {
   opacity: 1;
   color: #fff;
   background: var(--accent);
@@ -332,27 +294,17 @@ html, body, #root {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25);
 }
 
-.tb-sep {
-  width: 1px;
-  height: 20px;
-  background: var(--glass-border);
-  margin: 0 4px;
-}
-
 @media (max-width: 760px) {
-  .today-label,
-  .tb-today-text {
+  .today-label {
     max-width: 120px;
     padding-inline: 9px;
   }
 
-  .moon-label,
-  .tb-moon {
+  .moon-label {
     display: none;
   }
 
-  .view-switch button,
-  .view-btn {
+  .view-switch button {
     min-width: 36px;
     padding-inline: 9px;
   }
@@ -375,50 +327,11 @@ html, body, #root {
 .edit-mode-badge {
   position:absolute; top:6px; left:50%; transform:translateX(-50%);
   z-index:10; background:color-mix(in srgb,var(--accent) 85%,black 5%);
-  color:#fff; font-size:10px; font-weight:600; border-radius:20px;
+  color:#fff; font-size: var(--fs-xs); font-weight:600; border-radius:20px;
   padding:3px 12px; pointer-events:none; letter-spacing:.3px;
 }
 
-/* Todo panel toggle in calendar */
-.todo-panel-toggle-calendar {
-  position: absolute;
-  top: 50%;
-  right: -26px;
-  transform: translateY(-50%);
-  z-index: 20;
-  width: 32px;
-  height: 70px;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-secondary);
-  font-size: 20px;
-  transition: all .15s;
-  opacity: 0.6;
-  padding: 0;
-}
-.todo-panel-toggle-calendar:hover {
-  opacity: 1;
-  color: var(--accent);
-}
-
-/* Toggle button when collapsed - show on right side of calendar */
-.todo-panel-toggle-calendar.collapsed {
-  position: absolute;
-  right: -18px;
-  width: 24px;
-  height: 50px;
-  font-size: 16px;
-}
-
-/* Hide old toggle button */
-.todo-panel-toggle { display: none; }
-
-/* ── TodoPanel Resize Handle ──
-   Single source of truth. Old duplicate resize styles were removed. */
+/* ── TodoPanel Resize Handle ── */
 .resize-handle {
   width: 8px;
   min-width: 8px;
@@ -457,19 +370,6 @@ html, body, #root {
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* Optional legacy toggle button support */
-.resize-handle .todo-panel-toggle-calendar {
-  position: static;
-  transform: none;
-  width: 20px;
-  height: 40px;
-  font-size: 14px;
-  opacity: 0.5;
-}
-.resize-handle:hover .todo-panel-toggle-calendar {
-  opacity: 1;
-}
-
 /* ════════════════════════════════════════════
    FullCalendar Overrides
    ════════════════════════════════════════════ */
@@ -486,7 +386,7 @@ html, body, #root {
   background:rgba(255,255,255,.18) !important;
   border:1px solid var(--glass-border) !important;
   color:var(--text-primary) !important;
-  border-radius:7px !important; font-size:11px !important; padding:3px 9px !important;
+  border-radius:7px !important; font-size: var(--fs-sm) !important; padding:3px 9px !important;
   transition:all .15s;
 }
 .fc .fc-button:hover,
@@ -496,7 +396,7 @@ html, body, #root {
 }
 
 .fc .fc-col-header-cell {
-  background:rgba(255,200,220,.10); font-weight:500; font-size:11px;
+  background:rgba(255,200,220,.10); font-weight:500; font-size: var(--fs-sm);
   color:var(--text-primary);
 }
 
@@ -523,7 +423,7 @@ html, body, #root {
 .fc .fc-daygrid-day.holiday-cell .fc-daygrid-day-number { color:#ef4444 !important; font-weight:600; }
 
 /* Holiday event pill */
-.fc .holiday-event { font-size:9px !important; opacity:.85; }
+.fc .holiday-event { font-size: var(--fs-2xs) !important; opacity:.85; }
 
 .fc .fc-daygrid-day.selected-day {
   background:color-mix(in srgb,var(--accent) 20%,transparent) !important;
@@ -531,9 +431,10 @@ html, body, #root {
 }
 
 /* Day number position */
-.fc .fc-daygrid-day-frame { display:flex !important; flex-direction:column; }
-.fc .fc-daygrid-day-top   { justify-content:var(--day-num-justify) !important; }
-.fc .fc-daygrid-day-number { color:var(--text-primary); font-size:11px; font-weight:400; padding:3px 5px; }
+/* FullCalendar lays this row out right-to-left (row-reverse), which inverted the
+   왼쪽/오른쪽 setting; a plain row makes flex-start mean left again. */
+.fc .fc-daygrid-day-top   { flex-direction:row; justify-content:var(--day-num-justify) !important; }
+.fc .fc-daygrid-day-number { color:var(--text-primary); font-size: var(--fs-sm); font-weight:400; padding:3px 5px; }
 
 /* ── Today styles ── */
 /* Reset circle that FullCalendar adds */
@@ -571,7 +472,7 @@ html, body, #root {
 
 .fc .fc-event {
   border:none !important; border-radius:4px !important;
-  font-size:10px !important; font-weight:500 !important;
+  font-size: var(--fs-xs) !important; font-weight:500 !important;
   padding:0px 3px !important; margin:1px 2px !important; cursor:pointer;
   transition:transform .1s, opacity .1s;
 }
@@ -584,13 +485,8 @@ html, body, #root {
 .fc .fc-event-title { padding:0 !important; margin:0 !important; }
 .fc .fc-daygrid-event-dot { display:none; }
 
-/* Limit events in day grid to prevent cell expansion */
-/* .fc .fc-daygrid-day-events {
-  margin-top: auto !important;
-} */
-
 .fc .fc-daygrid-more-link {
-  font-size: 9px;
+  font-size: var(--fs-2xs);
   color: var(--accent);
   font-weight: 500;
   padding: 1px 2px;
@@ -599,7 +495,7 @@ html, body, #root {
 .fc .fc-event:hover { transform:translateY(-1px); opacity:.88; }
 
 .fc .fc-timegrid-slot       { height:30px !important; }
-.fc .fc-timegrid-slot-label { font-size:10px; color:var(--text-secondary); }
+.fc .fc-timegrid-slot-label { font-size: var(--fs-xs); color:var(--text-secondary); }
 .fc .fc-timegrid-now-indicator-line { border-color:var(--accent) !important; }
 .fc .fc-highlight { background:color-mix(in srgb,var(--accent) 18%,transparent) !important; }
 
@@ -616,40 +512,18 @@ html, body, #root {
   border-bottom:1px solid var(--glass-border); flex-shrink:0;
 }
 .todo-icon       { font-size:22px; filter:drop-shadow(0 1px 3px color-mix(in srgb,var(--accent) 40%,transparent)); }
-.todo-date-label { font-size:12px; font-weight:700; color:var(--text-primary); }
-.todo-subtext    { font-size:10px; color:var(--text-secondary); letter-spacing:.4px; text-transform:uppercase; }
-
-.todo-quick-add { display:flex; flex-direction:column; gap:5px; flex-shrink:0; }
-.todo-input-row { display:flex; gap:6px; }
-
-.color-row-quick { display:flex; gap:4px; flex-wrap:wrap; padding:2px 0; }
-.color-dot-quick {
-  width:20px; height:20px; border-radius:50%; border:2px solid transparent;
-  cursor:pointer; transition:transform .15s, border-color .15s;
-}
-.color-dot-quick:hover { transform:scale(1.15); }
-.color-dot-quick.selected { border-color:var(--text-primary); transform:scale(1.1); }
+.todo-date-label { font-size: var(--font-size); font-weight:700; color:var(--text-primary); line-height:1.3; }
+.todo-subtext    { font-size: var(--fs-xs); color:var(--text-secondary); display:flex; flex-wrap:wrap; align-items:center; gap:4px; margin-top:2px; }
 
 .todo-input {
   flex:1; padding:6px 10px; border:1px solid var(--glass-border);
   border-radius:var(--radius-sm); background:rgba(255,255,255,.22);
-  font-family:var(--font); font-size:12px; color:var(--text-primary);
+  font-family:var(--font); font-size: var(--fs-md); color:var(--text-primary);
   outline:none; transition:border-color .2s, background .2s; user-select:text;
   width:100%;
 }
 .todo-input::placeholder { color:var(--text-secondary); }
 .todo-input:focus { border-color:var(--mid); background:rgba(255,255,255,.38); }
-.time-memo { font-size:11px; padding:4px 8px; }
-
-.add-btn {
-  width:31px; height:31px; border:none; border-radius:var(--radius-sm);
-  background:linear-gradient(135deg,var(--mid),var(--accent));
-  color:#fff; font-size:20px; line-height:1; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 30%,transparent);
-  transition:transform .15s, box-shadow .15s; flex-shrink:0;
-}
-.add-btn:hover { transform:scale(1.08); box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 45%,transparent); }
 
 /* ── List ── */
 .todo-list {
@@ -659,16 +533,15 @@ html, body, #root {
 .todo-list::-webkit-scrollbar { width:3px; }
 .todo-list::-webkit-scrollbar-thumb { background:color-mix(in srgb,var(--mid) 45%,transparent); border-radius:3px; }
 
-.todo-empty { text-align:center; color:var(--text-secondary); font-size:12px; padding:20px 0; }
+.todo-empty { text-align:center; color:var(--text-secondary); font-size: var(--fs-md); padding:20px 0; }
 
 .todo-item {
   display:flex; align-items:flex-start; gap:5px;
   padding:6px 7px; border-radius:var(--radius-sm);
   background:rgba(255,255,255,.18);
-  transition:background .15s, opacity .2s;
-  cursor:grab;
+  transition:background .15s, opacity .2s, box-shadow .15s;
+  cursor:pointer;
 }
-.todo-item:active { cursor:grabbing; }
 .todo-item:hover  { background:rgba(255,255,255,.32); }
 .todo-item.done   { opacity:.58; }
 .todo-item.done .todo-title { text-decoration:line-through; color:var(--text-secondary); }
@@ -678,40 +551,17 @@ html, body, #root {
 }
 
 .drag-handle {
-  color:var(--text-secondary); font-size:14px; flex-shrink:0;
+  color:var(--text-secondary); font-size: var(--font-size); flex-shrink:0;
   margin-top:1px; cursor:grab; opacity:.4; line-height:1; user-select:none;
 }
 .todo-item:hover .drag-handle { opacity:.7; }
 
-.todo-check {
-  background:none; border:none; cursor:pointer; font-size:13px;
-  flex-shrink:0; margin-top:1px; transition:transform .1s;
-}
-.todo-check:hover { transform:scale(1.2); }
-
 .todo-content { flex:1; min-width:0; }
-.todo-title   { font-size:12px; color:var(--text-primary); word-break:break-all; line-height:1.4; display:block; }
-.todo-time    { font-size:10px; color:var(--text-secondary); margin-top:2px; display:block; }
-.todo-repeat  { font-size:10px; color:var(--accent); margin-top:1px; display:block; opacity:.8; }
-
-.todo-delete {
-  background:none; border:none; color:var(--text-secondary); font-size:16px;
-  cursor:pointer; padding:0 2px; opacity:0; transition:opacity .15s;
-  flex-shrink:0; line-height:1;
-}
-.todo-item:hover .todo-delete { opacity:1; }
-.todo-delete:hover { color:var(--accent); }
-
-.todo-edit {
-  background:none; border:none; color:var(--text-secondary); font-size:14px;
-  cursor:pointer; padding:0 2px; opacity:0; transition:opacity .15s;
-  flex-shrink:0; line-height:1;
-}
-.todo-item:hover .todo-edit { opacity:1; }
-.todo-edit:hover { color:var(--accent); }
+.todo-title   { font-size: var(--fs-lg); color:var(--text-primary); word-break:break-all; line-height:1.4; display:block; }
+.todo-time    { font-size: var(--fs-xs); color:var(--text-secondary); margin-top:2px; display:block; }
 
 .todo-stats {
-  font-size:10px; color:var(--text-secondary); text-align:right;
+  font-size: var(--fs-xs); color:var(--text-secondary); text-align:right;
   padding-top:4px; border-top:1px solid var(--glass-border); flex-shrink:0;
 }
 
@@ -763,9 +613,9 @@ html, body, #root {
   background:var(--glass-bg); backdrop-filter:blur(var(--glass-blur));
   border-radius:var(--radius-lg) var(--radius-lg) 0 0;
 }
-.settings-title { font-size:13px; font-weight:700; color:var(--text-primary); }
+.settings-title { font-size: var(--fs-lg); font-weight:700; color:var(--text-primary); }
 .settings-close {
-  background:none; border:none; font-size:14px; cursor:pointer;
+  background:none; border:none; font-size: var(--font-size); cursor:pointer;
   color:var(--text-secondary); width:24px; height:24px;
   border-radius:6px; display:flex; align-items:center; justify-content:center;
   transition:background .15s;
@@ -783,7 +633,7 @@ html, body, #root {
   font-size:24px;
 }
 .moon-name {
-  font-size:14px;
+  font-size: var(--font-size);
   color:var(--text-primary);
 }
 
@@ -793,17 +643,17 @@ html, body, #root {
   padding:6px 10px;
   background:rgba(255,255,255,0.08);
   border-radius:var(--radius-sm);
-  font-size:13px;
+  font-size: var(--fs-lg);
   color:var(--text-secondary);
 }
 
 .settings-body { padding:12px 14px; display:flex; flex-direction:column; gap:16px; }
 .sg      { display:flex; flex-direction:column; gap:7px; }
-.sg-label { font-size:10px; font-weight:700; color:var(--text-secondary); letter-spacing:.4px; text-transform:uppercase; }
-.sg-hint  { font-size:9px; color:var(--text-secondary); line-height:1.4; opacity:0.8; padding-left:2px; }
+.sg-label { font-size: var(--fs-xs); font-weight:700; color:var(--text-secondary); letter-spacing:.4px; text-transform:uppercase; }
+.sg-hint  { font-size: var(--fs-2xs); color:var(--text-secondary); line-height:1.4; opacity:0.8; padding-left:2px; }
 
 /* Theme grid */
-.theme-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
+.theme-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; }
 .theme-btn {
   display:flex; flex-direction:column; align-items:center; gap:2px;
   padding:7px 2px; border:1.5px solid var(--glass-border);
@@ -811,7 +661,7 @@ html, body, #root {
   font-family:var(--font); transition:all .15s;
 }
 .theme-emoji { font-size:16px; }
-.theme-label { font-size:9px; color:var(--text-secondary); }
+.theme-label { font-size: var(--fs-2xs); color:var(--text-secondary); }
 .theme-btn.active {
   border-color:var(--ba,var(--accent));
   background:color-mix(in srgb,var(--ba,var(--accent)) 15%,white 10%);
@@ -821,19 +671,19 @@ html, body, #root {
 
 /* Slider */
 .slider-row  { display:flex; align-items:center; gap:8px; }
-.slider-hint { font-size:10px; color:var(--text-secondary); flex-shrink:0; }
+.slider-hint { font-size: var(--fs-xs); color:var(--text-secondary); flex-shrink:0; }
 .opacity-slider { flex:1; accent-color:var(--accent); cursor:pointer; }
-.slider-val  { font-size:11px; color:var(--text-primary); font-weight:600; text-align:right; }
+.slider-val  { font-size: var(--fs-sm); color:var(--text-primary); font-weight:600; text-align:right; }
 
 /* Segment */
 .seg-ctrl {
   display:flex; border-radius:9px; overflow:hidden;
   border:1px solid var(--glass-border);
 }
-.seg-2x2 { display:grid; grid-template-columns:1fr 1fr; }
+
 .seg-btn {
   flex:1; min-width:0; padding:5px 4px; border:none; cursor:pointer;
-  font-family:var(--font); font-size:11px;
+  font-family:var(--font); font-size: var(--fs-sm);
   color:var(--text-secondary); background:rgba(255,255,255,.12);
   transition:all .15s; white-space:nowrap; text-align:center;
 }
@@ -850,7 +700,7 @@ html, body, #root {
 .font-search {
   padding:5px 9px; border-radius:var(--radius-sm);
   border:1px solid var(--glass-border); background:rgba(255,255,255,.22);
-  font-family:var(--font); font-size:12px; color:var(--text-primary);
+  font-family:var(--font); font-size: var(--fs-md); color:var(--text-primary);
   outline:none; user-select:text; width:100%;
 }
 .font-search::placeholder { color:var(--text-secondary); }
@@ -864,12 +714,12 @@ html, body, #root {
 
 .font-btn {
   padding:6px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--glass-border);
-  cursor:pointer; font-size:12px; color:var(--text-primary);
+  cursor:pointer; font-size: var(--fs-md); color:var(--text-primary);
   background:rgba(255,255,255,.12); text-align:left; transition:all .15s; flex-shrink:0;
 }
 .font-btn.active { border-color:var(--accent); background:color-mix(in srgb,var(--mid) 20%,white 10%); font-weight:600; }
 .font-btn:hover:not(.active) { background:rgba(255,255,255,.25); }
-.font-more { font-size:10px; color:var(--text-secondary); padding:4px 10px; }
+.font-more { font-size: var(--fs-xs); color:var(--text-secondary); padding:4px 10px; }
 
 /* SettingsDrawer edit mode button.
    Scoped to drawer to avoid conflict with TitleBar's edit-mode button. */
@@ -880,7 +730,7 @@ html, body, #root {
   border: 1.5px solid var(--glass-border);
   cursor: pointer;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--fs-md);
   font-weight: 600;
   color: var(--text-primary);
   background: rgba(255,255,255,.15);
@@ -908,77 +758,9 @@ html, body, #root {
   box-shadow: 0 2px 10px color-mix(in srgb,var(--accent) 35%,transparent);
 }
 
-.edit-hint {
-  font-size: 10px;
-  color: var(--text-secondary);
-  line-height: 1.6;
-  background: rgba(255,255,255,.12);
-  border-radius: 6px;
-  padding: 6px 9px;
-}
-
-
 /* ════════════════════════════════════════════
-   Component compatibility aliases
-   - These keep styles working whether TodoPanel uses old or new class names.
+   Todo item buttons
    ════════════════════════════════════════════ */
-.todo-date {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-primary);
-  padding-bottom: 4px;
-}
-
-.todo-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  letter-spacing: .4px;
-  text-transform: uppercase;
-}
-
-.todo-add-row {
-  display: flex;
-  gap: 6px;
-}
-
-.todo-add-btn {
-  width: 31px;
-  height: 31px;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg,var(--mid),var(--accent));
-  color: #fff;
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px color-mix(in srgb,var(--accent) 30%,transparent);
-  transition: transform .15s, box-shadow .15s;
-  flex-shrink: 0;
-}
-.todo-add-btn:hover {
-  transform: scale(1.08);
-  box-shadow: 0 4px 14px color-mix(in srgb,var(--accent) 45%,transparent);
-}
-
-.todo-time-input {
-  width: 100%;
-  font-size: 11px;
-  padding: 4px 8px;
-}
-
-.empty-todos {
-  text-align: center;
-  color: var(--text-secondary);
-  font-size: 12px;
-  padding: 20px 0;
-}
 
 .check-btn,
 .edit-btn,
@@ -992,42 +774,36 @@ html, body, #root {
 }
 
 .check-btn {
-  font-size: 13px;
+  font-size: var(--fs-lg);
   margin-top: 1px;
   transition: transform .1s;
 }
 .check-btn:hover { transform: scale(1.2); }
 
+/* Faint until hovered or focused, but never invisible: they must stay discoverable. */
 .edit-btn {
-  font-size: 14px;
-  padding: 0 2px;
-  opacity: 0;
+  font-size: var(--font-size);
+  padding: 2px 3px;
+  opacity: .3;
   transition: opacity .15s, color .15s;
 }
-.todo-item:hover .edit-btn { opacity: 1; }
+.todo-item:hover .edit-btn,
+.todo-item:focus-within .edit-btn { opacity: 1; }
 .edit-btn:hover { color: var(--accent); }
 
 .delete-btn {
-  font-size: 16px;
-  padding: 0 2px;
-  opacity: 0;
+  font-size: calc(var(--font-size) * 1.15);
+  padding: 2px 3px;
+  opacity: .3;
   transition: opacity .15s, color .15s;
 }
-.todo-item:hover .delete-btn { opacity: 1; }
-.delete-btn:hover { color: var(--accent); }
+.todo-item:hover .delete-btn,
+.todo-item:focus-within .delete-btn { opacity: 1; }
+.delete-btn:hover { color: #dc2626; }
 
-.todo-summary {
-  font-size: 10px;
-  color: var(--text-secondary);
-  text-align: right;
-  padding-top: 4px;
-  border-top: 1px solid var(--glass-border);
-  flex-shrink: 0;
-}
-
-/* AddEventModal compatibility */
+/* Form controls */
 .modal-date-preview {
-  font-size: 11px;
+  font-size: var(--fs-sm);
   color: var(--text-secondary);
   background: rgba(255,255,255,.16);
   border: 1px solid var(--glass-border);
@@ -1044,7 +820,7 @@ html, body, #root {
 }
 
 .repeat-label {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--text-secondary);
   letter-spacing: .4px;
@@ -1059,7 +835,7 @@ html, body, #root {
   border: 1px solid var(--glass-border);
   background: rgba(255,255,255,.22);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--fs-md);
   color: var(--text-primary);
   outline: none;
 }
@@ -1085,11 +861,11 @@ html, body, #root {
 .modal-hdr {
   display:flex; justify-content:space-between; align-items:center;
   padding:12px 14px 9px; border-bottom:1px solid var(--glass-border);
-  font-size:13px; font-weight:700; color:var(--text-primary);
+  font-size: var(--fs-lg); font-weight:700; color:var(--text-primary);
   border-radius:var(--radius-lg) var(--radius-lg) 0 0;
 }
 .modal-close {
-  background:none; border:none; font-size:14px; cursor:pointer;
+  background:none; border:none; font-size: var(--font-size); cursor:pointer;
   color:var(--text-secondary); width:24px; height:24px;
   border-radius:6px; display:flex; align-items:center; justify-content:center;
   transition:background .15s;
@@ -1098,46 +874,37 @@ html, body, #root {
 
 .modal-body { padding:12px 14px; display:flex; flex-direction:column; gap:10px; }
 
-.modal-chips { display:flex; gap:6px; flex-wrap:wrap; }
-.modal-chip {
-  background:rgba(255,255,255,.25); border:1px solid var(--glass-border);
-  border-radius:20px; padding:2px 10px; font-size:11px; color:var(--text-primary);
-}
-.modal-chip.time { background:color-mix(in srgb,var(--mid) 25%,white 15%); }
-
 .modal-input { width:100%; }
 
 .modal-times  { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-.time-lbl     { display:flex; flex-direction:column; gap:2px; font-size:10px; color:var(--text-secondary); font-weight:600; text-transform:uppercase; }
+.time-lbl     { display:flex; flex-direction:column; gap:2px; font-size: var(--fs-xs); color:var(--text-secondary); font-weight:600; text-transform:uppercase; }
 .time-input   {
   padding:4px 6px; border-radius:6px; border:1px solid var(--glass-border);
-  background:rgba(255,255,255,.22); font-family:var(--font); font-size:12px;
+  background:rgba(255,255,255,.22); font-family:var(--font); font-size: var(--fs-md);
   color:var(--text-primary); outline:none; transition:border-color .18s; user-select:text;
 }
 .time-input:focus { border-color:var(--mid); }
 
-.allday-lbl   { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-primary); cursor:pointer; }
+.allday-lbl   { display:flex; align-items:center; gap:5px; font-size: var(--fs-sm); color:var(--text-primary); cursor:pointer; }
 .allday-lbl input { accent-color:var(--accent); cursor:pointer; }
-
-.modal-repeat-row { display:flex; flex-direction:column; gap:6px; }
 
 .modal-actions { display:flex; gap:7px; justify-content:flex-end; padding-top:2px; }
 .modal-cancel {
   padding:5px 14px; border-radius:var(--radius-sm);
   border:1px solid var(--glass-border); background:rgba(255,255,255,.15);
-  font-family:var(--font); font-size:12px; color:var(--text-secondary); cursor:pointer; transition:background .15s;
+  font-family:var(--font); font-size: var(--fs-md); color:var(--text-secondary); cursor:pointer; transition:background .15s;
 }
 .modal-cancel:hover { background:rgba(255,255,255,.28); }
 .modal-confirm {
   padding:5px 18px; border-radius:var(--radius-sm); border:none;
   background:linear-gradient(135deg,var(--mid),var(--accent));
-  font-family:var(--font); font-size:12px; font-weight:600; color:#fff; cursor:pointer;
+  font-family:var(--font); font-size: var(--fs-md); font-weight:600; color:#fff; cursor:pointer;
   box-shadow:0 2px 8px color-mix(in srgb,var(--accent) 35%,transparent);
   transition:transform .12s, box-shadow .12s;
 }
 .modal-confirm:hover { transform:translateY(-1px); box-shadow:0 4px 14px color-mix(in srgb,var(--accent) 45%,transparent); }
 
-.scope-modal .modal-box { width:300px; }
+.modal-box.scope-modal { width:320px; }
 .scope-modal-actions { justify-content:center; }
 .scope-modal-actions .modal-cancel,
 .scope-modal-actions .modal-confirm { flex:1; text-align:center; }
@@ -1150,7 +917,7 @@ html, body, #root {
   z-index:2000; pointer-events:none; animation:fadeIn .15s;
 }
 .toast-bubble {
-  padding:8px 16px; border-radius:999px; font-size:12px;
+  padding:8px 16px; border-radius:999px; font-size: var(--fs-md);
   font-weight:600; color:var(--text-primary); white-space:nowrap;
   box-shadow:0 6px 20px rgba(0,0,0,.18);
 }
@@ -1164,11 +931,13 @@ html, body, #root {
 .day-cell-content {
   display:flex;
   flex-direction:column;
-  align-items:center;
+  /* Number, lunar date and holiday name all follow the 날짜 숫자 위치 setting. */
+  align-items:var(--day-num-justify);
+  max-width:100%;
   justify-content:flex-start;
   height:100%;
   padding:2px;
-  font-size:10px;
+  font-size: var(--fs-xs);
 }
 
 .day-number {
@@ -1182,23 +951,18 @@ html, body, #root {
 }
 
 .lunar-date-small {
-  font-size: 7px;
+  font-size: var(--fs-2xs);
   color: var(--text-secondary);
   opacity: 0.8;
 }
 
-.lunar-date {
-  font-size:8px;
-  color:var(--text-secondary);
-}
-
 .moon-phase-small {
-  font-size:10px;
+  font-size: var(--fs-xs);
   margin-top:2px;
 }
 
 .holiday-name {
-  font-size:8px;
+  font-size: var(--fs-2xs);
   color:#dc2626;
   font-weight:600;
   white-space:nowrap;
@@ -1217,214 +981,12 @@ html, body, #root {
 }
 
 /* ─────────────────────────────────────────────
-   TodoPanel Add Button
-───────────────────────────────────────────── */
-
-.todo-panel-add-modal-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 26px rgba(127, 92, 255, 0.34);
-}
-
-.todo-panel-add-modal-btn:active {
-  transform: translateY(0);
-  opacity: 0.86;
-}
-
-/* ─────────────────────────────────────────────
-   Memo Board
-───────────────────────────────────────────── */
-
-.memo-board {
-  width: 100%;
-  height: 280px;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.38);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 12px 26px rgba(31, 35, 60, 0.12);
-  overflow: hidden;
-}
-
-.memo-tabs {
-  height: 44px;
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  padding: 8px 10px 0;
-  flex-shrink: 0;
-}
-
-.memo-tab {
-  min-width: 44px;
-  height: 34px;
-  padding: 0 12px;
-  border: 1px solid rgba(80, 80, 120, 0.14);
-  border-bottom: 0;
-  border-radius: 15px 15px 0 0;
-  background: rgba(255, 255, 255, 0.54);
-  color: rgba(38, 38, 56, 0.72);
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  transition:
-    transform 0.14s ease,
-    background 0.14s ease,
-    box-shadow 0.14s ease;
-}
-
-.memo-tab:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.72);
-}
-
-.memo-tab.active {
-  height: 38px;
-  background: var(--memo-tab-color);
-  color: #2d2a38;
-  box-shadow: 0 -3px 12px rgba(45, 42, 56, 0.08);
-}
-
-.memo-add-tab {
-  margin-left: auto;
-  min-width: 38px;
-  padding: 0;
-  font-size: 24px;
-  font-weight: 700;
-  background: rgba(255, 255, 255, 0.68);
-}
-
-.memo-paper {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  margin: 0 10px 10px;
-  border-radius: 0 20px 20px 20px;
-  background: var(--active-memo-color);
-  border: 1px solid rgba(80, 80, 120, 0.12);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
-  overflow: hidden;
-}
-
-.memo-textarea {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  resize: none;
-  border: 0;
-  outline: none;
-  padding: 16px;
-  background: transparent;
-  color: #2d2a38;
-  font-size: 13px;
-  line-height: 1.55;
-  font-family: inherit;
-}
-
-.memo-textarea::placeholder {
-  color: rgba(45, 42, 56, 0.46);
-}
-
-.memo-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px 10px;
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.memo-color-list {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-}
-
-.memo-color-dot {
-  width: 17px;
-  height: 17px;
-  border: 2px solid rgba(255, 255, 255, 0.74);
-  border-radius: 999px;
-  cursor: pointer;
-  box-shadow: 0 2px 6px rgba(31, 35, 60, 0.12);
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease;
-}
-
-.memo-color-dot:hover {
-  transform: scale(1.08);
-}
-
-.memo-color-dot.active {
-  border-color: #5d4dff;
-  box-shadow: 0 0 0 2px rgba(93, 77, 255, 0.16);
-}
-
-.memo-delete-btn {
-  border: 0;
-  border-radius: 999px;
-  padding: 5px 9px;
-  background: rgba(255, 255, 255, 0.48);
-  color: rgba(45, 42, 56, 0.64);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.memo-delete-btn:hover {
-  background: rgba(255, 255, 255, 0.72);
-  color: rgba(45, 42, 56, 0.86);
-}
-
-/* ─────────────────────────────────────────────
    TodoPanel Action Buttons
 ───────────────────────────────────────────── */
 
 .todo-panel {
   position: relative;
   overflow: visible;
-}
-
-.todo-panel-action-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin: 12px 0 14px;
-}
-
-.todo-panel-main-add-btn {
-  width: 46px;
-  height: 46px;
-  border: 0;
-  border-radius: 16px;
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1;
-  color: #ffffff;
-  cursor: pointer;
-  background: linear-gradient(135deg, #a674ff, #7f5cff);
-  box-shadow: 0 10px 22px rgba(127, 92, 255, 0.28);
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    opacity 0.15s ease;
-}
-
-.todo-panel-main-add-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 26px rgba(127, 92, 255, 0.34);
-}
-
-.todo-panel-main-add-btn:active {
-  transform: translateY(0);
-  opacity: 0.86;
 }
 
 .todo-panel-memo-toggle {
@@ -1434,7 +996,7 @@ html, body, #root {
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.32);
   color: rgba(31, 28, 52, 0.78);
-  font-size: 12px;
+  font-size: var(--fs-md);
   font-weight: 800;
   cursor: pointer;
   backdrop-filter: blur(12px);
@@ -1456,272 +1018,13 @@ html, body, #root {
 }
 
 /* ─────────────────────────────────────────────
-   Memo Flyout
+   Memo Window / Memo Board
 ───────────────────────────────────────────── */
-
-.memo-flyout {
-  position: absolute;
-  top: 86px;
-  left: calc(100% + 14px);
-  right:auto;
-  width: min(320px, 36vw);
-  z-index: 50;
-  animation: memoFlyoutIn 0.16s ease-out;
-}
-
-@keyframes memoFlyoutIn {
-  from {
-    opacity: 0;
-    transform: translateX(8px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-.app-root {
-  position: relative;
-}
-
-.memo-overlay-panel {
-  position: absolute;
-  top: 86px;
-  width: 300px;
-  max-width: 34vw;
-  z-index: 80;
-  pointer-events: auto;
-  animation: memoOverlayIn 0.16s ease-out;
-}
-
-.memo-overlay-panel .memo-board {
-  height: 300px;
-  min-height: 0;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 18px 36px rgba(31, 35, 60, 0.18);
-}
-
-@keyframes memoOverlayIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* ─────────────────────────────────────────────
-   Separate Memo Window
-───────────────────────────────────────────── */
-
-/* ─────────────────────────────────────────────
-   Separate Memo Window - bare memo style
-───────────────────────────────────────────── */
-
-.memo-window-root {
-  width: 100vw;
-  height: 100vh;
-  padding: 8px;
-  box-sizing: border-box;
-  background: transparent;
-  cursor: move;
-}
-
-.memo-window-root textarea,
-.memo-window-root button,
-.memo-window-root input {
-  cursor: auto;
-}
-
-.memo-window-root > .memo-board {
-  width: 100%;
-  height: 100%;
-}
-
-.memo-floating-close-btn {
-  position: fixed;
-  top: 10px;
-  right: 10px;
-  z-index: 100;
-  width: 26px;
-  height: 26px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.62);
-  color: rgba(31, 28, 52, 0.7);
-  font-size: 17px;
-  font-weight: 800;
-  line-height: 1;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(31, 35, 60, 0.14);
-}
-
-.memo-floating-close-btn:hover {
-  background: rgba(255, 255, 255, 0.86);
-}
-
-.memo-action-list {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.memo-small-action-btn {
-  border: 0;
-  border-radius: 999px;
-  padding: 5px 9px;
-  background: rgba(255, 255, 255, 0.48);
-  color: rgba(45, 42, 56, 0.64);
-  font-size: 11px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.memo-small-action-btn:hover {
-  background: rgba(255, 255, 255, 0.72);
-  color: rgba(45, 42, 56, 0.86);
-}
 
 .memo-board.detached .memo-tabs {
   display: none;
 }
 
-.memo-board-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.memo-empty-add-btn {
-  border: 0;
-  border-radius: 16px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.58);
-  color: rgba(31, 28, 52, 0.75);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-
-.memo-window-card {
-  width: 100%;
-  height: 100%;
-  border-radius: 24px;
-  overflow: hidden;
-  background: rgba(236, 239, 248, 0.48);
-  border: 1px solid rgba(255, 255, 255, 0.46);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.54),
-    0 18px 36px rgba(31, 35, 60, 0.18);
-  backdrop-filter: blur(18px);
-}
-
-.memo-window-titlebar {
-  height: 38px;
-  padding: 0 12px 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: rgba(31, 28, 52, 0.78);
-  font-size: 13px;
-  font-weight: 800;
-  user-select: none;
-  cursor: move;
-}
-
-.memo-window-close-btn {
-  width: 26px;
-  height: 26px;
-  border: 0;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.36);
-  color: rgba(31, 28, 52, 0.72);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.memo-window-close-btn:hover {
-  background: rgba(255, 255, 255, 0.58);
-}
-
-.memo-window-card .memo-board {
-  width: calc(100% - 16px);
-  height: calc(100% - 46px);
-  margin: 0 8px 8px;
-  min-height: 0;
-}
-
-.memo-board-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 0 10px 10px;
-}
-
-.memo-board-scroll .memo-paper {
-  margin: 0;
-  min-height: 210px;
-}
-
-.memo-preview-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.memo-preview-card {
-  width: 100%;
-  min-height: 76px;
-  border: 1px solid rgba(80, 80, 120, 0.12);
-  border-radius: 18px;
-  padding: 10px 12px;
-  text-align: left;
-  cursor: pointer;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 8px 18px rgba(31, 35, 60, 0.08);
-  transition:
-    transform 0.14s ease,
-    box-shadow 0.14s ease;
-}
-
-.memo-preview-card:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.55),
-    0 12px 22px rgba(31, 35, 60, 0.12);
-}
-
-.memo-preview-title {
-  display: block;
-  margin-bottom: 4px;
-  color: rgba(45, 42, 56, 0.76);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.memo-preview-text {
-  display: -webkit-box;
-  overflow: hidden;
-  color: rgba(45, 42, 56, 0.68);
-  font-size: 12px;
-  line-height: 1.4;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-/* ─────────────────────────────────────────────
-   Memo Window / Memo Board Cleanup
-───────────────────────────────────────────── */
-
 .memo-window-root {
   width: 100vw;
   height: 100vh;
@@ -1741,13 +1044,6 @@ html, body, #root {
   width: 100%;
   height: 100%;
   min-height: 0;
-}
-
-.memo-floating-close-btn,
-.memo-window-card,
-.memo-window-titlebar,
-.memo-window-close-btn {
-  display: none !important;
 }
 
 .memo-board {
@@ -1783,7 +1079,7 @@ html, body, #root {
   border-radius: 15px 15px 0 0;
   background: rgba(255, 255, 255, 0.54);
   color: rgba(38, 38, 56, 0.72);
-  font-size: 14px;
+  font-size: var(--font-size);
   font-weight: 800;
   cursor: grab;
   transition:
@@ -1847,7 +1143,7 @@ html, body, #root {
   padding: 16px;
   background: transparent;
   color: #2d2a38;
-  font-size: 13px;
+  font-size: var(--fs-lg);
   line-height: 1.55;
   font-family: inherit;
 }
@@ -1909,7 +1205,7 @@ html, body, #root {
   padding: 0 11px;
   background: rgba(255, 255, 255, 0.58);
   color: rgba(45, 42, 56, 0.68);
-  font-size: 11px;
+  font-size: var(--fs-sm);
   font-weight: 800;
   line-height: 28px;
   white-space: nowrap;
@@ -1926,24 +1222,6 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.memo-empty-add-btn {
-  border: 0;
-  border-radius: 16px;
-  padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.58);
-  color: rgba(31, 28, 52, 0.75);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-/* 이전 미리보기/스크롤 구조는 숨김 */
-.memo-board-scroll,
-.memo-preview-stack,
-.memo-preview-card {
-  display: none !important;
 }
 
 /* ─────────────────────────────────────────────
@@ -1966,7 +1244,7 @@ html, body, #root {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.62);
   color: rgba(45, 42, 56, 0.56);
-  font-size: 14px;
+  font-size: var(--font-size);
   font-weight: 900;
   line-height: 1;
   cursor: grab !important;
@@ -2011,23 +1289,19 @@ html, body, #root {
 .timeline-day-header.saturday .timeline-weekday,
 .timeline-day-header.saturday .timeline-day-number { color: #3b82f6; }
 
-.timeline-weekday { font-size: 9px; color: var(--text-secondary); }
-.timeline-day-number { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.timeline-weekday { font-size: var(--fs-2xs); color: var(--text-secondary); }
+.timeline-day-number { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .timeline-day-number.today-badge {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 50%;
   background: linear-gradient(135deg, var(--mid), var(--accent)); color: #fff;
 }
 
-.timeline-body { position: relative; padding: 6px 0; }
-
-.timeline-row { display: grid; height: 24px; align-items: center; }
-
 .timeline-bar {
-  grid-row: 1; height: 18px; min-width: 18px; border: none; border-radius: 9px;
+  align-self: center; height: 20px; min-width: 18px; border: none; border-radius: 10px;
   padding: 0 8px; margin: 0 1px; cursor: pointer;
   display: flex; align-items: center; justify-content: flex-start;
-  font-family: var(--font); font-size: 10px; font-weight: 600; color: #1a1a2e;
+  font-family: var(--font); font-size: var(--fs-xs); font-weight: 600; color: #1a1a2e;
   box-shadow: 0 1px 3px rgba(0,0,0,.12);
   transition: transform .1s, opacity .1s;
   position: relative; z-index: 1;
@@ -2037,11 +1311,304 @@ html, body, #root {
 .timeline-bar.done .timeline-bar-title { text-decoration: line-through; }
 
 /* A bar too narrow for its own title (e.g. a 1-day item) lets the label spill
-   past its right edge instead of hiding it — the rest of that row is empty. */
+   past its right edge; lane packing in TimelineView keeps that space free. */
 .timeline-bar-title {
   white-space: nowrap; overflow: visible;
 }
 
 .timeline-empty {
-  text-align: center; color: var(--text-secondary); font-size: 12px; padding: 30px 0;
+  text-align: center; color: var(--text-secondary); font-size: var(--fs-md); padding: 30px 0;
+}
+
+/* ════════════════════════════════════════════
+   Title bar: what is on screen
+   ════════════════════════════════════════════ */
+.nav-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255,200,220,.15);
+  border-radius: 30px;
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.view-title-wrap { position: relative; flex-shrink: 0; }
+
+.view-title {
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 3px 8px;
+  font-family: var(--font);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  color: var(--text-primary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .15s;
+}
+.view-title:hover { background: rgba(255,255,255,.25); }
+
+/* Present for showPicker() but never seen or tabbed to. */
+.visually-hidden-input {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ════════════════════════════════════════════
+   Calendar events: selection and completion
+   ════════════════════════════════════════════ */
+.fc .fc-event.is-selected {
+  box-shadow: 0 0 0 2px var(--accent), 0 2px 8px color-mix(in srgb, var(--accent) 35%, transparent);
+  z-index: 3;
+}
+.fc .fc-event.is-done { opacity: .55; }
+.fc .fc-event.is-done .fc-event-title { text-decoration: line-through; }
+.fc .fc-event.is-recurring .fc-event-title::after { content: " ↻"; opacity: .6; }
+
+/* ════════════════════════════════════════════
+   Todo panel: quick add, chips, progress
+   ════════════════════════════════════════════ */
+.todo-header-text { min-width: 0; }
+
+.todo-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.3);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+}
+.todo-chip.holiday { color: #b91c1c; border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.1); }
+
+.quick-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.quick-add .todo-input { min-width: 0; }
+
+.quick-add .todo-panel-main-add-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  font-size: 20px;
+}
+
+.quick-add .todo-panel-memo-toggle {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.todo-empty p + p { margin-top: 6px; }
+.todo-empty-hint { font-size: var(--fs-xs); line-height: 1.5; }
+
+.todo-list { list-style: none; }
+
+.todo-item.selected {
+  background: color-mix(in srgb, var(--accent) 14%, white 22%);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.todo-item.dragging { opacity: .45; }
+.drag-handle { cursor: grab; }
+
+.check-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid color-mix(in srgb, var(--text-primary) 35%, transparent);
+  background: rgba(255,255,255,.4);
+  color: #fff;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.check-btn[aria-checked="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.todo-color-bar {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.todo-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.todo-progress {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.35);
+  overflow: hidden;
+}
+.todo-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--mid), var(--accent));
+  transition: width .25s ease;
+}
+
+/* ════════════════════════════════════════════
+   Forms & dialogs
+   ════════════════════════════════════════════ */
+.form-error {
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: #b91c1c;
+  background: rgba(239,68,68,.1);
+  border-radius: var(--radius-sm);
+  padding: 5px 9px;
+}
+
+.modal-actions-left { margin-right: auto; }
+
+.modal-danger {
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(239,68,68,.35);
+  background: rgba(239,68,68,.08);
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  color: #b91c1c;
+  cursor: pointer;
+  transition: background .15s;
+}
+.modal-danger:hover { background: rgba(239,68,68,.18); }
+
+.modal-box.shortcut-modal { width: 420px; max-height: calc(100vh - 40px); overflow-y: auto; }
+
+.shortcut-list { display: flex; flex-direction: column; gap: 5px; }
+.shortcut-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+}
+.shortcut-row dd { color: var(--text-secondary); }
+
+kbd {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--glass-border);
+  border-bottom-width: 2px;
+  background: rgba(255,255,255,.55);
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.mouse-tips {
+  margin-top: 4px;
+  padding-left: 18px;
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.shortcut-details summary {
+  cursor: pointer;
+  font-size: var(--fs-md);
+  color: var(--text-primary);
+  padding: 4px 0;
+}
+.shortcut-details[open] summary { margin-bottom: 8px; }
+.shortcut-details .shortcut-row { grid-template-columns: 110px 1fr; font-size: var(--fs-sm); }
+
+/* ════════════════════════════════════════════
+   Toast with an action ("실행 취소")
+   ════════════════════════════════════════════ */
+.toast-bubble {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.toast-action {
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: linear-gradient(135deg, var(--mid), var(--accent));
+  color: #fff;
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ════════════════════════════════════════════
+   Timeline: lanes, month labels, today column
+   ════════════════════════════════════════════ */
+.timeline-month {
+  height: 1.2em;
+  font-size: var(--fs-2xs);
+  font-weight: 800;
+  color: var(--accent);
+}
+.timeline-day-header.month-start { border-left: 2px solid color-mix(in srgb, var(--accent) 45%, transparent); }
+
+.timeline-grid {
+  display: grid;
+  position: relative;
+  padding: 6px 0;
+}
+
+.timeline-col { z-index: 0; border-left: 1px solid color-mix(in srgb, var(--glass-border) 45%, transparent); }
+.timeline-col.weekend { background: rgba(255,255,255,.06); }
+.timeline-col.selected { background: color-mix(in srgb, var(--mid) 16%, transparent); }
+.timeline-col.today {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.timeline-bar-time { margin-right: 5px; opacity: .75; font-weight: 700; }
+
+/* ════════════════════════════════════════════
+   Accessibility
+   ════════════════════════════════════════════ */
+
+/* A visible focus ring for keyboard users (mouse clicks don't trigger it). */
+:where(button, a, input, select, textarea, summary, [role="separator"], [tabindex]:not([tabindex="-1"])):focus-visible,
+.fc .fc-event:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.todo-input:focus-visible,
+.time-input:focus-visible,
+.repeat-select:focus-visible,
+.font-search:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 1px;
+}
+
+/* Respect the Windows "애니메이션 효과 끄기" setting. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

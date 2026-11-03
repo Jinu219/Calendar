@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { MEMO_COLORS } from "../constants";
+import { COLOR_NAMES, MEMO_COLORS } from "../constants";
 import { useMemos } from "../hooks";
 
 interface MemoBoardProps {
@@ -279,6 +279,8 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
               onDragOver={handleTabDragOver}
               onDrop={event => handleTabDrop(event, memo.id)}
               onDragEnd={handleTabDragEnd}
+              aria-label={`메모 ${index + 1}`}
+              aria-pressed={memo.id === activeMemo.id}
               title="클릭하면 선택, 다른 번호 위에 놓으면 순서 변경, 밖으로 끌면 새 메모창"
             >
               {index + 1}
@@ -289,6 +291,7 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
             type="button"
             className="memo-tab memo-add-tab"
             onClick={handleAddMemo}
+            aria-label="메모 추가"
             title="메모 추가"
           >
             +
@@ -304,21 +307,24 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
             updateMemo(activeMemo.id, { content: event.target.value })
           }
           placeholder="오늘 기억할 것, 공부 메모, 작업 아이디어를 적어보세요."
+          aria-label="메모 내용"
         />
 
         <div className="memo-toolbar">
-          <div className="memo-color-list" aria-label="메모 색상 선택">
+          <div className="memo-color-list" role="radiogroup" aria-label="메모 색상">
             {MEMO_COLORS.map(color => (
               <button
                 key={color}
                 type="button"
+                role="radio"
+                aria-checked={activeMemo.color === color}
                 className={`memo-color-dot ${
                   activeMemo.color === color ? "active" : ""
                 }`}
                 style={{ backgroundColor: color }}
                 onClick={() => updateMemo(activeMemo.id, { color })}
-                title="메모 색상 변경"
-                aria-label={`메모 색상을 ${color}로 변경`}
+                title={`메모 색상: ${COLOR_NAMES[color] ?? color}`}
+                aria-label={COLOR_NAMES[color] ?? color}
               />
             ))}
           </div>

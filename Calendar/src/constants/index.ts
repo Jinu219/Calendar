@@ -65,9 +65,45 @@ export const WEB_FONTS = [
   "Noto Sans KR","Gothic A1","Nanum Gothic","IBM Plex Sans KR","Hahmlet","Gowun Dodum"
 ];
 
+/** Screen-reader names for the color swatches. */
+export const COLOR_NAMES: Record<string, string> = {
+  "#f9a8d4": "분홍", "#a5f3fc": "하늘", "#bbf7d0": "연두", "#fde68a": "노랑",
+  "#c4b5fd": "보라", "#fb923c": "주황", "#6ee7b7": "민트", "#fca5a5": "빨강",
+  "#fff4a3": "노랑", "#ffd6e0": "분홍", "#d7f9d0": "연두", "#cdeffd": "하늘",
+  "#e4d7ff": "보라", "#ffe1b3": "살구", "#d9f5ec": "민트", "#f3d1ff": "라일락",
+};
+
 export const TODOS_KEY = "cwa-todos-v4";
 export const SETTINGS_KEY = "cwa-settings-v4";
 export const WIN_POS_KEY = "cwa-win-pos";
+/** One-shot message shown after a reload (e.g. "backup imported"). */
+export const FLASH_MESSAGE_KEY = "cwa:flash-message";
+
+/** Week view hours shown by default; widened automatically to fit earlier/later events. */
+export const WEEK_VIEW_DEFAULT_START_HOUR = 9;
+export const WEEK_VIEW_DEFAULT_END_HOUR = 23;
+
+export const KEYBOARD_SHORTCUTS: { keys: string; description: string }[] = [
+  { keys: "← / →", description: "이전 / 다음 달·주" },
+  { keys: "T", description: "오늘로 이동" },
+  { keys: "1 / 2 / 3", description: "월간 / 주간 / 타임라인 보기" },
+  { keys: "N", description: "선택한 날짜에 새 항목 추가" },
+  { keys: "/", description: "빠른 추가 입력창으로 이동" },
+  { keys: "Enter · Space", description: "선택한 항목 완료 표시" },
+  { keys: "E · F2", description: "선택한 항목 수정" },
+  { keys: "Delete", description: "선택한 항목 삭제 (반복 일정은 그 날짜만)" },
+  { keys: "Ctrl+C / Ctrl+V", description: "선택한 항목 복사 / 선택한 날짜에 붙여넣기" },
+  { keys: "Ctrl+Z / Ctrl+Y", description: "실행 취소 / 다시 실행" },
+  { keys: "Esc", description: "선택 해제 · 열린 창 닫기" },
+  { keys: "?", description: "이 도움말 열기" },
+];
+
+export const MOUSE_TIPS: string[] = [
+  "달력의 일정을 클릭하면 선택, 더블클릭하면 수정합니다.",
+  "Shift 또는 Ctrl을 누른 채 클릭하면 여러 개를 선택합니다.",
+  "일정을 끌어서 옮기거나 가장자리를 끌어 기간을 바꿉니다.",
+  "제목(예: 2026년 11월)을 누르면 원하는 달로 바로 이동합니다.",
+];
 
 export const DEFAULT_SETTINGS: Settings = {
   colorTheme: "pink",
@@ -92,6 +128,9 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 export const REMINDER_LEAD_OPTIONS = [0, 5, 10, 30, 60] as const;
+
+export const FONT_SIZE_MIN = 11;
+export const FONT_SIZE_MAX = 20;
 
 export const MODAL_CLOSED: ModalState = {
   open: false,
