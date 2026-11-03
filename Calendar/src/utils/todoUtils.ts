@@ -8,7 +8,7 @@
 // can never disagree with each other.
 
 import type { EventInput } from "@fullcalendar/core";
-import type { AgendaItem, EventTiming, RepeatType, Todo } from "../types";
+import type { AgendaItem, EventTiming, Todo } from "../types";
 import {
   addDays,
   addMonths,
@@ -39,6 +39,33 @@ export const getTodoStartTime = (todo: Todo): string | undefined => {
   return undefined;
 };
 
+const WEEKDAY_NAMES = ["일", "월", "화", "수", "목", "금", "토"];
+const ORDINAL_NAMES = ["첫째", "둘째", "셋째", "넷째", "마지막"];
+
+type RepeatRule = Pick<Todo, "repeat" | "repeatInterval" | "repeatDays" | "monthlyMode" | "date" | "startDate">;
+
+/** Every N periods; anything missing or invalid means every period. */
+export const getRepeatInterval = (todo: Pick<Todo, "repeatInterval">): number =>
+  Math.max(1, Math.floor(todo.repeatInterval ?? 1) || 1);
+
+const daysInMonth = (date: Date): number =>
+  new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+
+/** 1–4 for the first–fourth such weekday of its month, 5 for "the last one". */
+export const getWeekdayOrdinal = (date: Date): number =>
+  Math.min(5, Math.ceil(date.getDate() / 7));
+
+const isWeekdayOrdinal = (date: Date, ordinal: number): boolean =>
+  ordinal === 5
+    ? date.getDate() + 7 > daysInMonth(date)
+    : Math.ceil(date.getDate() / 7) === ordinal;
+
+/** Weekdays a weekly rule repeats on (default: the start date's weekday). */
+export const getRepeatDays = (todo: RepeatRule): number[] =>
+  todo.repeatDays && todo.repeatDays.length > 0
+    ? [...new Set(todo.repeatDays)].sort((a, b) => a - b)
+    : [parseLocalDate(todo.startDate || todo.date).getDay()];
+
 /** Whether an occurrence of the todo starts exactly on dateStr. */
 export const doesOccurrenceStartOn = (todo: Todo, dateStr: string): boolean => {
   const base = getTodoStartDate(todo);
@@ -48,24 +75,74 @@ export const doesOccurrenceStartOn = (todo: Todo, dateStr: string): boolean => {
   if (todo.repeatEndDate && dateStr > todo.repeatEndDate) return false;
   if (todo.exceptions?.includes(dateStr)) return false;
 
+  const interval = getRepeatInterval(todo);
+  const baseDate = parseLocalDate(base);
+  const target = parseLocalDate(dateStr);
+  const dayOffset = daysBetween(base, dateStr);
+  const monthOffset = (target.getFullYear() - baseDate.getFullYear()) * 12
+    + target.getMonth() - baseDate.getMonth();
+
   switch (todo.repeat) {
     case "daily":
-      return true;
+      return dayOffset % interval === 0;
 
-    case "weekly":
-      return daysBetween(base, dateStr) % 7 === 0;
+    case "weekdays":
+      return target.getDay() >= 1 && target.getDay() <= 5;
 
-    case "monthly": {
-      const baseDate = parseLocalDate(base);
-      const target = parseLocalDate(dateStr);
-      const monthOffset = (target.getFullYear() - baseDate.getFullYear()) * 12
-        + target.getMonth() - baseDate.getMonth();
-
-      return fmtDate(addMonths(baseDate, monthOffset)) === dateStr;
+    case "weekly": {
+      if (!getRepeatDays(todo).includes(target.getDay())) return false;
+      // Weeks count from the Sunday of the start week, so "every 2 weeks on
+      // Mon and Wed" keeps both days in the same on-week.
+      const weekIndex = Math.floor((dayOffset + baseDate.getDay()) / 7);
+      return weekIndex % interval === 0;
     }
+
+    case "monthly":
+      if (monthOffset % interval !== 0) return false;
+
+      if (todo.monthlyMode === "weekday") {
+        return target.getDay() === baseDate.getDay()
+          && isWeekdayOrdinal(target, getWeekdayOrdinal(baseDate));
+      }
+
+      // Clamped: a series on the 31st lands on the 30th / 28th in shorter months.
+      return fmtDate(addMonths(baseDate, monthOffset)) === dateStr;
+
+    case "yearly":
+      return monthOffset % (12 * interval) === 0
+        && fmtDate(addMonths(baseDate, monthOffset)) === dateStr;
 
     default:
       return false;
+  }
+};
+
+/** "매일", "평일", "격주 월·수", "매월 첫째 화요일", "매년 11월 3일"… */
+export const describeRepeat = (todo: RepeatRule): string => {
+  const interval = getRepeatInterval(todo);
+  const start = parseLocalDate(todo.startDate || todo.date);
+
+  switch (todo.repeat) {
+    case "daily":
+      return interval === 1 ? "매일" : `${interval}일마다`;
+    case "weekdays":
+      return "평일";
+    case "weekly": {
+      const prefix = interval === 1 ? "매주" : interval === 2 ? "격주" : `${interval}주마다`;
+      return `${prefix} ${getRepeatDays(todo).map(day => WEEKDAY_NAMES[day]).join("·")}`;
+    }
+    case "monthly": {
+      const prefix = interval === 1 ? "매월" : `${interval}개월마다`;
+      return todo.monthlyMode === "weekday"
+        ? `${prefix} ${ORDINAL_NAMES[getWeekdayOrdinal(start) - 1]} ${WEEKDAY_NAMES[start.getDay()]}요일`
+        : `${prefix} ${start.getDate()}일`;
+    }
+    case "yearly": {
+      const prefix = interval === 1 ? "매년" : `${interval}년마다`;
+      return `${prefix} ${start.getMonth() + 1}월 ${start.getDate()}일`;
+    }
+    default:
+      return "";
   }
 };
 
@@ -115,41 +192,15 @@ export const listOccurrenceStarts = (
   const last = todo.repeatEndDate && todo.repeatEndDate < rangeEnd
     ? todo.repeatEndDate
     : rangeEnd;
-  const from = scanStart > base ? scanStart : base;
   const starts: string[] = [];
 
-  if (last < from) return starts;
-
-  const keep = (dateStr: string) => {
-    if (dateStr >= scanStart && !todo.exceptions?.includes(dateStr)) {
-      starts.push(dateStr);
-    }
-  };
-
-  if (todo.repeat === "monthly") {
-    const baseDate = parseLocalDate(base);
-    const fromDate = parseLocalDate(from);
-    let offset = Math.max(
-      0,
-      (fromDate.getFullYear() - baseDate.getFullYear()) * 12
-        + fromDate.getMonth() - baseDate.getMonth() - 1
-    );
-
-    for (let i = 0; i < MAX_OCCURRENCES; i++, offset++) {
-      const dateStr = fmtDate(addMonths(baseDate, offset));
-      if (dateStr > last) break;
-      keep(dateStr);
-    }
-
-    return starts;
-  }
-
-  const step = todo.repeat === "weekly" ? 7 : 1;
-  let cursor = shiftDate(base, Math.ceil(daysBetween(base, from) / step) * step);
+  // Day by day over the (visible, so short) range: every rule is then decided by
+  // doesOccurrenceStartOn alone and can't drift from what the other views show.
+  let cursor = scanStart > base ? scanStart : base;
 
   for (let i = 0; i < MAX_OCCURRENCES && cursor <= last; i++) {
-    keep(cursor);
-    cursor = shiftDate(cursor, step);
+    if (doesOccurrenceStartOn(todo, cursor)) starts.push(cursor);
+    cursor = shiftDate(cursor, 1);
   }
 
   return starts;
@@ -193,6 +244,8 @@ export const shiftTodoToTiming = (
           repeatEndDate: todo.repeatEndDate ? shiftDate(todo.repeatEndDate, delta) : undefined,
           exceptions: shiftAll(todo.exceptions),
           doneDates: shiftAll(todo.doneDates),
+          // "Mon·Wed" moved by a day becomes "Tue·Thu".
+          repeatDays: todo.repeatDays?.map(day => (((day + delta) % 7) + 7) % 7),
         }),
   };
 };
@@ -242,6 +295,22 @@ export const getAgendaForDate = (todos: Todo[], dateStr: string): AgendaItem[] =
     })
     .sort(compareAgendaItems);
 
+/** Unfinished one-off todos whose last day is already past — candidates to carry over. */
+export const getOverdueTodos = (todos: Todo[], today: string): Todo[] =>
+  todos.filter(todo =>
+    todo.kind === "todo" &&
+    todo.repeat === "none" &&
+    !todo.done &&
+    !todo.sourceId &&
+    (todo.endDate || getTodoStartDate(todo)) < today
+  );
+
+/** "2/5" progress of an item's checklist, or "" when it has none. */
+export const getSubtaskProgress = (todo: Todo): string => {
+  if (!todo.subtasks || todo.subtasks.length === 0) return "";
+  return `${todo.subtasks.filter(s => s.done).length}/${todo.subtasks.length}`;
+};
+
 /** Expand todos (including every recurring occurrence) into calendar events. */
 export function expandTodos(
   todos: Todo[],
@@ -276,10 +345,13 @@ export function expandTodos(
         backgroundColor: todo.color,
         borderColor: "transparent",
         textColor: "#1a1a2e",
+        // Subscribed calendars are read-only copies of someone else's data.
+        ...(todo.sourceId ? { editable: false, startEditable: false, durationEditable: false } : {}),
         classNames: [
           done ? "is-done" : "",
           todo.repeat !== "none" ? "is-recurring" : "",
           todo.kind === "todo" ? "kind-todo" : "kind-schedule",
+          todo.sourceId ? "is-external" : "",
         ].filter(Boolean),
         extendedProps: {
           todoId: todo.id,
@@ -321,20 +393,6 @@ export function getHolidayEvents(
       },
     }));
 }
-
-/** Get repeat label in Korean */
-export const getRepeatLabel = (repeat: RepeatType): string => {
-  switch (repeat) {
-    case "daily":
-      return "매일";
-    case "weekly":
-      return "매주";
-    case "monthly":
-      return "매월";
-    default:
-      return "";
-  }
-};
 
 /** "09:00 – 10:00", "오전 9:00", or "" for an all-day item. */
 export const getTodoTimeLabel = (todo: Todo, use24Hour: boolean): string => {

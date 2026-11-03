@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import React, { useCallback, useMemo, useRef, memo } from "react";
+import { CategoryFilter } from "./CategoryFilter";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { formatShortDate } from "../utils";
 import type { AddMode, CalendarViewType, MoonPhase } from "../types";
@@ -24,6 +25,10 @@ interface TitleBarProps {
   editMode: boolean;
   onEditModeToggle: () => void;
   onShowHelp: () => void;
+  onOpenSearch: () => void;
+  colorLabels: Record<string, string>;
+  hiddenColors: string[];
+  onHiddenColorsChange: (hiddenColors: string[]) => void;
   moonPhase?: MoonPhase;
   showMoonPhase: boolean;
   addMode: AddMode;
@@ -57,6 +62,10 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
   editMode,
   onEditModeToggle,
   onShowHelp,
+  onOpenSearch,
+  colorLabels,
+  hiddenColors,
+  onHiddenColorsChange,
   moonPhase,
   showMoonPhase,
   addMode,
@@ -196,6 +205,22 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
             </button>
           ))}
         </div>
+
+        <button
+          type="button"
+          className="settings-btn"
+          aria-label="일정 검색"
+          title="일정 검색 (Ctrl+F)"
+          onClick={onOpenSearch}
+        >
+          🔍
+        </button>
+
+        <CategoryFilter
+          colorLabels={colorLabels}
+          hiddenColors={hiddenColors}
+          onChange={onHiddenColorsChange}
+        />
 
         <button
           type="button"

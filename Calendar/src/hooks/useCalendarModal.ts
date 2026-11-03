@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { MODAL_CLOSED } from "../constants";
 import type { AddMode, AddTodoOptions, EventFormData, ModalState } from "../types";
+import { reminderToMinutes, repeatFieldsFromForm } from "../utils";
 
 interface UseCalendarModalParams {
   addTodo: (
@@ -74,8 +75,8 @@ export const useCalendarModal = ({
       endTime: data.allDay ? undefined : data.endTime,
       startDate: data.startDate || baseDate,
       endDate: data.endDate || data.startDate || baseDate,
-      repeat: data.repeat,
-      repeatEndDate: data.repeatEndDate || undefined,
+      reminderMinutes: reminderToMinutes(data.reminder),
+      ...repeatFieldsFromForm(data),
       kind: data.kind,
     });
 

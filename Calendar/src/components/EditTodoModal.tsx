@@ -4,12 +4,23 @@
 
 import React, { useState } from "react";
 import type { EventFormData, Todo } from "../types";
-import { getDefaultEndTime, getTodoStartDate, isOccurrenceDone } from "../utils";
+import {
+  getDefaultEndTime,
+  getRepeatDays,
+  getRepeatInterval,
+  getTodoStartDate,
+  isOccurrenceDone,
+  minutesToReminder,
+  reminderToMinutes,
+  repeatFieldsFromForm,
+} from "../utils";
 import { EventForm, validateEventForm } from "./EventForm";
 import { ModalShell } from "./ModalShell";
 
 interface EditTodoModalProps {
   todo: Todo | null;
+  defaultReminderMinutes: number;
+  colorLabels: Record<string, string>;
   onClose: () => void;
   onSave: (id: string, updates: Partial<Todo>) => void;
   onDelete: (todo: Todo) => void;
@@ -32,6 +43,11 @@ const toFormData = (todo: Todo): EventFormData => {
     color: todo.color,
     repeat: todo.repeat,
     repeatEndDate: todo.repeatEndDate ?? "",
+    repeatInterval: getRepeatInterval(todo),
+    repeatDays: getRepeatDays(todo),
+    monthlyMode: todo.monthlyMode ?? "date",
+    reminder: minutesToReminder(todo.reminderMinutes),
+    subtasks: todo.subtasks ?? [],
     kind: todo.kind ?? "schedule",
   };
 };
@@ -68,13 +84,19 @@ const toTodoUpdates = (form: EventFormData): Partial<Todo> => {
     allDay,
     startTime: allDay ? undefined : form.startTime,
     endTime: allDay ? undefined : form.endTime,
-    repeat: form.repeat,
-    repeatEndDate: form.repeat !== "none" && form.repeatEndDate ? form.repeatEndDate : undefined,
+    reminderMinutes: reminderToMinutes(form.reminder),
+    ...repeatFieldsFromForm(form),
   };
 };
 
+const SERIES_ONLY_FIELDS: (keyof Todo)[] = [
+  "repeat", "repeatEndDate", "repeatInterval", "repeatDays", "monthlyMode", "subtasks",
+];
+
 const EditTodoModalContent: React.FC<EditTodoModalProps & { todo: Todo }> = ({
   todo,
+  defaultReminderMinutes,
+  colorLabels,
   onClose,
   onSave,
   onDelete,
@@ -91,14 +113,13 @@ const EditTodoModalContent: React.FC<EditTodoModalProps & { todo: Todo }> = ({
       return;
     }
 
-    // Editing a single occurrence never changes the series' repetition.
     const updates = scopeLabel
       ? toTodoUpdates(form)
       : { ...toTodoUpdates(form), ...completionUpdates(todo, form) };
 
+    // Editing a single occurrence never changes the series' repetition.
     if (scopeLabel) {
-      delete updates.repeat;
-      delete updates.repeatEndDate;
+      SERIES_ONLY_FIELDS.forEach(field => delete updates[field]);
     }
 
     onSave(todo.id, updates);
@@ -117,6 +138,8 @@ const EditTodoModalContent: React.FC<EditTodoModalProps & { todo: Todo }> = ({
         }}
         error={error}
         showRepeat={!scopeLabel}
+        defaultReminderMinutes={defaultReminderMinutes}
+        colorLabels={colorLabels}
         submitLabel="저장"
         onCancel={onClose}
         onSubmit={handleSave}

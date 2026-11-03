@@ -6,14 +6,14 @@ import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { FLASH_MESSAGE_KEY, MEMOS_KEY, SETTINGS_KEY, TODOS_KEY } from "../constants";
-import { getLocalToday, loadJson } from "../utils";
+import { flushPendingWrites, getLocalToday, loadJson, persistItem } from "../utils";
 import { normalizeTodos } from "./useTodos";
 import { normalizeMemos } from "./useMemos";
 import { normalizeSettings } from "./useSettings";
 
 const BACKUP_VERSION = 1;
 
-interface BackupPayload {
+export interface BackupPayload {
   version: number;
   exportedAt: string;
   todos: unknown;
@@ -27,6 +27,15 @@ export interface BackupResult {
   message: string;
 }
 
+/** Everything worth keeping, in the format both manual and automatic backups use. */
+export const buildBackupPayload = (): BackupPayload => ({
+  version: BACKUP_VERSION,
+  exportedAt: new Date().toISOString(),
+  todos: loadJson<unknown[]>(TODOS_KEY, []),
+  settings: loadJson(SETTINGS_KEY, {}),
+  memos: loadJson(MEMOS_KEY, []),
+});
+
 const isBackupPayload = (value: unknown): value is BackupPayload =>
   typeof value === "object" &&
   value !== null &&
@@ -34,7 +43,7 @@ const isBackupPayload = (value: unknown): value is BackupPayload =>
   "settings" in value &&
   "memos" in value;
 
-const errorText = (error: unknown): string =>
+export const errorText = (error: unknown): string =>
   error instanceof Error ? error.message : String(error);
 
 export function useBackup() {
@@ -53,21 +62,15 @@ export function useBackup() {
 
       if (!path) return null;
 
-      const todos = loadJson<unknown[]>(TODOS_KEY, []);
-      const payload: BackupPayload = {
-        version: BACKUP_VERSION,
-        exportedAt: new Date().toISOString(),
-        todos,
-        settings: loadJson(SETTINGS_KEY, {}),
-        memos: loadJson(MEMOS_KEY, []),
-      };
+      const payload = buildBackupPayload();
 
       await invoke("write_text_file", {
         path,
         contents: JSON.stringify(payload, null, 2),
       });
 
-      return { ok: true, message: `백업을 저장했어요 (일정 ${Array.isArray(todos) ? todos.length : 0}개)` };
+      const count = Array.isArray(payload.todos) ? payload.todos.length : 0;
+      return { ok: true, message: `백업을 저장했어요 (일정 ${count}개)` };
     } catch (error) {
       console.error("Failed to export backup:", error);
       return { ok: false, message: `내보내기 실패: ${errorText(error)}` };
@@ -80,9 +83,12 @@ export function useBackup() {
     setIsImporting(true);
 
     try {
+      // Start in the automatic backups folder: that's where a restore usually comes from.
+      const backupDir = await invoke<string | null>("get_backup_dir").catch(() => null);
       const selected = await open({
         title: "데이터 백업 가져오기",
         multiple: false,
+        defaultPath: backupDir ?? undefined,
         filters: [{ name: "JSON", extensions: ["json"] }],
       });
 
@@ -100,9 +106,10 @@ export function useBackup() {
       const todos = normalizeTodos(parsed.todos);
       const settings = normalizeSettings(parsed.settings);
 
-      localStorage.setItem(TODOS_KEY, JSON.stringify(todos));
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-      localStorage.setItem(MEMOS_KEY, JSON.stringify(normalizeMemos(parsed.memos)));
+      persistItem(TODOS_KEY, JSON.stringify(todos));
+      persistItem(SETTINGS_KEY, JSON.stringify(settings));
+      persistItem(MEMOS_KEY, JSON.stringify(normalizeMemos(parsed.memos)));
+      flushPendingWrites();
       sessionStorage.setItem(FLASH_MESSAGE_KEY, `백업을 가져왔어요 (일정 ${todos.length}개)`);
 
       window.location.reload();

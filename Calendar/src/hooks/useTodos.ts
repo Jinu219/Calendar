@@ -3,12 +3,21 @@
 // ═══════════════════════════════════════════════════════════
 
 import { useCallback, useEffect, useReducer } from "react";
-import type { AddTodoOptions, EventTiming, OccurrenceRef, RecurrenceScope, Todo } from "../types";
+import type {
+  AddTodoOptions,
+  EventTiming,
+  OccurrenceRef,
+  RecurrenceScope,
+  RepeatType,
+  Subtask,
+  Todo,
+} from "../types";
 import {
   createId,
   getTodoStartDate,
   isOccurrenceDone,
   loadJson,
+  persistItem,
   shiftTodoToTiming,
   timingToFields,
 } from "../utils";
@@ -34,9 +43,7 @@ export const normalizeTodos = (stored: unknown): Todo[] => {
     .filter(isStoredTodo)
     .filter(todo => typeof todo.id === "string" && isDateString(todo.date) && typeof todo.title === "string" && todo.title)
     .map((todo, index): Todo => {
-      const repeat = todo.repeat === "daily" || todo.repeat === "weekly" || todo.repeat === "monthly"
-        ? todo.repeat
-        : "none";
+      const repeat = REPEAT_TYPES.includes(todo.repeat as RepeatType) ? todo.repeat as RepeatType : "none";
 
       return {
         id: todo.id as string,
@@ -57,9 +64,37 @@ export const normalizeTodos = (stored: unknown): Todo[] => {
         repeatEndDate: isDateString(todo.repeatEndDate) ? todo.repeatEndDate : undefined,
         exceptions: dateList(todo.exceptions),
         doneDates: repeat === "none" ? undefined : dateList(todo.doneDates),
+        repeatInterval: typeof todo.repeatInterval === "number" && todo.repeatInterval > 1
+          ? Math.floor(todo.repeatInterval)
+          : undefined,
+        repeatDays: Array.isArray(todo.repeatDays)
+          ? todo.repeatDays.filter(day => Number.isInteger(day) && day >= 0 && day <= 6)
+          : undefined,
+        monthlyMode: todo.monthlyMode === "weekday" ? "weekday" : undefined,
+        reminderMinutes: typeof todo.reminderMinutes === "number" || todo.reminderMinutes === null
+          ? todo.reminderMinutes
+          : undefined,
+        subtasks: normalizeSubtasks(todo.subtasks),
         kind: todo.kind === "todo" ? "todo" : "schedule",
       };
     });
+};
+
+const REPEAT_TYPES: RepeatType[] = ["none", "daily", "weekdays", "weekly", "monthly", "yearly"];
+
+const normalizeSubtasks = (value: unknown): Subtask[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+
+  const subtasks = value
+    .filter((item): item is Partial<Subtask> => typeof item === "object" && item !== null)
+    .filter(item => typeof item.title === "string" && item.title.trim() !== "")
+    .map(item => ({
+      id: typeof item.id === "string" ? item.id : createId("sub"),
+      title: item.title as string,
+      done: item.done === true,
+    }));
+
+  return subtasks.length > 0 ? subtasks : undefined;
 };
 
 const HISTORY_LIMIT = 50;
@@ -184,6 +219,11 @@ const createTodo = (
   startDate: options?.startDate,
   endDate: options?.endDate,
   repeatEndDate: options?.repeatEndDate,
+  repeatInterval: options?.repeatInterval,
+  repeatDays: options?.repeatDays,
+  monthlyMode: options?.monthlyMode,
+  reminderMinutes: options?.reminderMinutes,
+  subtasks: options?.subtasks,
   kind: options?.kind ?? "schedule",
   sortOrder,
 });
@@ -201,7 +241,7 @@ export function useTodos() {
   // Persist todos
   useEffect(() => {
     try {
-      localStorage.setItem(TODOS_KEY, JSON.stringify(todos));
+      persistItem(TODOS_KEY, JSON.stringify(todos));
     } catch (error) {
       console.error("Failed to persist todos:", error);
     }
@@ -341,6 +381,21 @@ export function useTodos() {
     mutate(prev => detachOccurrence(prev, id, occurrenceDate, updates));
   }, [mutate]);
 
+  const toggleSubtask = useCallback((todoId: string, subtaskId: string) => {
+    mutate(prev => prev.map(t => t.id === todoId && t.subtasks
+      ? { ...t, subtasks: t.subtasks.map(s => s.id === subtaskId ? { ...s, done: !s.done } : s) }
+      : t));
+  }, [mutate]);
+
+  /** Move unfinished one-off todos to `date` (as one-day items), one undo step. */
+  const carryOverTodos = useCallback((ids: string[], date: string) => {
+    if (ids.length === 0) return;
+
+    mutate(prev => prev.map(t => ids.includes(t.id)
+      ? { ...t, date, startDate: date, endDate: date }
+      : t));
+  }, [mutate]);
+
   const undo = useCallback(() => dispatch({ type: "UNDO" }), []);
   const redo = useCallback(() => dispatch({ type: "REDO" }), []);
 
@@ -355,6 +410,8 @@ export function useTodos() {
     moveTodo,
     applyTiming,
     editOccurrence,
+    toggleSubtask,
+    carryOverTodos,
     undo,
     redo,
     canUndo: past.length > 0,

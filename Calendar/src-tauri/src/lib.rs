@@ -9,10 +9,13 @@ use std::{
 
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
-    tray::{MouseButton, TrayIconBuilder, TrayIconEvent},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, WebviewWindow, WindowEvent,
 };
 use tauri_plugin_autostart::ManagerExt;
+
+mod hotkey;
+mod storage;
 
 #[cfg(target_os = "windows")]
 use windows::Win32::{
@@ -27,6 +30,7 @@ use windows::Win32::{
 };
 
 const MAIN_WINDOW_LABEL: &str = "main";
+const TRAY_ID: &str = "main_tray";
 const AUTOSTART_ON_LABEL: &str = "시작프로그램: ON";
 const AUTOSTART_OFF_LABEL: &str = "시작프로그램: OFF";
 
@@ -252,7 +256,7 @@ fn configure_tray(app: &mut tauri::App) -> tauri::Result<()> {
         .expect("기본 트레이 아이콘을 찾을 수 없습니다")
         .clone();
 
-    TrayIconBuilder::with_id("main_tray")
+    TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
         .tooltip("Calendar")
         .menu(&menu)
@@ -274,9 +278,11 @@ fn configure_tray(app: &mut tauri::App) -> tauri::Result<()> {
             "quit" => app.exit(0),
             _ => {}
         })
+        // A single left click is enough; the menu stays on the right button.
         .on_tray_icon_event(|tray, event| {
-            if let TrayIconEvent::DoubleClick {
+            if let TrayIconEvent::Click {
                 button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
                 ..
             } = event
             {
@@ -290,9 +296,13 @@ fn configure_tray(app: &mut tauri::App) -> tauri::Result<()> {
 
 pub fn run() {
     tauri::Builder::default()
+        // A second launch (including Windows re-launching the app when one of its
+        // notifications is clicked) brings the running widget forward instead.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(window) = main_window(app) {
+                let _ = window.unminimize();
                 let _ = window.show();
+                let _ = window.set_focus();
             }
         }))
         .plugin(tauri_plugin_autostart::init(
@@ -315,6 +325,7 @@ pub fn run() {
             }
 
             configure_tray(app)?;
+            hotkey::start(app.handle().clone(), toggle_main_window);
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -345,6 +356,15 @@ pub fn run() {
             set_show_on_taskbar,
             write_text_file,
             read_text_file,
+            set_tray_tooltip,
+            hotkey::get_global_shortcut,
+            storage::read_store,
+            storage::write_store,
+            storage::write_auto_backup,
+            storage::list_auto_backups,
+            storage::get_backup_dir,
+            storage::open_backup_dir,
+            storage::fetch_calendar_feed,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 앱 실행 실패");
@@ -401,6 +421,14 @@ fn set_show_on_taskbar(app: AppHandle, show: bool) -> bool {
     };
 
     window.set_skip_taskbar(!show).is_ok()
+}
+
+/// Tray hover text, e.g. "Calendar · 오늘 남은 일정 3개".
+#[tauri::command]
+fn set_tray_tooltip(app: AppHandle, text: String) -> bool {
+    app.tray_by_id(TRAY_ID)
+        .map(|tray| tray.set_tooltip(Some(text)).is_ok())
+        .unwrap_or(false)
 }
 
 /// Write text to a path the user chose via a native save dialog.

@@ -17,12 +17,16 @@ export const TODO_COLORS = [
 ] as const;
 
 export const THEMES: Record<ColorTheme, Theme> = {
-  pink:     { accent:"#ec4899", mid:"#f9a8d4", border:"rgba(255,200,220,.38)", text:"#2d1520", bg:"255,245,248" },
-  lavender: { accent:"#8b5cf6", mid:"#c4b5fd", border:"rgba(196,181,253,.38)", text:"#1e1030", bg:"255,245,248" },
-  sky:      { accent:"#0ea5e9", mid:"#7dd3fc", border:"rgba(125,211,252,.38)", text:"#0c2d3e", bg:"255,245,248" },
-  mint:     { accent:"#10b981", mid:"#6ee7b7", border:"rgba(110,231,183,.38)", text:"#0d2a1e", bg:"255,245,248" },
-  warm:     { accent:"#f59e0b", mid:"#fcd34d", border:"rgba(252,211,77,.38)",  text:"#2a1a05", bg:"255,245,248" },
-  mono:     { accent:"#4b5563", mid:"#9ca3af", border:"rgba(148,163,184,.38)", text:"#18181b", bg:"228,228,231" },
+  pink:     { mode:"light", accent:"#ec4899", mid:"#f9a8d4", border:"rgba(255,200,220,.38)", text:"#2d1520", textSecondary:"rgba(45,21,32,.7)",  bg:"255,245,248" },
+  lavender: { mode:"light", accent:"#8b5cf6", mid:"#c4b5fd", border:"rgba(196,181,253,.38)", text:"#1e1030", textSecondary:"rgba(30,16,48,.7)",  bg:"255,245,248" },
+  sky:      { mode:"light", accent:"#0ea5e9", mid:"#7dd3fc", border:"rgba(125,211,252,.38)", text:"#0c2d3e", textSecondary:"rgba(12,45,62,.7)",  bg:"255,245,248" },
+  mint:     { mode:"light", accent:"#10b981", mid:"#6ee7b7", border:"rgba(110,231,183,.38)", text:"#0d2a1e", textSecondary:"rgba(13,42,30,.7)",  bg:"255,245,248" },
+  warm:     { mode:"light", accent:"#f59e0b", mid:"#fcd34d", border:"rgba(252,211,77,.38)",  text:"#2a1a05", textSecondary:"rgba(42,26,5,.7)",   bg:"255,245,248" },
+  mono:     { mode:"light", accent:"#4b5563", mid:"#9ca3af", border:"rgba(148,163,184,.38)", text:"#18181b", textSecondary:"rgba(24,24,27,.7)",  bg:"228,228,231" },
+  // For dark wallpapers: light text on a dark glass.
+  night:    { mode:"dark",  accent:"#a78bfa", mid:"#6d5bd0", border:"rgba(167,139,250,.32)", text:"#ece9fb", textSecondary:"rgba(236,233,251,.72)", bg:"22,20,36" },
+  // Low vision: near-opaque panel, black text, strong blue accent.
+  contrast: { mode:"light", highContrast:true, accent:"#1d4ed8", mid:"#60a5fa", border:"rgba(15,23,42,.85)", text:"#000000", textSecondary:"#1f2937", bg:"255,255,255" },
 };
 
 export const THEME_OPTIONS: ThemeOption[] = [
@@ -32,6 +36,8 @@ export const THEME_OPTIONS: ThemeOption[] = [
   { key: "mint", label: "민트", emoji: "🌿" },
   { key: "warm", label: "황금", emoji: "✨" },
   { key: "mono", label: "흑백", emoji: "⚫" },
+  { key: "night", label: "밤", emoji: "🌙" },
+  { key: "contrast", label: "고대비", emoji: "◐" },
 ];
 
 export const MEMOS_KEY = "cwa:memos";
@@ -89,6 +95,8 @@ export const KEYBOARD_SHORTCUTS: { keys: string; description: string }[] = [
   { keys: "1 / 2 / 3", description: "월간 / 주간 / 타임라인 보기" },
   { keys: "N", description: "선택한 날짜에 새 항목 추가" },
   { keys: "/", description: "빠른 추가 입력창으로 이동" },
+  { keys: "Ctrl+F", description: "일정 검색" },
+  { keys: "S", description: "통계 보기" },
   { keys: "Enter · Space", description: "선택한 항목 완료 표시" },
   { keys: "E · F2", description: "선택한 항목 수정" },
   { keys: "Delete", description: "선택한 항목 삭제 (반복 일정은 그 날짜만)" },
@@ -96,6 +104,7 @@ export const KEYBOARD_SHORTCUTS: { keys: string; description: string }[] = [
   { keys: "Ctrl+Z / Ctrl+Y", description: "실행 취소 / 다시 실행" },
   { keys: "Esc", description: "선택 해제 · 열린 창 닫기" },
   { keys: "?", description: "이 도움말 열기" },
+  { keys: "Win+Alt+C", description: "어디서든 위젯 보이기/숨기기 (사용 중이면 Ctrl+Alt+C)" },
 ];
 
 export const MOUSE_TIPS: string[] = [
@@ -125,9 +134,28 @@ export const DEFAULT_SETTINGS: Settings = {
 
   remindersEnabled: true,
   reminderMinutesBefore: 10,
+  allDayReminderTime: "09:00",
+  todoDueReminder: true,
+
+  autoBackup: true,
+  autoUpdateCheck: true,
+
+  colorLabels: {},
+  hiddenColors: [],
+  calendarFeeds: [],
 };
 
 export const REMINDER_LEAD_OPTIONS = [0, 5, 10, 30, 60] as const;
+/** Per-item reminder choices (minutes before); 1440 = the day before. */
+export const ITEM_REMINDER_OPTIONS = [0, 5, 10, 30, 60, 1440] as const;
+export const ALL_DAY_REMINDER_TIMES = ["", "07:00", "08:00", "09:00", "10:00"] as const;
+
+/** How often subscribed calendars are refreshed. */
+export const FEED_REFRESH_MS = 6 * 60 * 60 * 1000;
+export const FEED_CACHE_KEY = "cwa:feed-cache";
+/** Memo id a memo window should bring to front (set by the main window). */
+export const MEMO_FOCUS_KEY = "cwa:memo-focus";
+export const LAST_UPDATE_CHECK_KEY = "cwa:last-update-check";
 
 export const FONT_SIZE_MIN = 11;
 export const FONT_SIZE_MAX = 20;

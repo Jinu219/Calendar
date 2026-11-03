@@ -18,6 +18,8 @@ export interface CalendarShortcutHandlers {
   onRedo: () => void;
   onEscape: () => void;
   onShowHelp: () => void;
+  onOpenSearch: () => void;
+  onOpenStats: () => void;
 }
 
 const VIEW_BY_DIGIT: Record<string, CalendarViewType> = {
@@ -80,6 +82,10 @@ export const useCalendarKeyboardShortcuts = (handlers: CalendarShortcutHandlers)
           case "KeyV":
             e.preventDefault();
             h.onPaste();
+            return;
+          case "KeyF":
+            e.preventDefault();
+            h.onOpenSearch();
             return;
           default:
             return;
@@ -156,6 +162,10 @@ export const useCalendarKeyboardShortcuts = (handlers: CalendarShortcutHandlers)
         case "KeyN":
           e.preventDefault();
           h.onNewItem();
+          return;
+        case "KeyS":
+          e.preventDefault();
+          h.onOpenStats();
           return;
         case "KeyE":
           if (h.hasSelection) {

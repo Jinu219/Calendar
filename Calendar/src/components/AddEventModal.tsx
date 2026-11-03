@@ -5,13 +5,15 @@
 import React, { useState } from "react";
 import type { EventFormData, ModalState } from "../types";
 import { TODO_COLORS } from "../constants";
-import { getLocalToday } from "../utils";
+import { getLocalToday, parseLocalDate } from "../utils";
 import { EventForm, validateEventForm } from "./EventForm";
 import { ModalShell } from "./ModalShell";
 
 interface AddEventModalProps {
   isOpen: boolean;
   initialData?: ModalState;
+  defaultReminderMinutes: number;
+  colorLabels: Record<string, string>;
   onClose: () => void;
   onSubmit: (data: EventFormData) => void;
 }
@@ -32,12 +34,19 @@ const toFormData = (initialData?: ModalState): EventFormData => {
     color: TODO_COLORS[0],
     repeat: "none",
     repeatEndDate: "",
+    repeatInterval: 1,
+    repeatDays: [parseLocalDate(startDate).getDay()],
+    monthlyMode: "date",
+    reminder: "default",
+    subtasks: [],
     kind,
   };
 };
 
 const AddEventModalContent: React.FC<Omit<AddEventModalProps, "isOpen">> = ({
   initialData,
+  defaultReminderMinutes,
+  colorLabels,
   onClose,
   onSubmit,
 }) => {
@@ -71,6 +80,8 @@ const AddEventModalContent: React.FC<Omit<AddEventModalProps, "isOpen">> = ({
         }}
         error={error}
         showRepeat
+        defaultReminderMinutes={defaultReminderMinutes}
+        colorLabels={colorLabels}
         submitLabel="추가"
         onCancel={onClose}
         onSubmit={handleSubmit}

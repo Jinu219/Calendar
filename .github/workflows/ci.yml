@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+
+jobs:
+  check:
+    # The Rust side uses Win32 APIs, so lint it where it actually builds.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: Calendar/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: Calendar/src-tauri
+
+      - name: Install frontend dependencies
+        working-directory: Calendar
+        run: npm ci
+
+      # typecheck → unit tests → production build → rustfmt + clippy
+      - name: Check
+        working-directory: Calendar
+        run: npm run check
+
+      - name: Rust unit tests
+        working-directory: Calendar
+        run: cargo test --manifest-path src-tauri/Cargo.toml

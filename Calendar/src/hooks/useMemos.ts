@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Memo } from "../types";
 import { DEFAULT_MEMO_COLOR, MEMOS_KEY } from "../constants";
-import { createId } from "../utils";
+import { createId, persistItem } from "../utils";
 
 const nowIso = () => new Date().toISOString();
 
@@ -32,6 +32,9 @@ export const normalizeMemos = (value: unknown): Memo[] => {
       color: typeof memo.color === "string" ? memo.color : DEFAULT_MEMO_COLOR,
       createdAt,
       updatedAt: typeof memo.updatedAt === "string" ? memo.updatedAt : createdAt,
+      linkedDate: typeof memo.linkedDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(memo.linkedDate)
+        ? memo.linkedDate
+        : undefined,
     };
   });
 
@@ -57,7 +60,7 @@ export function useMemos() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(MEMOS_KEY, JSON.stringify(memos));
+      persistItem(MEMOS_KEY, JSON.stringify(memos));
     } catch (error) {
       console.error("Failed to persist memos:", error);
     }
@@ -93,7 +96,7 @@ export function useMemos() {
   }, []);
 
   const updateMemo = useCallback(
-    (id: string, patch: Partial<Pick<Memo, "content" | "color">>) => {
+    (id: string, patch: Partial<Pick<Memo, "content" | "color" | "linkedDate">>) => {
       setMemos(prev =>
         prev.map(memo =>
           memo.id === id

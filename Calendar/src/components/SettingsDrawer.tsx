@@ -5,13 +5,19 @@
 import React, { useId } from "react";
 import type { Settings, MoonPhase, DayNumPos, TodayStyle, WindowLevel } from "../types";
 import {
+  ALL_DAY_REMINDER_TIMES,
+  COLOR_NAMES,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   REMINDER_LEAD_OPTIONS,
   THEME_OPTIONS,
   TODAY_STYLES,
+  TODO_COLORS,
 } from "../constants";
 import type { UpdateStatus } from "../hooks/useAutoUpdate";
+import type { FeedStatus } from "../hooks/useCalendarFeeds";
+import { formatShortDate } from "../utils";
+import { FeedSettings } from "./FeedSettings";
 import { SegmentedControl } from "./SegmentedControl";
 import { ShortcutListSection } from "./ShortcutHelpModal";
 
@@ -34,6 +40,13 @@ interface SettingsDrawerProps {
   updateStatus: UpdateStatus;
   onCheckForUpdate: () => void;
   onInstallUpdate: () => void;
+  lastAutoBackup: string | null;
+  onBackupNow: () => void;
+  onOpenBackupFolder: () => void;
+  feedStatusFor: (id: string) => FeedStatus;
+  onRefreshFeeds: (id?: string) => void;
+  /** The system-wide show/hide shortcut that got registered, if any. */
+  globalShortcut: string | null;
 }
 
 const ON_OFF = (on: string, off: string) => [
@@ -74,6 +87,12 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   updateStatus,
   onCheckForUpdate,
   onInstallUpdate,
+  lastAutoBackup,
+  onBackupNow,
+  onOpenBackupFolder,
+  feedStatusFor,
+  onRefreshFeeds,
+  globalShortcut,
 }) => {
   const handleReset = () => {
     if (window.confirm("설정을 초기화하시겠습니까?")) {
@@ -344,9 +363,67 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             />
           )}
 
+          {settings.remindersEnabled && (
+            <>
+              <SegmentedControl<string>
+                label="종일 일정 아침 알림"
+                grid
+                options={ALL_DAY_REMINDER_TIMES.map(time => ({
+                  value: time,
+                  label: time ? `아침 ${time}` : "아침 알림 끔",
+                }))}
+                value={settings.allDayReminderTime}
+                onChange={value => onSetSetting("allDayReminderTime", value)}
+              />
+
+              <SegmentedControl<boolean>
+                label="할 일 마감 전날 알림"
+                options={ON_OFF("마감 전날 알림", "마감 알림 끔")}
+                value={settings.todoDueReminder}
+                onChange={value => onSetSetting("todoDueReminder", value)}
+              />
+            </>
+          )}
+
           <p className="sg-hint">
-            시간이 지정된 일정에 대해 Windows 알림을 보냅니다. 앱이 트레이에 있어도 동작합니다.
+            시간 일정은 위 시간 전에(일정마다 따로 바꿀 수 있음), 종일 일정·마감은 아침에 한 번 묶어서 알려 줍니다. 앱이 트레이에 있어도 동작하고, 알림을 누르면 위젯이 열립니다.
           </p>
+        </Section>
+
+        {/* ─────────────── Categories ─────────────── */}
+
+        <Section title="카테고리">
+          <div className="category-label-list">
+            {TODO_COLORS.map(color => (
+              <label key={color} className="category-label-row">
+                <span className="category-dot" style={{ background: color }} aria-hidden="true" />
+                <input
+                  className="font-search"
+                  placeholder={COLOR_NAMES[color]}
+                  aria-label={`${COLOR_NAMES[color]} 카테고리 이름`}
+                  value={settings.colorLabels[color] ?? ""}
+                  onChange={e => {
+                    const next = { ...settings.colorLabels };
+                    if (e.target.value.trim()) next[color] = e.target.value;
+                    else delete next[color];
+                    onSetSetting("colorLabels", next);
+                  }}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="sg-hint">색상에 이름(수업, 과제, 약속…)을 붙이면 상단 🏷 필터와 검색에서 쓸 수 있어요.</p>
+        </Section>
+
+        {/* ─────────────── Subscribed calendars ─────────────── */}
+
+        <Section title="구독 캘린더">
+          <FeedSettings
+            feeds={settings.calendarFeeds}
+            onChange={feeds => onSetSetting("calendarFeeds", feeds)}
+            statusFor={feedStatusFor}
+            onRefresh={onRefreshFeeds}
+          />
         </Section>
 
         {/* ─────────────── Desktop behavior ─────────────── */}
@@ -386,7 +463,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           />
 
           <p className="sg-hint">
-            트레이 중심은 작업표시줄에 아이콘을 띄우지 않고, 트레이 아이콘 더블클릭으로 열고 닫습니다.
+            트레이 중심은 작업표시줄에 아이콘을 띄우지 않고, 트레이 아이콘을 한 번 눌러 열고 닫습니다.
+          </p>
+
+          <p className="sg-hint">
+            {globalShortcut
+              ? <>어디서든 <kbd>{globalShortcut}</kbd>로 위젯을 보이거나 숨길 수 있어요.</>
+              : "전역 단축키(Win+Alt+C / Ctrl+Alt+C)를 다른 앱이 쓰고 있어 등록하지 못했어요."}
           </p>
         </Section>
 
@@ -425,6 +508,23 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           <p className="sg-hint">
             일정, 메모, 설정을 하나의 JSON 파일로 내보내거나 복원합니다. PC를 옮기거나 앱을 재설치하기 전에 내보내기를 권장합니다.
           </p>
+
+          <SegmentedControl<boolean>
+            label="자동 백업"
+            options={ON_OFF("매일 자동 백업", "자동 백업 끔")}
+            value={settings.autoBackup}
+            onChange={value => onSetSetting("autoBackup", value)}
+          />
+
+          <div className="btn-row">
+            <button type="button" className="edit-mode-btn" onClick={onBackupNow}>지금 백업</button>
+            <button type="button" className="edit-mode-btn" onClick={onOpenBackupFolder}>백업 폴더 열기</button>
+          </div>
+
+          <p className="sg-hint">
+            {lastAutoBackup ? `마지막 자동 백업: ${formatShortDate(lastAutoBackup)}` : "아직 자동 백업이 없어요."}
+            {" "}최근 7일치를 보관하고, 일정·메모는 앱 폴더의 파일에도 함께 저장되어 WebView 데이터가 지워져도 복구됩니다.
+          </p>
         </Section>
 
         {/* ─────────────── Update ─────────────── */}
@@ -450,6 +550,13 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
           )}
 
           {updateStatusLabel && <p className="sg-hint" role="status">{updateStatusLabel}</p>}
+
+          <SegmentedControl<boolean>
+            label="업데이트 자동 확인"
+            options={ON_OFF("하루 한 번 자동 확인", "자동 확인 끔")}
+            value={settings.autoUpdateCheck}
+            onChange={value => onSetSetting("autoUpdateCheck", value)}
+          />
         </Section>
 
         {/* ─────────────── Reset ─────────────── */}

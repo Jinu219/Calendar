@@ -4,8 +4,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import type { Settings } from "../types";
-import { loadJson } from "../utils";
+import type { CalendarFeed, Settings } from "../types";
+import { loadJson, persistItem } from "../utils";
 import {
   DEFAULT_SETTINGS,
   FONT_SIZE_MAX,
@@ -55,7 +55,43 @@ export const normalizeSettings = (value: unknown): Settings => {
     windowLevel: saved.windowLevel === "top" || saved.alwaysOnTop ? "top" : "bottom",
     remindersEnabled: pick("remindersEnabled"),
     reminderMinutesBefore: clamp(pick("reminderMinutesBefore"), 0, 24 * 60),
+    allDayReminderTime: /^(\d{2}:\d{2})?$/.test(String(saved.allDayReminderTime ?? "x"))
+      ? saved.allDayReminderTime as string
+      : DEFAULT_SETTINGS.allDayReminderTime,
+    todoDueReminder: pick("todoDueReminder"),
+    autoBackup: pick("autoBackup"),
+    autoUpdateCheck: pick("autoUpdateCheck"),
+    colorLabels: normalizeColorLabels(saved.colorLabels),
+    hiddenColors: Array.isArray(saved.hiddenColors)
+      ? saved.hiddenColors.filter((color): color is string => typeof color === "string")
+      : [],
+    calendarFeeds: normalizeFeeds(saved.calendarFeeds),
   };
+};
+
+const normalizeColorLabels = (value: unknown): Record<string, string> => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].trim() !== ""
+    )
+  );
+};
+
+const normalizeFeeds = (value: unknown): CalendarFeed[] => {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((feed): feed is Partial<CalendarFeed> => typeof feed === "object" && feed !== null)
+    .filter(feed => typeof feed.id === "string" && typeof feed.url === "string")
+    .map(feed => ({
+      id: feed.id as string,
+      url: feed.url as string,
+      name: typeof feed.name === "string" && feed.name ? feed.name : "구독 캘린더",
+      color: typeof feed.color === "string" ? feed.color : "#c4b5fd",
+      enabled: feed.enabled !== false,
+    }));
 };
 
 const loadSettings = (): Settings =>
@@ -82,7 +118,7 @@ export function useSettings() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      persistItem(SETTINGS_KEY, JSON.stringify(settings));
     } catch (error) {
       console.error("Failed to persist settings:", error);
     }
@@ -90,13 +126,24 @@ export function useSettings() {
 
   useEffect(() => {
     const t = THEMES[settings.colorTheme];
-    const s = document.documentElement.style;
+    const root = document.documentElement;
+    const s = root.style;
+    // Legibility floors: dark glass needs some body, high contrast is near-opaque.
+    const opacity = t.highContrast
+      ? Math.max(settings.opacity, 0.94)
+      : t.mode === "dark"
+        ? Math.max(settings.opacity, 0.45)
+        : settings.opacity;
 
     s.setProperty("--accent", t.accent);
     s.setProperty("--mid", t.mid);
     s.setProperty("--glass-border", t.border);
     s.setProperty("--text-primary", t.text);
-    s.setProperty("--glass-bg", `rgba(${t.bg},${settings.opacity})`);
+    s.setProperty("--text-secondary", t.textSecondary);
+    s.setProperty("--glass-bg", `rgba(${t.bg},${opacity})`);
+    // App.css swaps the light-on-glass surfaces for these.
+    root.dataset.themeMode = t.mode;
+    root.dataset.contrast = t.highContrast ? "high" : "normal";
   }, [settings.colorTheme, settings.opacity]);
 
   useEffect(() => {
@@ -152,7 +199,6 @@ export function useSettings() {
   }, [settings.autostart, setSetting]);
 
   const resetSettings = useCallback(() => {
-    localStorage.removeItem(SETTINGS_KEY);
     setSettings(DEFAULT_SETTINGS);
   }, []);
 

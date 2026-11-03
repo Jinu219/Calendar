@@ -13,4 +13,6 @@ export { EditTodoModal } from "./EditTodoModal";
 export { MemoBoard } from "./MemoBoard";
 export { RecurrenceScopeModal } from "./RecurrenceScopeModal";
 export { ShortcutHelpModal } from "./ShortcutHelpModal";
+export { SearchModal } from "./SearchModal";
+export { StatsModal } from "./StatsModal";
 export { Toast } from "./Toast";

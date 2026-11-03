@@ -9,7 +9,7 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
 - Tauri v2 + Rust: 트레이, 단일 인스턴스, 시작 프로그램, 창 레벨과 작업표시줄 동작
 - React 19 + TypeScript + Vite: 전체 UI와 로컬 상태
 - FullCalendar 6: 월간·주간 보기와 일정 드래그/크기 변경
-- localStorage: 일정, 설정, 메모, 창 위치
+- localStorage + 앱 데이터 폴더의 JSON 파일 미러(`persistItem`/`hydrateFromDisk`): 일정, 설정, 메모. 창 위치·캐시는 localStorage만
 
 ## 코드 책임
 
@@ -21,6 +21,8 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
   - `holidayUtils.ts`: 공휴일·대체공휴일을 법령 규칙으로 직접 계산한다. 공휴일 API는 미리 알 수 없는 날짜(임시공휴일)만 보탠다.
 - `Calendar/src/dev/browserPreview.ts`: 개발 모드에서 Tauri 없이 일반 브라우저로 UI를 띄우기 위한 mock. 프로덕션 번들에는 포함되지 않는다.
 - `Calendar/src-tauri/src/lib.rs`: Windows 네이티브 창 정책과 트레이를 담당한다.
+- `Calendar/src-tauri/src/storage.rs`: 고정된 파일 이름(`todos`/`settings`/`memos`, `backups/calendar-backup-YYYY-MM-DD.json`)만 쓴다. ICS 다운로드(CORS 회피)도 여기서 한다.
+- `Calendar/src-tauri/src/hotkey.rs`: Win+Alt+C(실패 시 Ctrl+Alt+C) 전역 단축키.
 
 ## 유지해야 할 불변 조건
 
@@ -38,7 +40,11 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
 12. 할 일 패널의 끌어서 순서 바꾸기는 `sortOrder`만 바꾼다. 날짜는 절대 바꾸지 않는다.
 13. FullCalendar의 날짜 셀 콜백 인자에는 `dateStr`이 없다(타입이 임의 속성을 허용해 컴파일은 되지만 항상 `undefined`). `fmtDate(arg.date)`를 쓴다.
 14. FullCalendar `changeView` 같은 동기 재렌더 호출은 React 커밋 중에 하지 않는다(다음 틱으로 미룬다).
-15. 음력 공휴일 표(`LUNAR_HOLIDAYS`)는 2030년까지 있다. 이후 연도는 Intl 중국력으로 추정하므로 한국천문연구원 자료로 표를 늘려 둔다.
+15. 음력 공휴일 표(`LUNAR_HOLIDAYS`)는 2035년까지 있다(2031~2035는 천문 계산값). 이후 연도는 Intl 중국력으로 추정하므로 한국천문연구원 자료로 표를 늘려 둔다.
+16. 중요한 저장은 `localStorage.setItem` 대신 `persistItem`을 쓴다(파일 미러와 저장 시각 기록). 시작 시 `hydrateFromDisk`가 렌더 전에 끝나야 한다.
+17. 구독 캘린더 항목(`Todo.sourceId`)은 읽기 전용이다. `todos` 상태에 섞지 않고 표시할 때만 합친다(선택·수정·삭제·알림·통계 대상 아님).
+18. 반복 회차 판정은 `doesOccurrenceStartOn` 하나가 결정한다. `listOccurrenceStarts`는 보이는 범위를 하루씩 훑으며 그것만 호출한다. 새 반복 규칙은 여기와 `describeRepeat`, ICS의 `toRepeat`만 고치면 된다.
+19. 하위 체크리스트는 반복 없는 항목에만 둔다(회차별 상태를 만들지 않기 위해).
 
 ## 검증 기준
 

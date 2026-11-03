@@ -4,6 +4,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarApi } from "@fullcalendar/core";
+import { invoke } from "@tauri-apps/api/core";
 
 import {
   useTodos,
@@ -18,11 +19,17 @@ import {
   useCalendarKeyboardShortcuts,
   usePreventDevToolsShortcuts,
   useMemoWindow,
+  useMemos,
   useBackup,
+  useAutoBackup,
   useReminders,
   useAutoUpdate,
   useToday,
   useToast,
+  useCalendarFeeds,
+  useTrayStatus,
+  useSelection,
+  useRecurrenceScopePrompt,
 } from "../hooks";
 
 import {
@@ -35,17 +42,20 @@ import {
   EditTodoModal,
   RecurrenceScopeModal,
   ShortcutHelpModal,
+  SearchModal,
+  StatsModal,
   Toast,
   type VisibleDatesInfo,
 } from "../components";
 
-import { FLASH_MESSAGE_KEY } from "../constants";
+import { FLASH_MESSAGE_KEY, MEMO_FOCUS_KEY } from "../constants";
 import {
-  doesOccurrenceStartOn,
   expandTodos,
   formatShortDate,
   getHolidayEvents,
+  getOccurrenceStartOn,
   getOccurrenceTiming,
+  getOverdueTodos,
   getTodoSpanDays,
   getWeekNumber,
   parseLocalDate,
@@ -59,27 +69,16 @@ import type {
   CalendarViewType,
   EventTiming,
   OccurrenceRef,
-  RecurrenceScope,
   Todo,
 } from "../types";
 
 const TIMELINE_HALF_SPAN_DAYS = 21;
-
-interface ScopePrompt {
-  actionLabel: string;
-  occurrenceDate: string;
-  onChoose: (scope: RecurrenceScope) => void;
-  onCancel?: () => void;
-}
 
 interface EditingState {
   todo: Todo;
   /** Set when only this occurrence of a recurring todo is being edited. */
   occurrenceDate: string | null;
 }
-
-const sameRef = (a: OccurrenceRef, b: OccurrenceRef) =>
-  a.todoId === b.todoId && a.occurrenceDate === b.occurrenceDate;
 
 /**
  * FullCalendar swallows mousedown (for dragging), so clicking the calendar never
@@ -118,11 +117,12 @@ export const CalendarPage: React.FC = () => {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
-  const [scopePrompt, setScopePrompt] = useState<ScopePrompt | null>(null);
-  const [selection, setSelection] = useState<OccurrenceRef[]>([]);
   const [calendarApi, setCalendarApi] = useState<CalendarApi | null>(null);
   const [visibleDates, setVisibleDates] = useState<VisibleDatesInfo>(initialVisibleDates);
+  const [globalShortcut, setGlobalShortcut] = useState<string | null>(null);
   const copiedRefs = useRef<OccurrenceRef[]>([]);
   const quickAddRef = useRef<HTMLInputElement>(null);
 
@@ -141,6 +141,8 @@ export const CalendarPage: React.FC = () => {
     moveTodo,
     applyTiming,
     editOccurrence,
+    toggleSubtask,
+    carryOverTodos,
     undo,
     redo,
     canUndo,
@@ -155,6 +157,10 @@ export const CalendarPage: React.FC = () => {
   } = useSettings();
 
   const { toast, showToast, dismissToast } = useToast();
+  const { memos } = useMemos();
+  const { feedTodos, statusFor: feedStatusFor, refresh: refreshFeeds } = useCalendarFeeds(settings.calendarFeeds);
+  const { selection, select, setSelection, clearSelection } = useSelection(todos);
+  const scope = useRecurrenceScopePrompt();
 
   // Holidays for every year on screen (including the timeline's ±3 weeks).
   const holidayYears = useMemo(() => [
@@ -179,12 +185,15 @@ export const CalendarPage: React.FC = () => {
 
   const editMode = settings.editMode;
 
-  // Filtered by the schedule/todo/all title-bar toggle for display. Mutation
-  // hooks (useTodos, reminders) always operate on the full, unfiltered list.
-  const visibleTodos = useMemo(
-    () => addMode === "all" ? todos : todos.filter(t => (t.kind ?? "schedule") === addMode),
-    [todos, addMode]
-  );
+  // Own items plus subscribed calendars, filtered by the schedule/todo/all toggle
+  // and the category filter. Mutation hooks always work on the full own list.
+  const visibleTodos = useMemo(() => {
+    const hidden = new Set(settings.hiddenColors);
+
+    return [...todos, ...feedTodos].filter(t =>
+      !hidden.has(t.color) && (addMode === "all" || (t.kind ?? "schedule") === addMode)
+    );
+  }, [todos, feedTodos, addMode, settings.hiddenColors]);
 
   // Day cells show holiday names in the month view; the week view needs them as events.
   const calendarEvents = useMemo(
@@ -214,18 +223,23 @@ export const CalendarPage: React.FC = () => {
     };
   }, [view, timelineAnchor, visibleDates]);
 
-  const findTodo = useCallback((id: string) => todos.find(t => t.id === id), [todos]);
+  const memoDates = useMemo(
+    () => new Set(memos.flatMap(memo => (memo.linkedDate ? [memo.linkedDate] : []))),
+    [memos]
+  );
+  const linkedMemos = useMemo(
+    () => memos.filter(memo => memo.linkedDate === selectedDate),
+    [memos, selectedDate]
+  );
+  const overdue = useMemo(
+    () => (addMode === "schedule" ? [] : getOverdueTodos(todos, today)),
+    [todos, today, addMode]
+  );
 
-  // Drop selections whose occurrence no longer exists (deleted, moved, undone).
-  useEffect(() => {
-    setSelection(prev => {
-      const next = prev.filter(ref => {
-        const todo = todos.find(t => t.id === ref.todoId);
-        return todo !== undefined && doesOccurrenceStartOn(todo, ref.occurrenceDate);
-      });
-      return next.length === prev.length ? prev : next;
-    });
-  }, [todos]);
+  const findTodo = useCallback(
+    (id: string) => todos.find(t => t.id === id) ?? feedTodos.find(t => t.id === id),
+    [todos, feedTodos]
+  );
 
   // One-shot message left by a reload (e.g. after importing a backup).
   useEffect(() => {
@@ -235,6 +249,12 @@ export const CalendarPage: React.FC = () => {
     sessionStorage.removeItem(FLASH_MESSAGE_KEY);
     showToast(message);
   }, [showToast]);
+
+  useEffect(() => {
+    invoke<string | null>("get_global_shortcut")
+      .then(shortcut => setGlobalShortcut(shortcut ?? null))
+      .catch(() => setGlobalShortcut(null));
+  }, []);
 
   // ───────────────────────────────────────────────────────
   // Feature hooks
@@ -251,13 +271,22 @@ export const CalendarPage: React.FC = () => {
   });
 
   useWindowPosition();
-
-  const { memoOpen, toggleMemoWindow } = useMemoWindow();
-
-  const { exportData, importData, isExporting, isImporting } = useBackup();
-  const { status: updateStatus, checkForUpdate, installUpdate } = useAutoUpdate();
-
   useReminders(todos, settings);
+  useTrayStatus(todos, today);
+
+  const { memoOpen, toggleMemoWindow, openMemoWindow } = useMemoWindow();
+  const { exportData, importData, isExporting, isImporting } = useBackup();
+  const { lastBackup, backupNow, openBackupFolder } = useAutoBackup(settings.autoBackup, today);
+
+  const installUpdateRef = useRef<() => void>(() => undefined);
+  const { status: updateStatus, checkForUpdate, installUpdate } = useAutoUpdate({
+    autoCheck: settings.autoUpdateCheck,
+    onAvailable: version => showToast(`새 버전 ${version}이(가) 나왔어요`, {
+      label: "설치",
+      onAction: () => installUpdateRef.current(),
+    }),
+  });
+  installUpdateRef.current = () => void installUpdate();
 
   const {
     modal,
@@ -323,11 +352,13 @@ export const CalendarPage: React.FC = () => {
     }
   }, [view, calendarApi]);
 
-  const handleToday = useCallback(() => {
-    setSelectedDate(today);
-    setTimelineAnchor(today);
-    calendarApi?.today();
-  }, [today, calendarApi]);
+  const goToDate = useCallback((date: string) => {
+    setSelectedDate(date);
+    setTimelineAnchor(date);
+    calendarApi?.gotoDate(date);
+  }, [calendarApi]);
+
+  const handleToday = useCallback(() => goToDate(today), [goToDate, today]);
 
   const handleJumpToMonth = useCallback((month: string) => {
     const firstDay = `${month}-01`;
@@ -358,10 +389,17 @@ export const CalendarPage: React.FC = () => {
   const toggleSettingsDrawer = useCallback(() => setSettingsOpen(prev => !prev), []);
   const closeSettingsDrawer = useCallback(() => setSettingsOpen(false), []);
   const openHelp = useCallback(() => setHelpOpen(true), []);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const openStats = useCallback(() => setStatsOpen(true), []);
 
   const toggleEditMode = useCallback(() => {
     setSetting("editMode", !editMode);
   }, [editMode, setSetting]);
+
+  const handleHiddenColorsChange = useCallback(
+    (hiddenColors: string[]) => setSetting("hiddenColors", hiddenColors),
+    [setSetting]
+  );
 
   // ───────────────────────────────────────────────────────
   // Handlers: selection
@@ -370,48 +408,34 @@ export const CalendarPage: React.FC = () => {
   const handleEventClick = useCallback((ref: OccurrenceRef, additive: boolean) => {
     releaseTextFocus();
     setSelectedDate(ref.occurrenceDate);
-    setSelection(prev => {
-      if (!additive) return [ref];
-      return prev.some(r => sameRef(r, ref)) ? prev.filter(r => !sameRef(r, ref)) : [...prev, ref];
-    });
-  }, []);
+
+    // Subscribed items can't be completed, edited or deleted, so they aren't selectable.
+    if (findTodo(ref.todoId)?.sourceId) return;
+    select(ref, additive);
+  }, [findTodo, select]);
 
   const handleDateClick = useCallback((dateStr: string) => {
     setSelectedDate(dateStr);
-    setSelection([]);
+    clearSelection();
 
     // In todo mode a click on a day leads straight into typing a task for it.
     if (addMode === "todo") quickAddRef.current?.focus();
     else releaseTextFocus();
-  }, [addMode]);
+  }, [addMode, clearSelection]);
 
   const handleEscape = useCallback(() => {
     if (settingsOpen) {
       setSettingsOpen(false);
     } else {
-      setSelection([]);
+      clearSelection();
     }
-  }, [settingsOpen]);
+  }, [settingsOpen, clearSelection]);
 
   // ───────────────────────────────────────────────────────
   // Handlers: recurrence-aware edit / delete / move
   // ───────────────────────────────────────────────────────
 
-  /** Run `action` right away for a one-off todo, or after asking "this or all?" for a series. */
-  const withScope = useCallback((
-    todo: Todo,
-    occurrenceDate: string,
-    actionLabel: string,
-    action: (scope: RecurrenceScope) => void,
-    onCancel?: () => void
-  ) => {
-    if (todo.repeat === "none") {
-      action("all");
-      return;
-    }
-
-    setScopePrompt({ actionLabel, occurrenceDate, onChoose: action, onCancel });
-  }, []);
+  const { withScope } = scope;
 
   const openEditor = useCallback((todo: Todo, occurrenceDate: string | null) => {
     setEditing({
@@ -422,10 +446,15 @@ export const CalendarPage: React.FC = () => {
   }, []);
 
   const requestEdit = useCallback((todo: Todo, occurrenceDate: string) => {
-    withScope(todo, occurrenceDate, "수정", scope =>
-      openEditor(todo, scope === "this" ? occurrenceDate : null)
+    if (todo.sourceId) {
+      showToast("구독 캘린더 일정은 원래 캘린더에서 수정해 주세요");
+      return;
+    }
+
+    withScope(todo, occurrenceDate, "수정", choice =>
+      openEditor(todo, choice === "this" ? occurrenceDate : null)
     );
-  }, [withScope, openEditor]);
+  }, [withScope, openEditor, showToast]);
 
   const handleEventDoubleClick = useCallback((ref: OccurrenceRef) => {
     const todo = findTodo(ref.todoId);
@@ -433,8 +462,8 @@ export const CalendarPage: React.FC = () => {
   }, [findTodo, requestEdit]);
 
   const requestDelete = useCallback((todo: Todo, occurrenceDate: string) => {
-    withScope(todo, occurrenceDate, "삭제", scope => {
-      if (scope === "this") {
+    withScope(todo, occurrenceDate, "삭제", choice => {
+      if (choice === "this") {
         removeOccurrences([{ todoId: todo.id, occurrenceDate }]);
         notifyUndoable(`"${todo.title}" ${formatShortDate(occurrenceDate)} 일정을 삭제했어요`);
       } else {
@@ -449,7 +478,7 @@ export const CalendarPage: React.FC = () => {
     timing: EventTiming,
     revert: () => void
   ) => {
-    const todo = findTodo(ref.todoId);
+    const todo = todos.find(t => t.id === ref.todoId);
 
     if (!todo) {
       revert();
@@ -460,25 +489,14 @@ export const CalendarPage: React.FC = () => {
       todo,
       ref.occurrenceDate,
       "이동",
-      scope => {
-        applyTiming(todo.id, ref.occurrenceDate, timing, scope);
-        setSelection([]);
+      choice => {
+        applyTiming(todo.id, ref.occurrenceDate, timing, choice);
+        clearSelection();
         setSelectedDate(timing.startDate);
       },
       revert
     );
-  }, [findTodo, withScope, applyTiming]);
-
-  const handleScopeChoice = useCallback((scope: RecurrenceScope) => {
-    const prompt = scopePrompt;
-    setScopePrompt(null);
-    prompt?.onChoose(scope);
-  }, [scopePrompt]);
-
-  const handleScopeCancel = useCallback(() => {
-    scopePrompt?.onCancel?.();
-    setScopePrompt(null);
-  }, [scopePrompt]);
+  }, [todos, withScope, applyTiming, clearSelection]);
 
   // ───────────────────────────────────────────────────────
   // Handlers: edit modal
@@ -509,7 +527,7 @@ export const CalendarPage: React.FC = () => {
   }, [editing, removeOccurrences, deleteTodo, notifyUndoable]);
 
   // ───────────────────────────────────────────────────────
-  // Handlers: adding
+  // Handlers: adding, carrying over, memos, search
   // ───────────────────────────────────────────────────────
 
   const handleOpenAddTodoModal = useCallback(() => {
@@ -535,6 +553,25 @@ export const CalendarPage: React.FC = () => {
     );
   }, [addMode, selectedDate, addTodo, notifyUndoable]);
 
+  const handleCarryOver = useCallback((ids: string[]) => {
+    carryOverTodos(ids, today);
+    notifyUndoable(`지난 할 일 ${ids.length}개를 오늘로 옮겼어요`);
+  }, [carryOverTodos, today, notifyUndoable]);
+
+  const handleOpenMemo = useCallback((memoId: string) => {
+    // The memo window listens for this key and switches to that memo.
+    localStorage.setItem(MEMO_FOCUS_KEY, `${memoId}|${Date.now()}`);
+    openMemoWindow();
+  }, [openMemoWindow]);
+
+  const handleSearchPick = useCallback((todo: Todo, date: string) => {
+    setSearchOpen(false);
+    goToDate(date);
+
+    const occurrenceDate = getOccurrenceStartOn(todo, date) ?? date;
+    if (!todo.sourceId) setSelection([{ todoId: todo.id, occurrenceDate }]);
+  }, [goToDate, setSelection]);
+
   // ───────────────────────────────────────────────────────
   // Handlers: keyboard shortcuts on the selection
   // ───────────────────────────────────────────────────────
@@ -554,8 +591,8 @@ export const CalendarPage: React.FC = () => {
 
     removeOccurrences(selection);
     notifyUndoable(`${selection.length}개 항목을 삭제했어요`);
-    setSelection([]);
-  }, [selection, removeOccurrences, notifyUndoable]);
+    clearSelection();
+  }, [selection, removeOccurrences, notifyUndoable, clearSelection]);
 
   const handleCopy = useCallback(() => {
     copiedRefs.current = selection;
@@ -565,7 +602,7 @@ export const CalendarPage: React.FC = () => {
   // A pasted item is a one-off copy of that occurrence on the selected day.
   const handlePaste = useCallback(() => {
     const inputs = copiedRefs.current.flatMap(ref => {
-      const original = findTodo(ref.todoId);
+      const original = todos.find(t => t.id === ref.todoId);
       if (!original) return [];
 
       return [{
@@ -578,6 +615,8 @@ export const CalendarPage: React.FC = () => {
           startTime: original.startTime,
           endTime: original.endTime,
           kind: original.kind,
+          reminderMinutes: original.reminderMinutes,
+          subtasks: original.subtasks?.map(s => ({ ...s, done: false })),
           startDate: selectedDate,
           endDate: shiftDate(selectedDate, getTodoSpanDays(original)),
         },
@@ -588,7 +627,7 @@ export const CalendarPage: React.FC = () => {
 
     addTodos(inputs);
     notifyUndoable(`${inputs.length}개 항목을 ${formatShortDate(selectedDate)}에 붙여넣었어요`);
-  }, [findTodo, selectedDate, addTodos, notifyUndoable]);
+  }, [todos, selectedDate, addTodos, notifyUndoable]);
 
   useCalendarKeyboardShortcuts({
     hasSelection: selection.length > 0,
@@ -607,6 +646,8 @@ export const CalendarPage: React.FC = () => {
     onRedo: handleRedo,
     onEscape: handleEscape,
     onShowHelp: openHelp,
+    onOpenSearch: openSearch,
+    onOpenStats: openStats,
   });
 
   // ───────────────────────────────────────────────────────
@@ -623,6 +664,15 @@ export const CalendarPage: React.FC = () => {
     // A successful import reloads the window and reports itself afterwards.
     if (result && !result.ok) showToast(result.message);
   }, [importData, showToast]);
+
+  const handleBackupNow = useCallback(async () => {
+    showToast((await backupNow()).message);
+  }, [backupNow, showToast]);
+
+  const handleOpenBackupFolder = useCallback(async () => {
+    const result = await openBackupFolder();
+    if (result) showToast(result.message);
+  }, [openBackupFolder, showToast]);
 
   // ───────────────────────────────────────────────────────
   // Render
@@ -657,6 +707,10 @@ export const CalendarPage: React.FC = () => {
         editMode={editMode}
         onEditModeToggle={toggleEditMode}
         onShowHelp={openHelp}
+        onOpenSearch={openSearch}
+        colorLabels={settings.colorLabels}
+        hiddenColors={settings.hiddenColors}
+        onHiddenColorsChange={handleHiddenColorsChange}
         moonPhase={moonPhase}
         showMoonPhase={settings.showMoonPhase}
         addMode={addMode}
@@ -692,6 +746,7 @@ export const CalendarPage: React.FC = () => {
               today={today}
               moonPhase={moonPhase}
               selection={selection}
+              memoDates={memoDates}
               onDateClick={handleDateClick}
               onSelect={handleSelect}
               onEventClick={handleEventClick}
@@ -722,18 +777,25 @@ export const CalendarPage: React.FC = () => {
 
           <TodoPanel
             selectedDate={selectedDate}
+            today={today}
             todos={visibleTodos}
             settings={settings}
             addMode={addMode}
             holidayName={holidays[selectedDate]}
             lunarDate={lunarDate}
             selection={selection}
+            overdue={overdue}
+            linkedMemos={linkedMemos}
             quickAddRef={quickAddRef}
             onQuickAdd={handleQuickAdd}
             onOpenAddModal={handleOpenAddTodoModal}
             memoOpen={memoOpen}
             onToggleMemo={toggleMemoWindow}
+            onOpenMemo={handleOpenMemo}
+            onOpenStats={openStats}
             onToggleDone={ref => toggleDone(ref.todoId, ref.occurrenceDate)}
+            onToggleSubtask={toggleSubtask}
+            onCarryOver={handleCarryOver}
             onRequestEdit={requestEdit}
             onRequestDelete={requestDelete}
             onMoveTodo={moveTodo}
@@ -759,18 +821,28 @@ export const CalendarPage: React.FC = () => {
         isImporting={isImporting}
         updateStatus={updateStatus}
         onCheckForUpdate={checkForUpdate}
-        onInstallUpdate={installUpdate}
+        onInstallUpdate={() => void installUpdate()}
+        lastAutoBackup={lastBackup}
+        onBackupNow={() => void handleBackupNow()}
+        onOpenBackupFolder={() => void handleOpenBackupFolder()}
+        feedStatusFor={feedStatusFor}
+        onRefreshFeeds={refreshFeeds}
+        globalShortcut={globalShortcut}
       />
 
       <AddEventModal
         isOpen={modal.open}
         initialData={modal}
+        defaultReminderMinutes={settings.reminderMinutesBefore}
+        colorLabels={settings.colorLabels}
         onClose={closeModal}
         onSubmit={handleAddEventSubmit}
       />
 
       <EditTodoModal
         todo={editing?.todo ?? null}
+        defaultReminderMinutes={settings.reminderMinutesBefore}
+        colorLabels={settings.colorLabels}
         onClose={closeEditTodoModal}
         onSave={handleSaveEditTodo}
         onDelete={handleDeleteFromEditor}
@@ -778,12 +850,24 @@ export const CalendarPage: React.FC = () => {
       />
 
       <RecurrenceScopeModal
-        open={scopePrompt !== null}
-        actionLabel={scopePrompt?.actionLabel ?? ""}
-        occurrenceDate={scopePrompt?.occurrenceDate}
-        onChoose={handleScopeChoice}
-        onCancel={handleScopeCancel}
+        open={scope.prompt !== null}
+        actionLabel={scope.prompt?.actionLabel ?? ""}
+        occurrenceDate={scope.prompt?.occurrenceDate}
+        onChoose={scope.choose}
+        onCancel={scope.cancel}
       />
+
+      <SearchModal
+        open={searchOpen}
+        todos={[...todos, ...feedTodos]}
+        today={today}
+        use24Hour={settings.use24Hour}
+        colorLabels={settings.colorLabels}
+        onPick={handleSearchPick}
+        onClose={() => setSearchOpen(false)}
+      />
+
+      <StatsModal open={statsOpen} todos={todos} today={today} onClose={() => setStatsOpen(false)} />
 
       <ShortcutHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 

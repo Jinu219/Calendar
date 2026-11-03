@@ -2,8 +2,11 @@
 // Type Definitions
 // ═══════════════════════════════════════════════════════════
 
-export type RepeatType = "none" | "daily" | "weekly" | "monthly";
-export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm" | "mono";
+/** "weekdays" = every Monday–Friday. Combine with `repeatInterval` for "every 2 weeks" etc. */
+export type RepeatType = "none" | "daily" | "weekdays" | "weekly" | "monthly" | "yearly";
+/** Monthly repetition on the same date (the 3rd) or the same weekday (the first Tuesday). */
+export type MonthlyMode = "date" | "weekday";
+export type ColorTheme = "pink" | "lavender" | "sky" | "mint" | "warm" | "mono" | "night" | "contrast";
 export type DayNumPos = "left" | "right";
 export type TodayStyle = "highlight" | "glow" | "elevated" | "border";
 export type WindowLevel = "bottom" | "top";
@@ -15,6 +18,12 @@ export type AddMode = ItemKind | "all";
 /** Whether a change to a recurring item applies to one occurrence or the whole series. */
 export type RecurrenceScope = "this" | "all";
 
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface AddTodoOptions {
   color?: string;
   allDay?: boolean;
@@ -25,6 +34,11 @@ export interface AddTodoOptions {
   endDate?: string;
   repeat?: RepeatType;
   repeatEndDate?: string;
+  repeatInterval?: number;
+  repeatDays?: number[];
+  monthlyMode?: MonthlyMode;
+  reminderMinutes?: number | null;
+  subtasks?: Subtask[];
   kind?: ItemKind;
 }
 
@@ -43,6 +57,11 @@ export interface Todo {
   todoTime?: string;
   repeat: RepeatType;
   repeatEndDate?: string;
+  /** Every N days/weeks/months/years (default 1). */
+  repeatInterval?: number;
+  /** Weekly repetition on these weekdays (0 = Sunday). Default: the start weekday. */
+  repeatDays?: number[];
+  monthlyMode?: MonthlyMode;
   sortOrder: number;
   /** Occurrence start dates (YYYY-MM-DD) skipped for a recurring todo. */
   exceptions?: string[];
@@ -51,6 +70,12 @@ export interface Todo {
   /** Whether this was added as a timed "schedule" item or a plain "todo". Missing on
    *  data saved before this existed; treat as "schedule" in that case. */
   kind?: ItemKind;
+  /** Minutes before the start to notify. undefined = the global setting, null = never. */
+  reminderMinutes?: number | null;
+  /** Checklist inside a one-off item. */
+  subtasks?: Subtask[];
+  /** Set for items from a subscribed calendar feed; those are read-only. */
+  sourceId?: string;
 }
 
 /** One concrete occurrence of a todo: the todo itself plus the start date of that occurrence. */
@@ -80,6 +105,15 @@ export interface EventTiming {
   endTime?: string;
 }
 
+/** A subscribed read-only calendar (ICS / webcal URL). */
+export interface CalendarFeed {
+  id: string;
+  name: string;
+  url: string;
+  color: string;
+  enabled: boolean;
+}
+
 export interface Settings {
   colorTheme: ColorTheme;
   dayNumberPos: DayNumPos;
@@ -100,6 +134,19 @@ export interface Settings {
 
   remindersEnabled: boolean;
   reminderMinutesBefore: number;
+  /** "HH:MM" to announce today's all-day items, "" to never. */
+  allDayReminderTime: string;
+  /** Announce todos due tomorrow (at allDayReminderTime). */
+  todoDueReminder: boolean;
+
+  autoBackup: boolean;
+  autoUpdateCheck: boolean;
+
+  /** Category names for the item colors (color → name). */
+  colorLabels: Record<string, string>;
+  /** Colors (categories) hidden from every view. */
+  hiddenColors: string[];
+  calendarFeeds: CalendarFeed[];
 }
 
 export interface ModalState {
@@ -113,6 +160,9 @@ export interface ModalState {
   mode: ItemKind;
 }
 
+/** Reminder choice in the form: the global default, never, or N minutes before. */
+export type ReminderChoice = "default" | "none" | number;
+
 export interface EventFormData {
   title: string;
   date: string;
@@ -124,6 +174,11 @@ export interface EventFormData {
   color: string;
   repeat: RepeatType;
   repeatEndDate: string;
+  repeatInterval: number;
+  repeatDays: number[];
+  monthlyMode: MonthlyMode;
+  reminder: ReminderChoice;
+  subtasks: Subtask[];
   kind: ItemKind;
 }
 
@@ -138,8 +193,14 @@ export interface Theme {
   mid: string;
   border: string;
   text: string;
+  /** Secondary text (hints, labels). */
+  textSecondary: string;
   /** "r,g,b" used for the translucent glass panel background. */
   bg: string;
+  /** Dark themes flip the light-on-glass surfaces. */
+  mode: "light" | "dark";
+  /** High contrast: opaque panels, solid borders, thicker focus rings. */
+  highContrast?: boolean;
 }
 
 export interface ThemeOption {
@@ -164,6 +225,8 @@ export interface Memo {
   color: string;
   createdAt: string;
   updatedAt: string;
+  /** Pins the memo to a day: it shows in that day's cell and todo panel. */
+  linkedDate?: string;
 }
 
 export interface ToastMessage {

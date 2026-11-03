@@ -1,42 +1,44 @@
 import { useCallback, useState } from "react";
-import { PhysicalPosition } from "@tauri-apps/api/dpi";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { fitOnScreen } from "../utils";
 
 const MEMO_WINDOW_LABEL = "memo";
 const MEMO_WINDOW_WIDTH = 320;
 const MEMO_WINDOW_HEIGHT = 360;
-const WINDOW_MARGIN = 8;
-const WINDOW_GAP = 12;
+const WINDOW_GAP_LOGICAL = 12;
+const OFFSET_TOP_LOGICAL = 72;
 
-const getMemoWindowPosition = async (): Promise<PhysicalPosition> => {
+/** Right next to the main window, kept on the screen that window is on. */
+const getMemoWindowPosition = async () => {
   const mainWindow = getCurrentWindow();
-  const [position, size] = await Promise.all([
+  const [position, size, scale] = await Promise.all([
     mainWindow.outerPosition(),
     mainWindow.outerSize(),
+    mainWindow.scaleFactor(),
   ]);
-  const wantedX = position.x + size.width + WINDOW_GAP;
-  const wantedY = position.y + 72;
-  const maxX = window.screen.availWidth - MEMO_WINDOW_WIDTH - WINDOW_MARGIN;
-  const maxY = window.screen.availHeight - MEMO_WINDOW_HEIGHT - WINDOW_MARGIN;
 
-  return new PhysicalPosition(
-    Math.min(Math.max(WINDOW_MARGIN, wantedX), maxX),
-    Math.min(Math.max(WINDOW_MARGIN, wantedY), maxY)
+  return fitOnScreen(
+    position.x + size.width + WINDOW_GAP_LOGICAL * scale,
+    position.y + OFFSET_TOP_LOGICAL * scale,
+    MEMO_WINDOW_WIDTH,
+    MEMO_WINDOW_HEIGHT
   );
 };
 
 export const useMemoWindow = () => {
   const [memoOpen, setMemoOpen] = useState(false);
 
-  const toggleMemoWindow = useCallback(async () => {
+  const showMemoWindow = useCallback(async (toggle: boolean) => {
     try {
       const existingWindow = await WebviewWindow.getByLabel(MEMO_WINDOW_LABEL);
 
       if (existingWindow) {
         if (await existingWindow.isVisible()) {
-          await existingWindow.hide();
-          setMemoOpen(false);
+          if (toggle) {
+            await existingWindow.hide();
+            setMemoOpen(false);
+          }
           return;
         }
 
@@ -47,23 +49,25 @@ export const useMemoWindow = () => {
       }
 
       const position = await getMemoWindowPosition();
+      // Created hidden, then placed in physical pixels: creation-time x/y are
+      // logical and land wrong on a monitor with a different 배율.
       const memoWindow = new WebviewWindow(MEMO_WINDOW_LABEL, {
         url: "/?window=memo",
         title: "Calendar Memo",
         width: MEMO_WINDOW_WIDTH,
         height: MEMO_WINDOW_HEIGHT,
-        x: position.x,
-        y: position.y,
         decorations: false,
         transparent: true,
         resizable: false,
         skipTaskbar: true,
         alwaysOnTop: false,
-        visible: true,
+        visible: false,
         shadow: false,
       });
 
-      memoWindow.once("tauri://created", () => {
+      memoWindow.once("tauri://created", async () => {
+        await memoWindow.setPosition(position).catch(console.error);
+        await memoWindow.show().catch(console.error);
         setMemoOpen(true);
       });
       memoWindow.once("tauri://destroyed", () => {
@@ -74,10 +78,14 @@ export const useMemoWindow = () => {
         setMemoOpen(false);
       });
     } catch (error) {
-      console.error("Failed to toggle memo window:", error);
+      console.error("Failed to open memo window:", error);
       setMemoOpen(false);
     }
   }, []);
 
-  return { memoOpen, toggleMemoWindow };
+  const toggleMemoWindow = useCallback(() => void showMemoWindow(true), [showMemoWindow]);
+  /** Bring the memo window up without toggling it closed (e.g. to show a linked memo). */
+  const openMemoWindow = useCallback(() => void showMemoWindow(false), [showMemoWindow]);
+
+  return { memoOpen, toggleMemoWindow, openMemoWindow };
 };

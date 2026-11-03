@@ -20,3 +20,8 @@ export { useReminders } from "./useReminders";
 export { useAutoUpdate } from "./useAutoUpdate";
 export { useToday } from "./useToday";
 export { useToast } from "./useToast";
+export { useAutoBackup } from "./useAutoBackup";
+export { useCalendarFeeds } from "./useCalendarFeeds";
+export { useTrayStatus } from "./useTrayStatus";
+export { useSelection } from "./useSelection";
+export { useRecurrenceScopePrompt } from "./useRecurrenceScopePrompt";

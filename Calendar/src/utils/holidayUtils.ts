@@ -28,6 +28,13 @@ const LUNAR_HOLIDAYS: Record<number, LunarHolidayDates> = {
   2028: { seollal: "2028-01-26", buddha: "2028-05-02", chuseok: "2028-10-03" },
   2029: { seollal: "2029-02-13", buddha: "2029-05-20", chuseok: "2029-09-22" },
   2030: { seollal: "2030-02-03", buddha: "2030-05-09", chuseok: "2030-09-12" },
+  // 2031~2035: astronomical values (checked against Intl's Chinese calendar).
+  // Re-check against KASI's official 월력요항 when each year is announced.
+  2031: { seollal: "2031-01-23", buddha: "2031-05-28", chuseok: "2031-10-01" },
+  2032: { seollal: "2032-02-11", buddha: "2032-05-16", chuseok: "2032-09-19" },
+  2033: { seollal: "2033-01-31", buddha: "2033-05-06", chuseok: "2033-09-08" },
+  2034: { seollal: "2034-02-19", buddha: "2034-05-25", chuseok: "2034-09-27" },
+  2035: { seollal: "2035-02-08", buddha: "2035-05-15", chuseok: "2035-09-16" },
 };
 
 /** Election days are public holidays too. */

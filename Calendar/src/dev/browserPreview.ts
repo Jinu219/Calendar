@@ -17,6 +17,25 @@ const MONITOR = {
   scaleFactor: 1,
 };
 
+const DEMO_ICS = [
+  "BEGIN:VCALENDAR",
+  "VERSION:2.0",
+  "BEGIN:VEVENT",
+  "UID:demo-class",
+  "SUMMARY:대기역학 수업 (구독)",
+  "DTSTART:20261102T100000",
+  "DTEND:20261102T113000",
+  "RRULE:FREQ=WEEKLY;BYDAY=MO,TH",
+  "END:VEVENT",
+  "BEGIN:VEVENT",
+  "UID:demo-festival",
+  "SUMMARY:대동제",
+  "DTSTART;VALUE=DATE:20261111",
+  "DTEND;VALUE=DATE:20261114",
+  "END:VEVENT",
+  "END:VCALENDAR",
+].join("\r\n");
+
 export function installBrowserPreviewMocks() {
   const label = new URLSearchParams(window.location.search).get("window") === "memo"
     ? "memo"
@@ -45,6 +64,22 @@ export function installBrowserPreviewMocks() {
         return false;
       case "plugin:notification|request_permission":
         return "denied";
+      // No disk in the browser: localStorage alone is the store.
+      case "read_store":
+        return {};
+      case "write_auto_backup":
+        return "(browser preview) backup skipped";
+      case "list_auto_backups":
+        return [];
+      case "get_backup_dir":
+        return null;
+      case "get_global_shortcut":
+        return "Win+Alt+C";
+      case "set_tray_tooltip":
+        return true;
+      // Any subscription URL gets a small demo calendar, to exercise the feed UI.
+      case "fetch_calendar_feed":
+        return DEMO_ICS;
       default:
         return null;
     }
