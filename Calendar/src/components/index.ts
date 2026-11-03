@@ -15,5 +15,4 @@ export { RecurrenceScopeModal } from "./RecurrenceScopeModal";
 export { ShortcutHelpModal } from "./ShortcutHelpModal";
 export { SearchModal } from "./SearchModal";
 export { StatsModal } from "./StatsModal";
-export { BriefingModal } from "./BriefingModal";
 export { Toast } from "./Toast";

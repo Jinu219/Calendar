@@ -42,75 +42,74 @@ export const FeedSettings: React.FC<FeedSettingsProps> = ({ feeds, onChange, sta
 
   return (
     <>
-      {feeds.length === 0 && (
-        <p className="sg-hint">
-          Google 캘린더의 "iCal 형식의 비공개 주소"나 학사일정 .ics 주소를 붙여 넣으면 읽기 전용으로 겹쳐 보여요.
-        </p>
+      {feeds.length > 0 && (
+        <ul className="feed-list">
+          {feeds.map(feed => {
+            const status = statusFor(feed.id);
+
+            return (
+              <li key={feed.id} className="feed-row">
+                <label className="feed-toggle">
+                  <input
+                    type="checkbox"
+                    checked={feed.enabled}
+                    onChange={e => update(feed.id, { enabled: e.target.checked })}
+                  />
+                  <span className="category-dot" style={{ background: feed.color }} aria-hidden="true" />
+                  <span className="feed-name">{feed.name}</span>
+                </label>
+
+                <span className={`feed-status ${status.error ? "error" : ""}`} role="status">
+                  {status.loading
+                    ? "받는 중…"
+                    : status.error
+                      ? status.error
+                      : `${status.count}개 · ${formatFetchedAt(status.fetchedAt)}`}
+                </span>
+
+                <div className="feed-actions">
+                  <button type="button" className="set-btn" onClick={() => onRefresh(feed.id)} disabled={!feed.enabled}>
+                    새로고침
+                  </button>
+                  <button
+                    type="button"
+                    className="set-btn danger"
+                    onClick={() => onChange(feeds.filter(f => f.id !== feed.id))}
+                    aria-label={`${feed.name} 구독 해지`}
+                  >
+                    해지
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
-      <ul className="feed-list">
-        {feeds.map(feed => {
-          const status = statusFor(feed.id);
-
-          return (
-            <li key={feed.id} className="feed-row">
-              <label className="feed-toggle">
-                <input
-                  type="checkbox"
-                  checked={feed.enabled}
-                  onChange={e => update(feed.id, { enabled: e.target.checked })}
-                />
-                <span className="category-dot" style={{ background: feed.color }} aria-hidden="true" />
-                <span className="feed-name">{feed.name}</span>
-              </label>
-
-              <span className={`feed-status ${status.error ? "error" : ""}`} role="status">
-                {status.loading
-                  ? "받는 중…"
-                  : status.error
-                    ? status.error
-                    : `${status.count}개 · ${formatFetchedAt(status.fetchedAt)}`}
-              </span>
-
-              <div className="feed-actions">
-                <button type="button" className="modal-cancel" onClick={() => onRefresh(feed.id)} disabled={!feed.enabled}>
-                  새로고침
-                </button>
-                <button
-                  type="button"
-                  className="modal-danger"
-                  onClick={() => onChange(feeds.filter(f => f.id !== feed.id))}
-                  aria-label={`${feed.name} 구독 해지`}
-                >
-                  해지
-                </button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <form className="feed-add" onSubmit={add}>
-        <input
-          className="font-search"
-          placeholder="이름 (예: 학사일정)"
-          aria-label="구독 이름"
-          value={name}
-          onChange={e => setName(e.target.value)}
-        />
-        <input
-          className="font-search"
-          type="url"
-          placeholder="https://… .ics 또는 webcal://…"
-          aria-label="캘린더 주소"
-          value={url}
-          onChange={e => setUrl(e.target.value)}
-        />
-        <ColorSwatches colors={TODO_COLORS} value={color} onChange={setColor} label="구독 캘린더 색상" />
-        <button type="submit" className="edit-mode-btn" disabled={!/^(https?|webcal):\/\//i.test(url.trim())}>
-          구독 추가
-        </button>
-      </form>
+      <details className="set-help">
+        <summary>+ 구독 추가 (Google 캘린더 iCal 주소, .ics)</summary>
+        <form className="feed-add" onSubmit={add}>
+          <input
+            className="set-input"
+            placeholder="이름 (예: 학사일정)"
+            aria-label="구독 이름"
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
+          <input
+            className="set-input"
+            type="url"
+            placeholder="https://… .ics 또는 webcal://…"
+            aria-label="캘린더 주소"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+          />
+          <ColorSwatches colors={TODO_COLORS} value={color} onChange={setColor} label="구독 캘린더 색상" />
+          <button type="submit" className="set-btn primary" disabled={!/^(https?|webcal):\/\//i.test(url.trim())}>
+            구독 추가
+          </button>
+        </form>
+      </details>
     </>
   );
 };

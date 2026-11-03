@@ -23,8 +23,12 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
 - `Calendar/src-tauri/src/lib.rs`: Windows 네이티브 창 정책과 트레이를 담당한다.
 - `Calendar/src-tauri/src/storage.rs`: 고정된 파일 이름(`todos`/`settings`/`memos`, `backups/calendar-backup-YYYY-MM-DD.json`)만 쓴다. ICS 다운로드(CORS 회피)도 여기서 한다.
 - `Calendar/src-tauri/src/hotkey.rs`: Win+Alt+C(실패 시 Ctrl+Alt+C) 전역 단축키.
-- `Calendar/src-tauri/src/claude.rs`: Claude API 키를 Windows 자격 증명 관리자(`Calendar/ClaudeApiKey`)에 보관하고, 고정 주소 `https://api.anthropic.com/v1/messages`로만 요청한다(`anthropic-version: 2026-10-21`).
-- `Calendar/src/utils/claudeUtils.ts`: 프롬프트, JSON 스키마, 응답 검증(`toEventDraft` 등). Claude 응답은 여기서 검증한 뒤에만 앱 상태에 들어간다.
+- `Calendar/mcp/server.mjs` + `Calendar/src/mcp/calendarTools.ts`: Claude 대화용 MCP 서버(stdio JSON-RPC). 도구는 `add_calendar_events`·`list_calendar_events` 두 개. `npm run build:mcp`가 `vite.mcp.config.ts`로 공유 TS까지 `mcp/dist/calendar-mcp.mjs` 하나로 묶는다. `src/mcp`와 거기서 쓰는 utils는 utils 배럴(Tauri를 끌어옴) 대신 개별 파일을 import한다.
+- `Calendar/src/utils/inboxUtils.ts`: Claude가 보낸 항목 검증(`parseInboxEvent`) — MCP 서버와 앱이 같은 함수를 쓴다. `Calendar/src-tauri/src/inbox.rs`의 `take_inbox`가 `<앱 데이터>/inbox/*.json`을 읽고 지우며, `useAssistantInbox`가 2초마다(그리고 창 포커스 때) 가져가 `addTodos` 한 번으로 넣는다.
+- `Calendar/src/utils/timelineUtils.ts`: 타임라인 일/주/월 범위(`getTimelineRange`, 주는 일~토), 이동, 제목, 일 보기의 30분 칸 배치(`getDaySlots`).
+- `Calendar/src-tauri/src/vault.rs`: Windows 자격 증명 관리자(CredWrite/CredRead/CredDelete) 공용 코드. 지금은 `notion.rs`가 쓴다.
+- `Calendar/src-tauri/src/notion.rs`: Notion 통합 토큰을 `Calendar/NotionToken`에 보관하고, `https://api.notion.com` 아래 `/v1/…` 경로로만 요청한다(`Notion-Version: 2025-09-03`, 메서드는 GET/POST/PATCH만).
+- `Calendar/src/utils/notionUtils.ts`: 데이터베이스 열 구성, 일정 → 페이지 속성 변환, 내보낼 범위, 응답 오류 해석. `useNotion.ts`가 요청 순서·속도 제한·페이지 연결 표(`cwa:notion-map`)를 맡는다.
 
 ## 유지해야 할 불변 조건
 
@@ -47,11 +51,15 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
 17. 구독 캘린더 항목(`Todo.sourceId`)은 읽기 전용이다. `todos` 상태에 섞지 않고 표시할 때만 합친다(선택·수정·삭제·알림·통계 대상 아님).
 18. 반복 회차 판정은 `doesOccurrenceStartOn` 하나가 결정한다. `listOccurrenceStarts`는 보이는 범위를 하루씩 훑으며 그것만 호출한다. 새 반복 규칙은 여기와 `describeRepeat`, ICS의 `toRepeat`만 고치면 된다.
 19. 하위 체크리스트는 반복 없는 항목에만 둔다(회차별 상태를 만들지 않기 위해).
-20. Claude API 키는 웹뷰로 절대 돌려보내지 않는다(저장·존재 확인·삭제 명령만 있다). 키를 localStorage·파일·백업에 쓰지 않는다.
-21. Claude 기능은 기본 꺼짐이고, 사용자가 누를 때만 요청한다(자동 호출 금지). 보내는 내용은 일정 제목·날짜·시간·반복 설명뿐이며 메모는 보내지 않는다.
-22. Claude 요청에 `temperature`/`top_p`/`top_k`를 넣지 않는다(API 2026-10-21에서 400). 짧은 작업이라 `output_config.effort`는 "low", Opus·Sonnet은 `fallbacks: "default"`(베타 헤더는 Rust가 붙임), Haiku는 fallback 없이 보낸다. `stop_reason`이 `refusal`·`max_tokens`이면 내용을 읽지 않는다.
-23. Claude가 만든 일정은 바로 저장하지 않고 추가 창에 채워서 사용자가 확인하게 한다.
-24. 한 번의 사용자 동작은 유료 요청 한 번이어야 한다: 진행 중 중복 요청을 막고(브리핑은 하루 단위 캐시), 사용량 집계는 상태 업데이트 함수 밖에서 한다(StrictMode 이중 실행).
+20. MCP 서버는 앱 데이터 파일(todos/settings/memos)을 절대 쓰지 않는다. 추가는 `inbox/`에 요청 파일 하나(임시 파일에 쓴 뒤 이름 바꾸기)로만 하고, 앱이 다시 검증해 넣는다. 그래서 앱이 켜져 있어도 저장 충돌이 없다.
+21. 한 요청의 항목은 전부 통과해야 남긴다(하나라도 틀리면 아무것도 추가하지 않고 고칠 점을 돌려준다). 다시 시도해도 중복이 생기지 않게 하기 위해서다. 한 요청은 앱에서 Ctrl+Z 한 번으로 되돌아간다.
+22. `take_inbox`는 고정 폴더의 `.json`만 읽고(256KB 초과·`.tmp` 제외), 읽은 파일은 바로 지운다. 동시 호출은 잠금으로 막아 같은 요청이 두 번 들어오지 않는다. 설정 "대화에서 일정 받기"(`assistantInbox`)가 꺼져 있으면 앱은 가져가지 않고, MCP 서버도 추가를 거절한다.
+23. 앱 화면 안에는 유료 AI 호출을 두지 않는다(2026-11에 넣었던 Claude API 기능은 사용자 요청으로 제거, 기록은 6e4f461). AI는 사용자의 Claude 대화 쪽에서 MCP로만 들어온다.
+24. 설정 서랍은 화면·일정·연동·앱 네 탭, 한 줄짜리 행(`SettingControls.tsx`)으로 만든다. 켜고 끄기는 `Switch`(role="switch"), 여러 값은 `SelectRow`, 설명 문장은 꼭 필요한 곳(Notion 설정 방법 등)에만 접어서 둔다.
+25. Notion 토큰도 웹뷰로 돌려보내지 않고 localStorage·파일·백업에 쓰지 않는다. `notion_request`는 `/v1/`로 시작하고 `..`가 없는 경로만 받는다(웹뷰가 임의 주소로 토큰을 보내지 못하게).
+26. Notion 연동은 앱 → Notion 한 방향이다. Notion 페이지를 지우거나 보관하지 않고, Notion의 변경을 앱으로 가져오지 않는다. 양방향은 충돌 규칙을 먼저 정한 뒤에만 넣는다.
+27. Notion API는 데이터 소스 방식(2025-09-03)을 쓴다: 데이터베이스 → `data_sources[0].id` → 속성 조회·추가, 페이지 부모는 `data_source_id`. 같은 이름인데 종류가 다른 열은 덮어쓰지 않고 사용자에게 이름을 바꾸라고 알린다.
+28. 내보내기는 항목마다 속성 지문을 저장해 바뀐 것만 보낸다. 요청 사이 350ms 간격, 429는 Retry-After만큼 기다려 최대 3번 다시 시도한다. 토큰·권한·네트워크 오류는 그 자리에서 멈추고, 항목 하나의 오류는 세고 계속한다.
 
 ## 검증 기준
 

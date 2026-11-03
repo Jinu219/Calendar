@@ -6,8 +6,7 @@ import { useCallback, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { FLASH_MESSAGE_KEY, MEMOS_KEY, SETTINGS_KEY, TODOS_KEY } from "../constants";
-import { flushPendingWrites, getLocalToday, loadJson, persistItem } from "../utils";
-import { normalizeTodos } from "./useTodos";
+import { flushPendingWrites, getLocalToday, loadJson, normalizeTodos, persistItem } from "../utils";
 import { normalizeMemos } from "./useMemos";
 import { normalizeSettings } from "./useSettings";
 

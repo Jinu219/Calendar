@@ -11,7 +11,7 @@ interface ShortcutHelpModalProps {
   onClose: () => void;
 }
 
-export const ShortcutListSection: React.FC = () => (
+const ShortcutListSection: React.FC = () => (
   <>
     <dl className="shortcut-list">
       {KEYBOARD_SHORTCUTS.map(shortcut => (

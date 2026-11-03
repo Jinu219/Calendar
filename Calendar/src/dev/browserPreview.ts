@@ -36,49 +36,22 @@ const DEMO_ICS = [
   "END:VCALENDAR",
 ].join("\r\n");
 
-// Kept for the tab session so a reload doesn't forget the pretend key.
-let previewHasKey = sessionStorage.getItem("preview:claude-key") === "1";
+let fakeNotionPages = 0;
 
-/** A believable Messages API response for whichever Claude feature asked. */
-const fakeClaudeReply = (rawBody: string) => {
-  const body = JSON.parse(rawBody) as {
-    messages: { content: string }[];
-    output_config?: { format?: { schema?: { properties?: Record<string, unknown> } } };
-  };
-  const user = body.messages[0]?.content ?? "";
-  const properties = body.output_config?.format?.schema?.properties ?? {};
-  const selected = /선택한 날짜: (\S+)/.exec(user)?.[1] ?? "2026-11-03";
-  const input = /입력: (.*)$/m.exec(user)?.[1] ?? "";
+const fakeNotionReply = ({ method, path }: { method: string; path: string; body: string | null }) => {
+  const ok = (body: unknown) => ({ status: 200, body: JSON.stringify(body), retry_after: null });
 
-  const text = "steps" in properties
-    ? JSON.stringify({ steps: ["자료 모으기", "개요 짜기", "초안 쓰기", "검토 부탁하기"] })
-    : "title" in properties
-      ? JSON.stringify({
-          title: input.replace(/다음 주|화요일|\d+시|매주|30분 전 알림/g, "").trim() || "새 일정",
-          kind: "schedule",
-          startDate: selected,
-          endDate: selected,
-          allDay: false,
-          startTime: "15:00",
-          endTime: "16:00",
-          repeat: /매주/.test(input) ? "weekly" : "none",
-          repeatInterval: 1,
-          repeatDays: [2],
-          monthlyMode: "date",
-          repeatEndDate: null,
-          reminderMinutes: /알림/.test(input) ? 30 : null,
-        })
-      : "오늘은 오후 일정 두 개가 있는 보통 하루예요.\n• 16:00 스터디\n• 보고서 마감이 오늘이에요\n• 수요일 17:00 회의가 매주 있어요\n• 오전에 보고서를 먼저 끝내 보세요";
-
-  return {
-    status: 200,
-    body: JSON.stringify({
-      model: "claude-opus-5-5",
-      stop_reason: "end_turn",
-      content: [{ type: "thinking", thinking: "" }, { type: "text", text }],
-      usage: { input_tokens: 620, output_tokens: 180 },
-    }),
-  };
+  if (method === "GET" && path.startsWith("/v1/databases/")) {
+    return ok({ object: "database", title: [{ plain_text: "📅 일정 (미리보기)" }], data_sources: [{ id: "preview-source", name: "일정" }] });
+  }
+  if (method === "GET" && path.startsWith("/v1/data_sources/")) {
+    return ok({ object: "data_source", properties: { 이름: { type: "title" } } });
+  }
+  if (method === "POST" && path === "/v1/pages") {
+    fakeNotionPages += 1;
+    return ok({ object: "page", id: `preview-page-${fakeNotionPages}` });
+  }
+  return ok({ object: method === "PATCH" && path.startsWith("/v1/pages/") ? "page" : "data_source" });
 };
 
 export function installBrowserPreviewMocks() {
@@ -125,22 +98,27 @@ export function installBrowserPreviewMocks() {
       // Any subscription URL gets a small demo calendar, to exercise the feed UI.
       case "fetch_calendar_feed":
         return DEMO_ICS;
-      // Claude: canned replies (no network, no key) so the AI UI can be exercised.
-      case "has_claude_api_key":
-        return previewHasKey;
-      case "set_claude_api_key": {
-        const key = String((args as { key?: string } | undefined)?.key ?? "");
-        if (!key.startsWith("sk-ant-")) throw "Claude API 키는 sk-ant- 로 시작해요. 다시 확인해 주세요.";
-        previewHasKey = true;
-        sessionStorage.setItem("preview:claude-key", "1");
+      // Claude conversation inbox: sessionStorage "preview:inbox" (an InboxFile
+      // JSON) is handed over once, to exercise the receiving UI.
+      case "take_inbox": {
+        const pending = sessionStorage.getItem("preview:inbox");
+        sessionStorage.removeItem("preview:inbox");
+        return pending ? [pending] : [];
+      }
+      // Notion: an in-memory database so the export UI can be exercised.
+      case "has_notion_token":
+        return sessionStorage.getItem("preview:notion-token") === "1";
+      case "set_notion_token": {
+        const token = String((args as { token?: string } | undefined)?.token ?? "");
+        if (!/^(ntn_|secret_)/.test(token)) throw "Notion 통합 토큰은 ntn_ (또는 secret_)으로 시작해요. 다시 확인해 주세요.";
+        sessionStorage.setItem("preview:notion-token", "1");
         return null;
       }
-      case "delete_claude_api_key":
-        previewHasKey = false;
-        sessionStorage.removeItem("preview:claude-key");
+      case "delete_notion_token":
+        sessionStorage.removeItem("preview:notion-token");
         return null;
-      case "claude_messages":
-        return fakeClaudeReply(String((args as { body?: string } | undefined)?.body ?? "{}"));
+      case "notion_request":
+        return fakeNotionReply(args as { method: string; path: string; body: string | null });
       default:
         return null;
     }

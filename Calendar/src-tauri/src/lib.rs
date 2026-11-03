@@ -14,9 +14,11 @@ use tauri::{
 };
 use tauri_plugin_autostart::ManagerExt;
 
-mod claude;
 mod hotkey;
+mod inbox;
+mod notion;
 mod storage;
+mod vault;
 
 #[cfg(target_os = "windows")]
 use windows::Win32::{
@@ -366,10 +368,11 @@ pub fn run() {
             storage::get_backup_dir,
             storage::open_backup_dir,
             storage::fetch_calendar_feed,
-            claude::set_claude_api_key,
-            claude::has_claude_api_key,
-            claude::delete_claude_api_key,
-            claude::claude_messages,
+            inbox::take_inbox,
+            notion::set_notion_token,
+            notion::has_notion_token,
+            notion::delete_notion_token,
+            notion::notion_request,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 앱 실행 실패");

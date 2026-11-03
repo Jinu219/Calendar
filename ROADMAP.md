@@ -21,15 +21,31 @@
 | 하위 체크리스트 | `EventForm`, `TodoPanel` |
 | 코드 정리: `useSelection`·`useRecurrenceScopePrompt` 분리, 모니터·배율 인식 창 배치, 메모창 `alert()` → 토스트, 음력표 2035년까지 | `hooks/`, `utils/windowPlacement.ts` |
 
-### Claude AI 연동 (2026-11)
+### Claude AI 연동 (2026-11, 제거됨)
+
+앱 안에서 API 키로 Claude를 부르는 기능(문장 → 일정, 단계 추천, 브리핑)을 넣었다가, 사용자가 원한 것은 "대화 중에 Claude가 앱에 일정을 넣어 주는 것"이어서 아래 MCP 연결로 바꾸고 제거했습니다. 코드는 커밋 6e4f461에 남아 있습니다.
+
+### 화면 정리와 Claude 대화 연결 (2026-11)
 
 | 항목 | 구현 위치 |
 |---|---|
-| API 키 보관(Windows 자격 증명 관리자), Rust에서만 요청 | `src-tauri/src/claude.rs` |
-| 문장 → 일정 초안(JSON 스키마) → 추가 창에서 확인 | `claudeUtils.ts` `toEventDraft`, 빠른 추가 ✨ / Shift+Enter |
-| 할 일 → 체크리스트 단계 추천 | `EventForm` ✨ 단계 추천 |
-| 오늘 브리핑(하루 캐시) | `BriefingModal.tsx` |
-| 모델 선택, 이번 달 사용량·추정 비용 | `ClaudeSettings.tsx`, `useClaude.ts` |
+| 설정을 화면·일정·연동·앱 탭, 한 줄 행·스위치·드롭다운으로 압축, 설명 문구 제거 | `SettingsDrawer.tsx`, `SettingControls.tsx` |
+| 테마는 버튼 하나 → 팝업에서 8개 고르기 | `ThemePicker.tsx` |
+| 달 위상(초승달·하현달…) 표시 삭제 | `lunarUtils.ts`, `useLunarDate.ts` |
+| 타임라인 일(30분 칸)/주(일~토)/월 선택, 선택 기억 | `TimelineView.tsx`, `timelineUtils.ts` |
+| 🏷 카테고리 팝업이 달력 뒤로 숨던 문제(제목줄 z-index) | `App.css` `.titlebar` |
+| ? 도움말 버튼을 설정 → 앱 → 단축키로 이동 | `TitleBar.tsx`, `SettingsDrawer.tsx` |
+| Claude 대화 → 앱 일정 추가(MCP 서버, inbox 폴더, 2초 폴링, 한 번에 실행 취소) | `mcp/server.mjs`, `src/mcp/calendarTools.ts`, `inboxUtils.ts`, `inbox.rs`, `useAssistantInbox.ts` |
+
+### Notion 내보내기 (2026-11)
+
+| 항목 | 구현 위치 |
+|---|---|
+| 통합 토큰 보관(자격 증명 관리자), `/v1/` 경로만 허용하는 요청 | `src-tauri/src/notion.rs`, `vault.rs` |
+| 데이터베이스 주소로 연결, 없는 열 자동 추가 | `useNotion.ts` `connect`, `notionUtils.ts` `planSchemaChanges` |
+| 일정 → 페이지(날짜·완료·종류·카테고리·반복, 체크리스트는 할 일 블록) | `buildPageProperties`, `buildPageChildren` |
+| 바뀐 항목만 갱신, 지워진 페이지는 새로 만들기, 속도 제한 처리 | `useNotion.ts` `exportTodos` |
+| 내보낼 범위, 수동/자동(수정 후 20초) 내보내기 | `NotionSettings.tsx`, `CalendarPage.tsx` |
 
 ## 실제 Tauri 창에서 확인이 필요한 것
 
@@ -41,18 +57,22 @@
 - 설치본에서 알림을 눌렀을 때 위젯이 앞으로 나오는지(Windows가 앱을 다시 실행하면 단일 인스턴스 처리로 창을 띄우는 방식)
 - 실제 Google 캘린더 비공개 iCal 주소 구독
 - 보조 모니터·배율 125%/150%에서 메모창 위치
-- 실제 API 키로 문장 → 일정, 단계 추천, 브리핑 응답 품질과 걸리는 시간(미리보기는 가짜 응답)
-- 자격 증명 관리자(제어판 → 자격 증명 관리자 → Windows 자격 증명)에 `Calendar/ClaudeApiKey`가 생기고 삭제되는지
+- MCP 등록 후 새 Claude 대화에서 "내일 3시 치과 넣어줘" → 켜진 앱에 2초 안에 들어오는지, 앱을 끈 채로 추가한 뒤 켜면 들어오는지, 토스트의 실행 취소
+- 설정 서랍이 실제 창 크기·배율(125%/150%)에서도 탭마다 스크롤 없이 보이는지
+- 실제 Notion 통합 토큰과 데이터베이스로 연결 → 열 자동 추가 → 내보내기 → 다시 내보내기(그대로) → 앱에서 고친 뒤 갱신, Notion에서 페이지를 지운 뒤 다시 만들어지는지
+- `Calendar/NotionToken`이 자격 증명 관리자에 생기고 "토큰 삭제"로 지워지는지
 
 ## 다음 후보
 
-### Claude AI 다음 단계
-- 여러 일정을 한 번에: "이번 주 월수금 7시 헬스, 금요일 6시 저녁 약속" → 여러 초안을 목록으로 확인
-- 메일·공지 붙여넣기 → 일정 추출(학사 공지, 과제 공지)
-- 빈 시간 찾기: "이번 주 2시간 공부할 시간" → 일정 사이 빈 칸 제안
+### Claude 대화 연결 다음 단계
+- 도구 추가: 일정 수정·완료 표시·삭제(삭제는 확인 문구 필수), 제목으로 검색
+- 빈 시간 찾기 도구: "이번 주 2시간 공부할 시간" → 일정 사이 빈 칸 제안
+- 설치본에 MCP 서버를 함께 넣고 설정에서 "Claude에 연결" 버튼으로 등록 명령 복사
 
-### Notion 연동 (Notion API 무료)
-- 할 일을 Notion 데이터베이스로 내보내기(단방향)부터. 양방향 동기화는 충돌 처리 설계 후.
+### Notion 다음 단계
+- Notion에서 체크한 완료 상태만 앱으로 가져오기(완료 열 하나만, 충돌 시 최근 변경 우선)
+- 체크리스트를 고치면 페이지 본문 할 일 블록도 갱신(지금은 처음 만들 때만 씀)
+- 앱에서 지운 일정의 페이지를 Notion에서 보관할지 선택하는 옵션
 
 ### 그 밖에
 - 반복 규칙: 매월 여러 날짜(1일·15일), 마지막 날, 공휴일 건너뛰기

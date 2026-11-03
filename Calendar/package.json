@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build --configLoader runner",
+    "build:mcp": "vite build --config vite.mcp.config.ts --configLoader runner",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check:rust": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
-    "check": "npm run typecheck && npm run test && npm run build && npm run check:rust",
+    "check": "npm run typecheck && npm run test && npm run build && npm run build:mcp && npm run check:rust",
     "preview": "vite preview",
     "tauri": "tauri"
   },

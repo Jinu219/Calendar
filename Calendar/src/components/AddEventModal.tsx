@@ -14,7 +14,6 @@ interface AddEventModalProps {
   initialData?: ModalState;
   defaultReminderMinutes: number;
   colorLabels: Record<string, string>;
-  onSuggestSubtasks?: (title: string, dueDate: string, existing: string[]) => Promise<string[]>;
   onClose: () => void;
   onSubmit: (data: EventFormData) => void;
 }
@@ -41,7 +40,6 @@ const toFormData = (initialData?: ModalState): EventFormData => {
     reminder: "default",
     subtasks: [],
     kind,
-    ...initialData?.draft,
   };
 };
 
@@ -49,11 +47,9 @@ const AddEventModalContent: React.FC<Omit<AddEventModalProps, "isOpen">> = ({
   initialData,
   defaultReminderMinutes,
   colorLabels,
-  onSuggestSubtasks,
   onClose,
   onSubmit,
 }) => {
-  const aiFilled = Boolean(initialData?.draft);
   // Mounted fresh on every open, so the form starts from initialData each time.
   const [form, setForm] = useState<EventFormData>(() => toFormData(initialData));
   const [error, setError] = useState<string | null>(null);
@@ -75,13 +71,7 @@ const AddEventModalContent: React.FC<Omit<AddEventModalProps, "isOpen">> = ({
   };
 
   return (
-    <ModalShell
-      title={`${aiFilled ? "✨ " : ""}${form.kind === "todo" ? "할 일 추가" : "일정 추가"}`}
-      onClose={onClose}
-    >
-      {aiFilled && (
-        <p className="ai-filled-hint" role="status">Claude가 채운 내용이에요. 확인하고 고친 뒤 추가를 눌러 주세요.</p>
-      )}
+    <ModalShell title={form.kind === "todo" ? "할 일 추가" : "일정 추가"} onClose={onClose}>
       <EventForm
         value={form}
         onChange={patch => {
@@ -92,7 +82,6 @@ const AddEventModalContent: React.FC<Omit<AddEventModalProps, "isOpen">> = ({
         showRepeat
         defaultReminderMinutes={defaultReminderMinutes}
         colorLabels={colorLabels}
-        onSuggestSubtasks={onSuggestSubtasks}
         submitLabel="추가"
         onCancel={onClose}
         onSubmit={handleSubmit}

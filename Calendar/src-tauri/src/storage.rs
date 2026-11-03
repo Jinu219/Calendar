@@ -19,7 +19,7 @@ const BACKUP_PREFIX: &str = "calendar-backup-";
 const BACKUPS_TO_KEEP: usize = 7;
 const MAX_FEED_BYTES: usize = 5 * 1024 * 1024;
 
-fn app_dir(app: &AppHandle) -> Result<PathBuf, String> {
+pub(crate) fn app_dir(app: &AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|err| err.to_string())?;
     fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
     Ok(dir)

@@ -24,7 +24,7 @@ serde                        = { version = "1", features = ["derive"] }
 serde_json                   = "1"
 # Already in the tree through the updater (which also enables its TLS backend);
 # used directly for ICS calendar feeds (WebView CORS would block them) and for
-# Claude API calls (so the API key never reaches the WebView).
+# Notion API calls (so the integration token never reaches the WebView).
 reqwest                      = { version = "0.13", default-features = false }
 
 [target.'cfg(windows)'.dependencies]

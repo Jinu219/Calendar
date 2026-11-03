@@ -7,7 +7,6 @@ import { invoke } from "@tauri-apps/api/core";
 import type { CalendarFeed, Settings } from "../types";
 import { loadJson, persistItem } from "../utils";
 import {
-  CLAUDE_MODELS,
   DEFAULT_SETTINGS,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
@@ -50,7 +49,7 @@ export const normalizeSettings = (value: unknown): Settings => {
     todoPanelWidth: clamp(pick("todoPanelWidth"), 200, 480),
     useLunar: pick("useLunar"),
     use24Hour: pick("use24Hour"),
-    showMoonPhase: pick("showMoonPhase"),
+    timelineSpan: saved.timelineSpan === "day" || saved.timelineSpan === "month" ? saved.timelineSpan : "week",
     editMode: pick("editMode"),
     showOnTaskbar: pick("showOnTaskbar"),
     windowLevel: saved.windowLevel === "top" || saved.alwaysOnTop ? "top" : "bottom",
@@ -67,10 +66,14 @@ export const normalizeSettings = (value: unknown): Settings => {
       ? saved.hiddenColors.filter((color): color is string => typeof color === "string")
       : [],
     calendarFeeds: normalizeFeeds(saved.calendarFeeds),
-    claudeEnabled: pick("claudeEnabled"),
-    claudeModel: CLAUDE_MODELS.some(model => model.id === saved.claudeModel)
-      ? saved.claudeModel as Settings["claudeModel"]
-      : DEFAULT_SETTINGS.claudeModel,
+    assistantInbox: pick("assistantInbox"),
+    notionEnabled: pick("notionEnabled"),
+    notionDatabaseId: pick("notionDatabaseId"),
+    notionDataSourceId: pick("notionDataSourceId"),
+    notionDatabaseTitle: pick("notionDatabaseTitle"),
+    notionTitleProperty: pick("notionTitleProperty"),
+    notionScope: saved.notionScope === "recent" || saved.notionScope === "all" ? saved.notionScope : "upcoming",
+    notionAutoSync: pick("notionAutoSync"),
   };
 };
 

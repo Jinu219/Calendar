@@ -22,7 +22,7 @@ import type {
   EventInput,
   EventMountArg,
 } from "@fullcalendar/core";
-import type { AddMode, CalendarViewType, EventTiming, MoonPhase, OccurrenceRef, Settings } from "../types";
+import type { AddMode, CalendarViewType, EventTiming, OccurrenceRef, Settings } from "../types";
 import {
   WEEK_VIEW_DEFAULT_END_HOUR,
   WEEK_VIEW_DEFAULT_START_HOUR,
@@ -50,8 +50,6 @@ interface CalendarViewProps {
   holidays: Record<string, string>;
   settings: Settings;
   selectedDate: string;
-  today: string;
-  moonPhase: MoonPhase;
   selection: OccurrenceRef[];
   /** Days with a memo linked to them (shown as 📝 in the cell). */
   memoDates: Set<string>;
@@ -113,8 +111,6 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   holidays,
   settings,
   selectedDate,
-  today,
-  moonPhase,
   selection,
   memoDates,
   onDateClick,
@@ -297,11 +293,6 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
           )}
           {memoDates.has(dateStr) && (
             <span className="memo-marker" title="연결된 메모가 있어요" aria-label="메모">📝</span>
-          )}
-          {dateStr === today && settings.showMoonPhase && (
-            <span className="moon-phase-small" title={moonPhase.name} aria-hidden="true">
-              {moonPhase.emoji}
-            </span>
           )}
         </div>
         {holiday && <div className="holiday-name" title={holiday}>{holiday}</div>}

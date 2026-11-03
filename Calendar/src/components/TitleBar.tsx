@@ -6,10 +6,12 @@ import React, { useCallback, useMemo, useRef, memo } from "react";
 import { CategoryFilter } from "./CategoryFilter";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { formatShortDate } from "../utils";
-import type { AddMode, CalendarViewType, MoonPhase } from "../types";
+import type { AddMode, CalendarViewType } from "../types";
 
 interface TitleBarProps {
   view: CalendarViewType;
+  /** What ◀/▶ move by: "달", "주" or "날". */
+  navUnit: string;
   onViewChange: (view: CalendarViewType) => void;
   /** What the calendar is showing, e.g. "2026년 11월". */
   viewTitle: string;
@@ -24,13 +26,10 @@ interface TitleBarProps {
   onSettingsToggle: () => void;
   editMode: boolean;
   onEditModeToggle: () => void;
-  onShowHelp: () => void;
   onOpenSearch: () => void;
   colorLabels: Record<string, string>;
   hiddenColors: string[];
   onHiddenColorsChange: (hiddenColors: string[]) => void;
-  moonPhase?: MoonPhase;
-  showMoonPhase: boolean;
   addMode: AddMode;
   onAddModeChange: (mode: AddMode) => void;
 }
@@ -49,6 +48,7 @@ const VIEWS: { value: CalendarViewType; label: string; key: string }[] = [
 
 export const TitleBar: React.FC<TitleBarProps> = memo(({
   view,
+  navUnit: unit,
   onViewChange,
   viewTitle,
   viewMonth,
@@ -61,20 +61,16 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
   onSettingsToggle,
   editMode,
   onEditModeToggle,
-  onShowHelp,
   onOpenSearch,
   colorLabels,
   hiddenColors,
   onHiddenColorsChange,
-  moonPhase,
-  showMoonPhase,
   addMode,
   onAddModeChange,
 }) => {
   const appWin = useMemo(() => getCurrentWindow(), []);
   const monthInputRef = useRef<HTMLInputElement>(null);
   const todayLabel = formatShortDate(today);
-  const unit = view === "dayGridMonth" ? "달" : "주";
 
   const preventDblClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -164,12 +160,6 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
           />
         </div>
 
-        {showMoonPhase && moonPhase?.emoji && (
-          <span className="moon-label" title={`오늘의 달: ${moonPhase.name}`}>
-            <span aria-hidden="true">{moonPhase.emoji}</span> {moonPhase.name}
-          </span>
-        )}
-
         <span className="today-label" title="오늘">
           오늘 {todayLabel}
         </span>
@@ -231,16 +221,6 @@ export const TitleBar: React.FC<TitleBarProps> = memo(({
           onClick={onEditModeToggle}
         >
           ↔
-        </button>
-
-        <button
-          type="button"
-          className="settings-btn"
-          aria-label="단축키 도움말"
-          title="단축키 도움말 (?)"
-          onClick={onShowHelp}
-        >
-          ?
         </button>
 
         <button

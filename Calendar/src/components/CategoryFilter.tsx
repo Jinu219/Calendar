@@ -2,8 +2,9 @@
 // CategoryFilter — show/hide items by color (category)
 // ═══════════════════════════════════════════════════════════
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import { COLOR_NAMES, TODO_COLORS } from "../constants";
+import { useDismiss } from "../hooks/useDismiss";
 
 interface CategoryFilterProps {
   colorLabels: Record<string, string>;
@@ -23,27 +24,7 @@ export const CategoryFilter: React.FC<CategoryFilterProps> = ({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click and on Escape.
-  useEffect(() => {
-    if (!open) return;
-
-    const onPointerDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown, true);
-    };
-  }, [open]);
+  useDismiss(rootRef, open, () => setOpen(false));
 
   const toggle = (color: string) => {
     onChange(hiddenColors.includes(color)

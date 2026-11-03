@@ -11,12 +11,11 @@ export type DayNumPos = "left" | "right";
 export type TodayStyle = "highlight" | "glow" | "elevated" | "border";
 export type WindowLevel = "bottom" | "top";
 export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeline";
+export type TimelineSpan = "day" | "week" | "month";
 /** Which kind of item a todo is, or that the calendar's click/drag creates. */
 export type ItemKind = "schedule" | "todo";
 /** The title bar's kind filter: a single kind, or "all" to show both. */
 export type AddMode = ItemKind | "all";
-/** Claude models the user can pick (default: the most capable). */
-export type ClaudeModelId = "claude-opus-5-5" | "claude-sonnet-5-5" | "claude-haiku-5-5";
 /** Whether a change to a recurring item applies to one occurrence or the whole series. */
 export type RecurrenceScope = "this" | "all";
 
@@ -128,7 +127,7 @@ export interface Settings {
   autostart: boolean;
   useLunar: boolean;
   use24Hour: boolean;
-  showMoonPhase: boolean;
+  timelineSpan: TimelineSpan;
 
   editMode: boolean;
   showOnTaskbar: boolean;
@@ -150,9 +149,19 @@ export interface Settings {
   hiddenColors: string[];
   calendarFeeds: CalendarFeed[];
 
-  /** Off until the user opts in: using it sends item titles/dates to Anthropic. */
-  claudeEnabled: boolean;
-  claudeModel: ClaudeModelId;
+  /** Accept items Claude adds from a conversation (through the MCP server's inbox). */
+  assistantInbox: boolean;
+
+  /** One-way export of items to a Notion database (off until set up). */
+  notionEnabled: boolean;
+  notionDatabaseId: string;
+  notionDataSourceId: string;
+  notionDatabaseTitle: string;
+  /** The database's title column, whatever the user named it. */
+  notionTitleProperty: string;
+  notionScope: "upcoming" | "recent" | "all";
+  /** Export changed items automatically a little after each edit. */
+  notionAutoSync: boolean;
 }
 
 export interface ModalState {
@@ -164,8 +173,6 @@ export interface ModalState {
   endTime: string;
   allDay: boolean;
   mode: ItemKind;
-  /** Prefilled fields, e.g. a draft Claude made from a sentence. */
-  draft?: Partial<EventFormData>;
 }
 
 /** Reminder choice in the form: the global default, never, or N minutes before. */
@@ -220,11 +227,6 @@ export interface ThemeOption {
 export interface TodayStyleOption {
   key: TodayStyle;
   label: string;
-}
-
-export interface MoonPhase {
-  name: string;
-  emoji: string;
 }
 
 export interface Memo {

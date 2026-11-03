@@ -1,27 +1,31 @@
 // ═══════════════════════════════════════════════════════════
 // SettingsDrawer Component
 // ═══════════════════════════════════════════════════════════
+//
+// Four tabs of compact rows (label left, control right) so nothing needs a
+// long scroll. Switches for on/off, dropdowns for lists of choices.
 
-import React, { useId } from "react";
-import type { Settings, MoonPhase, DayNumPos, TodayStyle, WindowLevel } from "../types";
+import React, { useRef, useState } from "react";
+import type { Settings, DayNumPos, TodayStyle } from "../types";
 import {
   ALL_DAY_REMINDER_TIMES,
   COLOR_NAMES,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
   REMINDER_LEAD_OPTIONS,
-  THEME_OPTIONS,
   TODAY_STYLES,
   TODO_COLORS,
 } from "../constants";
 import type { UpdateStatus } from "../hooks/useAutoUpdate";
 import type { FeedStatus } from "../hooks/useCalendarFeeds";
+import type { InboxReceipt } from "../hooks/useAssistantInbox";
+import type { NotionFeatures } from "../hooks/useNotion";
 import { formatShortDate } from "../utils";
 import { FeedSettings } from "./FeedSettings";
-import { ClaudeSettings } from "./ClaudeSettings";
-import type { ClaudeFeatures } from "../hooks/useClaude";
+import { NotionSettings } from "./NotionSettings";
 import { SegmentedControl } from "./SegmentedControl";
-import { ShortcutListSection } from "./ShortcutHelpModal";
+import { SelectRow, SettingGroup, SettingRow, SliderRow, SwitchRow } from "./SettingControls";
+import { ThemePicker } from "./ThemePicker";
 
 interface SettingsDrawerProps {
   isOpen: boolean;
@@ -33,8 +37,6 @@ interface SettingsDrawerProps {
   filteredFonts: string[];
   fontSearch: string;
   onFontSearchChange: (search: string) => void;
-  moonPhase: MoonPhase;
-  lunarDate: string;
   onExportData: () => void;
   onImportData: () => void;
   isExporting: boolean;
@@ -49,26 +51,29 @@ interface SettingsDrawerProps {
   onRefreshFeeds: (id?: string) => void;
   /** The system-wide show/hide shortcut that got registered, if any. */
   globalShortcut: string | null;
-  claude: ClaudeFeatures;
+  onShowHelp: () => void;
+  notion: NotionFeatures;
+  /** Runs an export and returns the summary to show. */
+  onNotionExport: () => Promise<string>;
+  /** The last batch Claude added from a conversation. */
+  lastInbox: InboxReceipt | null;
 }
 
-const ON_OFF = (on: string, off: string) => [
-  { value: true, label: on },
-  { value: false, label: off },
+type TabKey = "look" | "events" | "connect" | "app";
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "look", label: "화면" },
+  { key: "events", label: "일정" },
+  { key: "connect", label: "연동" },
+  { key: "app", label: "앱" },
 ];
 
 const TOP_MODE_OPACITY = 0.16;
+const FONT_LIST_LIMIT = 30;
 
-/** A titled settings group; the title doubles as the group's accessible name. */
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => {
-  const id = useId();
-
-  return (
-    <section className="sg" aria-labelledby={id}>
-      <h3 className="sg-label" id={id}>{title}</h3>
-      {children}
-    </section>
-  );
+const formatAt = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 
 export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
@@ -81,8 +86,6 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   filteredFonts,
   fontSearch,
   onFontSearchChange,
-  moonPhase,
-  lunarDate,
   onExportData,
   onImportData,
   isExporting,
@@ -96,20 +99,23 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   feedStatusFor,
   onRefreshFeeds,
   globalShortcut,
-  claude,
+  onShowHelp,
+  notion,
+  onNotionExport,
+  lastInbox,
 }) => {
+  const [tab, setTab] = useState<TabKey>("look");
+  const [fontsOpen, setFontsOpen] = useState(false);
+  const tabRefs = useRef<Record<TabKey, HTMLButtonElement | null>>({ look: null, events: null, connect: null, app: null });
+
   const handleReset = () => {
-    if (window.confirm("설정을 초기화하시겠습니까?")) {
+    if (window.confirm("설정을 초기화하시겠습니까? 일정과 메모는 그대로예요.")) {
       onResetSettings();
     }
   };
 
   const handleImportClick = () => {
-    if (
-      window.confirm(
-        "백업 파일을 가져오면 현재 일정·메모·설정이 모두 덮어써집니다. 계속할까요?"
-      )
-    ) {
+    if (window.confirm("백업 파일을 가져오면 현재 일정·메모·설정이 모두 덮어써집니다. 계속할까요?")) {
       onImportData();
     }
   };
@@ -119,11 +125,11 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       case "checking":
         return "확인 중…";
       case "up-to-date":
-        return "최신 버전입니다";
+        return "최신 버전이에요";
       case "available":
-        return `새 버전 ${updateStatus.version} 발견`;
+        return `새 버전 ${updateStatus.version}`;
       case "installing":
-        return "다운로드 및 설치 중…";
+        return "설치 중…";
       case "error":
         return `확인 실패: ${updateStatus.message}`;
       default:
@@ -131,12 +137,20 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
     }
   })();
 
-  const handleWindowLevelChange = (level: WindowLevel) => {
-    onSetSetting("windowLevel", level);
+  const handleAlwaysOnTop = (top: boolean) => {
+    onSetSetting("windowLevel", top ? "top" : "bottom");
+    // On top of other windows the widget should cover less.
+    if (top && settings.opacity > TOP_MODE_OPACITY) onSetSetting("opacity", TOP_MODE_OPACITY);
+  };
 
-    if (level === "top" && settings.opacity > TOP_MODE_OPACITY) {
-      onSetSetting("opacity", TOP_MODE_OPACITY);
-    }
+  // Arrow keys move between tabs (WAI-ARIA tabs pattern).
+  const handleTabKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+    e.preventDefault();
+    const index = TABS.findIndex(t => t.key === tab);
+    const next = TABS[(index + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length].key;
+    setTab(next);
+    tabRefs.current[next]?.focus();
   };
 
   return (
@@ -148,452 +162,295 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
       inert={!isOpen}
     >
       <div className="settings-hdr">
-        <h2 className="settings-title">⚙ 설정</h2>
+        <div className="settings-hdr-top">
+          <h2 className="settings-title">설정</h2>
+          <button
+            className="settings-close"
+            type="button"
+            onClick={onClose}
+            aria-label="설정 닫기"
+            title="설정 닫기 (Esc)"
+          >
+            ✕
+          </button>
+        </div>
 
-        <button
-          className="settings-close"
-          type="button"
-          onClick={onClose}
-          aria-label="설정 닫기"
-          title="설정 닫기 (Esc)"
-        >
-          ✕
-        </button>
+        <div className="settings-tabs" role="tablist" aria-label="설정 분류" onKeyDown={handleTabKeyDown}>
+          {TABS.map(t => (
+            <button
+              key={t.key}
+              ref={el => { tabRefs.current[t.key] = el; }}
+              type="button"
+              role="tab"
+              id={`settings-tab-${t.key}`}
+              aria-selected={tab === t.key}
+              aria-controls={`settings-panel-${t.key}`}
+              tabIndex={tab === t.key ? 0 : -1}
+              className={`settings-tab ${tab === t.key ? "active" : ""}`}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="settings-body">
-        {/* ─────────────── Appearance ─────────────── */}
-
-        <Section title="화면 테마">
-          <div className="theme-grid" role="group" aria-label="화면 테마">
-            {THEME_OPTIONS.map(option => (
-              <button
-                key={option.key}
-                type="button"
-                className={`theme-btn ${settings.colorTheme === option.key ? "active" : ""}`}
-                aria-pressed={settings.colorTheme === option.key}
-                onClick={() => onSetSetting("colorTheme", option.key)}
-              >
-                <span className="theme-emoji" aria-hidden="true">{option.emoji || "●"}</span>
-                <span className="theme-label">{option.label}</span>
-              </button>
-            ))}
-          </div>
-        </Section>
-
-        <Section title="배경 투명도">
-          <div className="slider-row">
-            <span className="slider-hint">투명</span>
-            <input
-              className="opacity-slider"
-              type="range"
-              min={0.08}
-              max={0.72}
-              step={0.01}
-              value={settings.opacity}
-              aria-label="배경 불투명도"
-              aria-valuetext={`${Math.round(settings.opacity * 100)}%`}
-              onChange={e => onSetSetting("opacity", Number(e.target.value))}
-            />
-            <span className="slider-hint">불투명</span>
-          </div>
-          <div className="slider-val">{Math.round(settings.opacity * 100)}%</div>
-        </Section>
-
-        <Section title="글꼴 크기">
-          <div className="slider-row">
-            <span className="slider-hint" style={{ fontSize: 11 }}>가</span>
-            <input
-              className="opacity-slider"
-              type="range"
-              min={FONT_SIZE_MIN}
-              max={FONT_SIZE_MAX}
-              step={1}
-              value={settings.fontSize}
-              aria-label="글꼴 크기"
-              aria-valuetext={`${settings.fontSize}픽셀`}
-              onChange={e => onSetSetting("fontSize", Number(e.target.value))}
-            />
-            <span className="slider-hint" style={{ fontSize: 18 }}>가</span>
-          </div>
-          <div className="slider-val">{settings.fontSize}px</div>
-          <p className="sg-hint">달력, 할 일 목록, 설정 화면의 글자가 함께 커집니다.</p>
-        </Section>
-
-        <Section title="글꼴">
-          <input
-            className="font-search"
-            type="search"
-            placeholder="폰트 검색…"
-            aria-label="폰트 검색"
-            value={fontSearch}
-            onChange={e => onFontSearchChange(e.target.value)}
-          />
-
-          <div className="font-list" role="group" aria-label="글꼴 목록">
-            {filteredFonts.slice(0, 30).map(font => (
-              <button
-                key={font}
-                type="button"
-                className={`font-btn ${settings.fontFamily === font ? "active" : ""}`}
-                aria-pressed={settings.fontFamily === font}
-                style={{ fontFamily: `'${font}', sans-serif` }}
-                onClick={() => onSetSetting("fontFamily", font)}
-              >
-                {font}
-              </button>
-            ))}
-
-            {filteredFonts.length > 30 && (
-              <div className="font-more">
-                …외 {filteredFonts.length - 30}개, 검색으로 좁혀보세요.
-              </div>
-            )}
-          </div>
-        </Section>
-
-        <Section title="오늘 표시 스타일">
-          <SegmentedControl<TodayStyle>
-            label="오늘 표시 스타일"
-            grid
-            options={TODAY_STYLES.map(option => ({ value: option.key, label: option.label }))}
-            value={settings.todayStyle}
-            onChange={value => onSetSetting("todayStyle", value)}
-          />
-        </Section>
-
-        <Section title="달력 모양">
-          <SegmentedControl<DayNumPos>
-            label="날짜 숫자 위치"
-            options={[
-              { value: "left", label: "숫자 왼쪽" },
-              { value: "right", label: "숫자 오른쪽" },
-            ]}
-            value={settings.dayNumberPos}
-            onChange={value => onSetSetting("dayNumberPos", value)}
-          />
-
-          <SegmentedControl<boolean>
-            label="달력 주 표시"
-            options={[
-              { value: true, label: "6주 고정" },
-              { value: false, label: "주 수 자동" },
-            ]}
-            value={settings.showOverflow}
-            onChange={value => onSetSetting("showOverflow", value)}
-          />
-        </Section>
-
-        {/* ─────────────── Todo panel ─────────────── */}
-
-        <Section title="할 일 패널 너비">
-          <div className="slider-row">
-            <span className="slider-hint">좁게</span>
-            <input
-              className="opacity-slider"
-              type="range"
-              min={200}
-              max={480}
-              step={10}
-              value={settings.todoPanelWidth}
-              aria-label="할 일 패널 너비"
-              aria-valuetext={`${settings.todoPanelWidth}픽셀`}
-              onChange={e => onSetSetting("todoPanelWidth", Number(e.target.value))}
-            />
-            <span className="slider-hint">넓게</span>
-          </div>
-          <div className="slider-val">{settings.todoPanelWidth}px</div>
-          <p className="sg-hint">
-            상단의 ↔ 버튼을 켜면 마우스로 패널 경계선을 직접 조절할 수 있습니다.
-          </p>
-        </Section>
-
-        {/* ─────────────── Calendar extras ─────────────── */}
-
-        <Section title="부가 표시">
-          <SegmentedControl<boolean>
-            label="음력"
-            options={ON_OFF("음력 ON", "음력 OFF")}
-            value={settings.useLunar}
-            onChange={value => onSetSetting("useLunar", value)}
-          />
-          <SegmentedControl<boolean>
-            label="달 위상"
-            options={ON_OFF("달 위상 ON", "달 위상 OFF")}
-            value={settings.showMoonPhase}
-            onChange={value => onSetSetting("showMoonPhase", value)}
-          />
-          <SegmentedControl<boolean>
-            label="시간 표기"
-            options={ON_OFF("24시간", "12시간")}
-            value={settings.use24Hour}
-            onChange={value => onSetSetting("use24Hour", value)}
-          />
-
-          {settings.showMoonPhase && moonPhase.name && (
-            <div className="moon-phase-display">
-              <span className="moon-emoji" aria-hidden="true">{moonPhase.emoji || "🌙"}</span>
-              <span className="moon-name">오늘의 달: {moonPhase.name}</span>
-            </div>
-          )}
-
-          {settings.useLunar && lunarDate && (
-            <div className="lunar-date-display">
-              선택 날짜 음력: {lunarDate}
-            </div>
-          )}
-        </Section>
-
-        {/* ─────────────── Reminders ─────────────── */}
-
-        <Section title="알림">
-          <SegmentedControl<boolean>
-            label="알림 사용"
-            options={ON_OFF("알림 ON", "알림 OFF")}
-            value={settings.remindersEnabled}
-            onChange={value => onSetSetting("remindersEnabled", value)}
-          />
-
-          {settings.remindersEnabled && (
-            <SegmentedControl<number>
-              label="몇 분 전에 알릴까요"
-              grid
-              options={REMINDER_LEAD_OPTIONS.map(minutes => ({
-                value: minutes,
-                label: minutes === 0 ? "정시" : `${minutes}분 전`,
-              }))}
-              value={settings.reminderMinutesBefore}
-              onChange={value => onSetSetting("reminderMinutesBefore", value)}
-            />
-          )}
-
-          {settings.remindersEnabled && (
-            <>
-              <SegmentedControl<string>
-                label="종일 일정 아침 알림"
-                grid
-                options={ALL_DAY_REMINDER_TIMES.map(time => ({
-                  value: time,
-                  label: time ? `아침 ${time}` : "아침 알림 끔",
-                }))}
-                value={settings.allDayReminderTime}
-                onChange={value => onSetSetting("allDayReminderTime", value)}
+      <div
+        className="settings-body"
+        role="tabpanel"
+        id={`settings-panel-${tab}`}
+        aria-labelledby={`settings-tab-${tab}`}
+      >
+        {/* ─────────────── 화면 ─────────────── */}
+        {tab === "look" && (
+          <>
+            <SettingGroup title="모양">
+              <SettingRow label="테마">
+                <ThemePicker value={settings.colorTheme} onChange={theme => onSetSetting("colorTheme", theme)} />
+              </SettingRow>
+              <SliderRow
+                label="불투명도"
+                min={0.08}
+                max={0.72}
+                step={0.01}
+                value={settings.opacity}
+                format={value => `${Math.round(value * 100)}%`}
+                onChange={value => onSetSetting("opacity", value)}
               />
-
-              <SegmentedControl<boolean>
-                label="할 일 마감 전날 알림"
-                options={ON_OFF("마감 전날 알림", "마감 알림 끔")}
-                value={settings.todoDueReminder}
-                onChange={value => onSetSetting("todoDueReminder", value)}
+              <SliderRow
+                label="글자 크기"
+                min={FONT_SIZE_MIN}
+                max={FONT_SIZE_MAX}
+                step={1}
+                value={settings.fontSize}
+                format={value => `${value}px`}
+                onChange={value => onSetSetting("fontSize", value)}
               />
-            </>
-          )}
+              <SettingRow label="글꼴">
+                <button
+                  type="button"
+                  className="set-select font-current"
+                  aria-expanded={fontsOpen}
+                  aria-label={`글꼴: ${settings.fontFamily}`}
+                  style={{ fontFamily: `'${settings.fontFamily}', sans-serif` }}
+                  onClick={() => setFontsOpen(prev => !prev)}
+                >
+                  {settings.fontFamily}
+                </button>
+              </SettingRow>
+              {fontsOpen && (
+                <div className="font-panel">
+                  <input
+                    className="set-input"
+                    type="search"
+                    placeholder="폰트 검색…"
+                    aria-label="폰트 검색"
+                    value={fontSearch}
+                    onChange={e => onFontSearchChange(e.target.value)}
+                  />
+                  <div className="font-list" role="group" aria-label="글꼴 목록">
+                    {filteredFonts.slice(0, FONT_LIST_LIMIT).map(font => (
+                      <button
+                        key={font}
+                        type="button"
+                        className={`font-btn ${settings.fontFamily === font ? "active" : ""}`}
+                        aria-pressed={settings.fontFamily === font}
+                        style={{ fontFamily: `'${font}', sans-serif` }}
+                        onClick={() => onSetSetting("fontFamily", font)}
+                      >
+                        {font}
+                      </button>
+                    ))}
+                    {filteredFonts.length > FONT_LIST_LIMIT && (
+                      <div className="font-more">…외 {filteredFonts.length - FONT_LIST_LIMIT}개</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </SettingGroup>
 
-          <p className="sg-hint">
-            시간 일정은 위 시간 전에(일정마다 따로 바꿀 수 있음), 종일 일정·마감은 아침에 한 번 묶어서 알려 줍니다. 앱이 트레이에 있어도 동작하고, 알림을 누르면 위젯이 열립니다.
-          </p>
-        </Section>
-
-        {/* ─────────────── Categories ─────────────── */}
-
-        <Section title="카테고리">
-          <div className="category-label-list">
-            {TODO_COLORS.map(color => (
-              <label key={color} className="category-label-row">
-                <span className="category-dot" style={{ background: color }} aria-hidden="true" />
-                <input
-                  className="font-search"
-                  placeholder={COLOR_NAMES[color]}
-                  aria-label={`${COLOR_NAMES[color]} 카테고리 이름`}
-                  value={settings.colorLabels[color] ?? ""}
-                  onChange={e => {
-                    const next = { ...settings.colorLabels };
-                    if (e.target.value.trim()) next[color] = e.target.value;
-                    else delete next[color];
-                    onSetSetting("colorLabels", next);
-                  }}
+            <SettingGroup title="달력">
+              <SelectRow<TodayStyle>
+                label="오늘 표시"
+                options={TODAY_STYLES.map(option => ({ value: option.key, label: option.label }))}
+                value={settings.todayStyle}
+                onChange={value => onSetSetting("todayStyle", value)}
+              />
+              <SettingRow label="날짜 숫자">
+                <SegmentedControl<DayNumPos>
+                  label="날짜 숫자 위치"
+                  className="seg-compact"
+                  options={[
+                    { value: "left", label: "왼쪽" },
+                    { value: "right", label: "오른쪽" },
+                  ]}
+                  value={settings.dayNumberPos}
+                  onChange={value => onSetSetting("dayNumberPos", value)}
                 />
-              </label>
-            ))}
-          </div>
-          <p className="sg-hint">색상에 이름(수업, 과제, 약속…)을 붙이면 상단 🏷 필터와 검색에서 쓸 수 있어요.</p>
-        </Section>
+              </SettingRow>
+              <SwitchRow label="항상 6주 표시" checked={settings.showOverflow} onChange={value => onSetSetting("showOverflow", value)} />
+              <SwitchRow label="음력 날짜" checked={settings.useLunar} onChange={value => onSetSetting("useLunar", value)} />
+              <SwitchRow label="24시간제" checked={settings.use24Hour} onChange={value => onSetSetting("use24Hour", value)} />
+              <SliderRow
+                label="할 일 패널"
+                min={200}
+                max={480}
+                step={10}
+                value={settings.todoPanelWidth}
+                format={value => `${value}px`}
+                onChange={value => onSetSetting("todoPanelWidth", value)}
+              />
+            </SettingGroup>
+          </>
+        )}
 
-        {/* ─────────────── Subscribed calendars ─────────────── */}
+        {/* ─────────────── 일정 ─────────────── */}
+        {tab === "events" && (
+          <>
+            <SettingGroup title="알림">
+              <SwitchRow label="알림 받기" checked={settings.remindersEnabled} onChange={value => onSetSetting("remindersEnabled", value)} />
+              {settings.remindersEnabled && (
+                <>
+                  <SelectRow<number>
+                    label="시간 일정"
+                    options={REMINDER_LEAD_OPTIONS.map(minutes => ({
+                      value: minutes,
+                      label: minutes === 0 ? "정시에" : `${minutes}분 전`,
+                    }))}
+                    value={settings.reminderMinutesBefore}
+                    onChange={value => onSetSetting("reminderMinutesBefore", value)}
+                  />
+                  <SelectRow<string>
+                    label="종일 일정"
+                    options={ALL_DAY_REMINDER_TIMES.map(time => ({ value: time, label: time ? `아침 ${time}` : "알리지 않음" }))}
+                    value={settings.allDayReminderTime}
+                    onChange={value => onSetSetting("allDayReminderTime", value)}
+                  />
+                  <SwitchRow label="할 일 마감 전날" checked={settings.todoDueReminder} onChange={value => onSetSetting("todoDueReminder", value)} />
+                </>
+              )}
+            </SettingGroup>
 
-        <Section title="구독 캘린더">
-          <FeedSettings
-            feeds={settings.calendarFeeds}
-            onChange={feeds => onSetSetting("calendarFeeds", feeds)}
-            statusFor={feedStatusFor}
-            onRefresh={onRefreshFeeds}
-          />
-        </Section>
+            <SettingGroup title="카테고리 이름">
+              <div className="category-label-list">
+                {TODO_COLORS.map(color => (
+                  <label key={color} className="category-label-row">
+                    <span className="category-dot" style={{ background: color }} aria-hidden="true" />
+                    <input
+                      className="set-input"
+                      placeholder={COLOR_NAMES[color]}
+                      aria-label={`${COLOR_NAMES[color]} 카테고리 이름`}
+                      value={settings.colorLabels[color] ?? ""}
+                      onChange={e => {
+                        const next = { ...settings.colorLabels };
+                        if (e.target.value.trim()) next[color] = e.target.value;
+                        else delete next[color];
+                        onSetSetting("colorLabels", next);
+                      }}
+                    />
+                  </label>
+                ))}
+              </div>
+            </SettingGroup>
 
-        {/* ─────────────── Claude AI ─────────────── */}
+            <SettingGroup title="구독 캘린더">
+              <FeedSettings
+                feeds={settings.calendarFeeds}
+                onChange={feeds => onSetSetting("calendarFeeds", feeds)}
+                statusFor={feedStatusFor}
+                onRefresh={onRefreshFeeds}
+              />
+            </SettingGroup>
+          </>
+        )}
 
-        <Section title="Claude AI">
-          <ClaudeSettings
-            enabled={settings.claudeEnabled}
-            model={settings.claudeModel}
-            hasKey={claude.hasKey}
-            usage={claude.usage}
-            onEnabledChange={value => onSetSetting("claudeEnabled", value)}
-            onModelChange={value => onSetSetting("claudeModel", value)}
-            onSaveKey={claude.saveKey}
-            onDeleteKey={claude.deleteKey}
-            onTest={claude.testConnection}
-          />
-        </Section>
+        {/* ─────────────── 연동 ─────────────── */}
+        {tab === "connect" && (
+          <>
+            <SettingGroup title="Claude 대화">
+              <SwitchRow
+                label="대화에서 일정 받기"
+                checked={settings.assistantInbox}
+                onChange={value => onSetSetting("assistantInbox", value)}
+              />
+              <p className="set-status">
+                {lastInbox
+                  ? `마지막: ${formatAt(lastInbox.at)} · ${lastInbox.titles[0]}${lastInbox.titles.length > 1 ? ` 외 ${lastInbox.titles.length - 1}개` : ""}`
+                  : "Claude에게 \"이 일정 캘린더에 넣어줘\"라고 하면 여기로 들어와요."}
+              </p>
+            </SettingGroup>
 
-        {/* ─────────────── Desktop behavior ─────────────── */}
+            <SettingGroup title="Notion">
+              <NotionSettings
+                settings={settings}
+                notion={notion}
+                onSetSetting={onSetSetting}
+                onExport={onNotionExport}
+              />
+            </SettingGroup>
+          </>
+        )}
 
-        <Section title="데스크톱 동작">
-          <button
-            type="button"
-            className={`edit-mode-btn ${settings.autostart ? "on" : ""}`}
-            aria-pressed={settings.autostart}
-            onClick={onToggleAutostart}
-          >
-            {settings.autostart ? "시작 프로그램 ON" : "시작 프로그램 OFF"}
-          </button>
+        {/* ─────────────── 앱 ─────────────── */}
+        {tab === "app" && (
+          <>
+            <SettingGroup title="창">
+              <SwitchRow label="Windows 시작 시 실행" checked={settings.autostart} onChange={() => onToggleAutostart()} />
+              <SwitchRow label="항상 위에 표시" checked={settings.windowLevel === "top"} onChange={handleAlwaysOnTop} />
+              <SwitchRow label="작업표시줄 아이콘" checked={settings.showOnTaskbar} onChange={value => onSetSetting("showOnTaskbar", value)} />
+              <SettingRow label="열기/숨기기">
+                {globalShortcut ? <kbd>{globalShortcut}</kbd> : <span className="set-value">등록 실패</span>}
+              </SettingRow>
+              <SettingRow label="단축키">
+                <button type="button" className="set-btn" onClick={onShowHelp}>보기</button>
+              </SettingRow>
+            </SettingGroup>
 
-          <SegmentedControl<WindowLevel>
-            label="창 위치"
-            options={[
-              { value: "bottom", label: "항상 아래" },
-              { value: "top", label: "항상 위" },
-            ]}
-            value={settings.windowLevel}
-            onChange={handleWindowLevelChange}
-          />
+            <SettingGroup title="백업">
+              <SettingRow label="파일로">
+                <div className="btn-row">
+                  <button type="button" className="set-btn" disabled={isExporting} onClick={onExportData}>
+                    {isExporting ? "…" : "내보내기"}
+                  </button>
+                  <button type="button" className="set-btn" disabled={isImporting} onClick={handleImportClick}>
+                    {isImporting ? "…" : "가져오기"}
+                  </button>
+                </div>
+              </SettingRow>
+              <SwitchRow label="매일 자동 백업" checked={settings.autoBackup} onChange={value => onSetSetting("autoBackup", value)} />
+              <SettingRow label={lastAutoBackup ? `마지막 ${formatShortDate(lastAutoBackup)}` : "자동 백업 없음"}>
+                <div className="btn-row">
+                  <button type="button" className="set-btn" onClick={onBackupNow}>지금</button>
+                  <button type="button" className="set-btn" onClick={onOpenBackupFolder}>폴더</button>
+                </div>
+              </SettingRow>
+            </SettingGroup>
 
-          <p className="sg-hint">
-            항상 아래는 바탕화면 위젯처럼 뒤쪽에 두는 모드입니다. 항상 위를 선택하면 화면을 덜 가리도록 투명도가 자동으로 낮아집니다.
-          </p>
+            <SettingGroup title="업데이트">
+              <SettingRow label={updateStatusLabel || "새 버전"}>
+                {updateStatus.state === "available" ? (
+                  <button type="button" className="set-btn primary" onClick={onInstallUpdate}>설치</button>
+                ) : (
+                  <button
+                    type="button"
+                    className="set-btn"
+                    disabled={updateStatus.state === "checking" || updateStatus.state === "installing"}
+                    onClick={onCheckForUpdate}
+                  >
+                    확인
+                  </button>
+                )}
+              </SettingRow>
+              <SwitchRow label="하루 한 번 자동 확인" checked={settings.autoUpdateCheck} onChange={value => onSetSetting("autoUpdateCheck", value)} />
+            </SettingGroup>
 
-          <SegmentedControl<boolean>
-            label="작업표시줄"
-            options={[
-              { value: true, label: "작업표시줄 표시" },
-              { value: false, label: "트레이 중심" },
-            ]}
-            value={settings.showOnTaskbar}
-            onChange={value => onSetSetting("showOnTaskbar", value)}
-          />
-
-          <p className="sg-hint">
-            트레이 중심은 작업표시줄에 아이콘을 띄우지 않고, 트레이 아이콘을 한 번 눌러 열고 닫습니다.
-          </p>
-
-          <p className="sg-hint">
-            {globalShortcut
-              ? <>어디서든 <kbd>{globalShortcut}</kbd>로 위젯을 보이거나 숨길 수 있어요.</>
-              : "전역 단축키(Win+Alt+C / Ctrl+Alt+C)를 다른 앱이 쓰고 있어 등록하지 못했어요."}
-          </p>
-        </Section>
-
-        {/* ─────────────── Shortcuts ─────────────── */}
-
-        <Section title="키보드 단축키">
-          <details className="shortcut-details">
-            <summary>단축키와 사용 팁 보기</summary>
-            <ShortcutListSection />
-          </details>
-        </Section>
-
-        {/* ─────────────── Backup ─────────────── */}
-
-        <Section title="데이터 백업">
-          <div className="btn-row">
-            <button
-              type="button"
-              className="edit-mode-btn"
-              disabled={isExporting}
-              onClick={onExportData}
-            >
-              {isExporting ? "내보내는 중…" : "내보내기"}
-            </button>
-
-            <button
-              type="button"
-              className="edit-mode-btn"
-              disabled={isImporting}
-              onClick={handleImportClick}
-            >
-              {isImporting ? "가져오는 중…" : "가져오기"}
-            </button>
-          </div>
-
-          <p className="sg-hint">
-            일정, 메모, 설정을 하나의 JSON 파일로 내보내거나 복원합니다. PC를 옮기거나 앱을 재설치하기 전에 내보내기를 권장합니다.
-          </p>
-
-          <SegmentedControl<boolean>
-            label="자동 백업"
-            options={ON_OFF("매일 자동 백업", "자동 백업 끔")}
-            value={settings.autoBackup}
-            onChange={value => onSetSetting("autoBackup", value)}
-          />
-
-          <div className="btn-row">
-            <button type="button" className="edit-mode-btn" onClick={onBackupNow}>지금 백업</button>
-            <button type="button" className="edit-mode-btn" onClick={onOpenBackupFolder}>백업 폴더 열기</button>
-          </div>
-
-          <p className="sg-hint">
-            {lastAutoBackup ? `마지막 자동 백업: ${formatShortDate(lastAutoBackup)}` : "아직 자동 백업이 없어요."}
-            {" "}최근 7일치를 보관하고, 일정·메모는 앱 폴더의 파일에도 함께 저장되어 WebView 데이터가 지워져도 복구됩니다.
-          </p>
-        </Section>
-
-        {/* ─────────────── Update ─────────────── */}
-
-        <Section title="업데이트">
-          {updateStatus.state === "available" ? (
-            <button
-              type="button"
-              className="edit-mode-btn on"
-              onClick={onInstallUpdate}
-            >
-              업데이트 설치 후 재시작
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="edit-mode-btn"
-              disabled={updateStatus.state === "checking" || updateStatus.state === "installing"}
-              onClick={onCheckForUpdate}
-            >
-              업데이트 확인
-            </button>
-          )}
-
-          {updateStatusLabel && <p className="sg-hint" role="status">{updateStatusLabel}</p>}
-
-          <SegmentedControl<boolean>
-            label="업데이트 자동 확인"
-            options={ON_OFF("하루 한 번 자동 확인", "자동 확인 끔")}
-            value={settings.autoUpdateCheck}
-            onChange={value => onSetSetting("autoUpdateCheck", value)}
-          />
-        </Section>
-
-        {/* ─────────────── Reset ─────────────── */}
-
-        <Section title="설정 초기화">
-          <button
-            type="button"
-            className="edit-mode-btn"
-            onClick={handleReset}
-          >
-            모든 설정 초기화
-          </button>
-
-          <p className="sg-hint">
-            테마, 글꼴, 패널 너비, 위젯 동작 설정이 기본값으로 돌아갑니다. 일정과 메모는 지워지지 않습니다.
-          </p>
-        </Section>
+            <SettingGroup>
+              <SettingRow label="설정 초기화">
+                <button type="button" className="set-btn danger" onClick={handleReset}>초기화</button>
+              </SettingRow>
+            </SettingGroup>
+          </>
+        )}
       </div>
     </aside>
   );

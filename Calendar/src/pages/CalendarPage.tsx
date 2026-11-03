@@ -11,7 +11,7 @@ import {
   useSettings,
   useHolidays,
   useSystemFonts,
-  useMoonAndLunar,
+  useLunarDate,
   useWindowBehavior,
   useWindowPosition,
   useCalendarModal,
@@ -30,7 +30,8 @@ import {
   useTrayStatus,
   useSelection,
   useRecurrenceScopePrompt,
-  useClaude,
+  useAssistantInbox,
+  useNotion,
 } from "../hooks";
 
 import {
@@ -45,7 +46,6 @@ import {
   ShortcutHelpModal,
   SearchModal,
   StatsModal,
-  BriefingModal,
   Toast,
   type VisibleDatesInfo,
 } from "../components";
@@ -53,12 +53,10 @@ import {
 import { FLASH_MESSAGE_KEY, MEMO_FOCUS_KEY } from "../constants";
 import {
   expandTodos,
-  describeRepeat,
-  formatClock,
+  formatTimelineTitle,
+  getTimelineRange,
+  shiftTimelineAnchor,
   formatShortDate,
-  getAgendaForDate,
-  getHabitStreaks,
-  getTodoStartTime,
   getHolidayEvents,
   getOccurrenceStartOn,
   getOccurrenceTiming,
@@ -79,7 +77,9 @@ import type {
   Todo,
 } from "../types";
 
-const TIMELINE_HALF_SPAN_DAYS = 21;
+const NAV_UNITS = { day: "날", week: "주", month: "달" } as const;
+/** Automatic Notion export waits for edits to settle. */
+const NOTION_AUTO_SYNC_DELAY_MS = 20_000;
 
 interface EditingState {
   todo: Todo;
@@ -94,11 +94,6 @@ interface EditingState {
 const releaseTextFocus = () => {
   const active = document.activeElement as HTMLElement | null;
   if (active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA")) active.blur();
-};
-
-const monthDay = (dateStr: string) => {
-  const d = parseLocalDate(dateStr);
-  return `${d.getMonth() + 1}월 ${d.getDate()}일`;
 };
 
 const initialVisibleDates = (): VisibleDatesInfo => {
@@ -126,7 +121,6 @@ export const CalendarPage: React.FC = () => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
-  const [briefingOpen, setBriefingOpen] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [calendarApi, setCalendarApi] = useState<CalendarApi | null>(null);
   const [visibleDates, setVisibleDates] = useState<VisibleDatesInfo>(initialVisibleDates);
@@ -169,16 +163,21 @@ export const CalendarPage: React.FC = () => {
   const { feedTodos, statusFor: feedStatusFor, refresh: refreshFeeds } = useCalendarFeeds(settings.calendarFeeds);
   const { selection, select, setSelection, clearSelection } = useSelection(todos);
   const scope = useRecurrenceScopePrompt();
-  const claude = useClaude(settings);
+  const notion = useNotion(settings);
+  const notionExportRef = useRef(notion.exportTodos);
+  notionExportRef.current = notion.exportTodos;
 
-  // Holidays for every year on screen (including the timeline's ±3 weeks).
+  const timelineSpan = settings.timelineSpan;
+  const timelineRange = useMemo(() => getTimelineRange(timelineAnchor, timelineSpan), [timelineAnchor, timelineSpan]);
+
+  // Holidays for every year on screen (calendar and timeline).
   const holidayYears = useMemo(() => [
     parseLocalDate(today).getFullYear(),
     visibleDates.start.getFullYear(),
     visibleDates.end.getFullYear(),
-    parseLocalDate(shiftDate(timelineAnchor, -TIMELINE_HALF_SPAN_DAYS)).getFullYear(),
-    parseLocalDate(shiftDate(timelineAnchor, TIMELINE_HALF_SPAN_DAYS)).getFullYear(),
-  ], [today, visibleDates, timelineAnchor]);
+    parseLocalDate(timelineRange.start).getFullYear(),
+    parseLocalDate(timelineRange.end).getFullYear(),
+  ], [today, visibleDates, timelineRange]);
 
   const { holidays } = useHolidays(holidayYears);
 
@@ -216,7 +215,7 @@ export const CalendarPage: React.FC = () => {
   const { viewTitle, viewMonth } = useMemo(() => {
     if (view === "timeline") {
       return {
-        viewTitle: `${monthDay(shiftDate(timelineAnchor, -TIMELINE_HALF_SPAN_DAYS))} – ${monthDay(shiftDate(timelineAnchor, TIMELINE_HALF_SPAN_DAYS))}`,
+        viewTitle: formatTimelineTitle(timelineAnchor, timelineSpan),
         viewMonth: timelineAnchor.slice(0, 7),
       };
     }
@@ -230,7 +229,7 @@ export const CalendarPage: React.FC = () => {
         : yearMonth,
       viewMonth: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}`,
     };
-  }, [view, timelineAnchor, visibleDates]);
+  }, [view, timelineAnchor, timelineSpan, visibleDates]);
 
   const memoDates = useMemo(
     () => new Set(memos.flatMap(memo => (memo.linkedDate ? [memo.linkedDate] : []))),
@@ -269,10 +268,7 @@ export const CalendarPage: React.FC = () => {
   // Feature hooks
   // ───────────────────────────────────────────────────────
 
-  const {
-    moonPhase,
-    lunarDate,
-  } = useMoonAndLunar(today, selectedDate, settings.useLunar);
+  const lunarDate = useLunarDate(selectedDate, settings.useLunar);
 
   useWindowBehavior({
     windowLevel: settings.windowLevel,
@@ -301,7 +297,6 @@ export const CalendarPage: React.FC = () => {
     modal,
     closeModal,
     openAddTodoModal,
-    openWithDraft,
     handleSelect,
     handleAddEventSubmit,
   } = useCalendarModal({
@@ -348,19 +343,19 @@ export const CalendarPage: React.FC = () => {
 
   const handlePrevious = useCallback(() => {
     if (view === "timeline") {
-      setTimelineAnchor(d => shiftDate(d, -7));
+      setTimelineAnchor(d => shiftTimelineAnchor(d, timelineSpan, -1));
     } else {
       calendarApi?.prev();
     }
-  }, [view, calendarApi]);
+  }, [view, calendarApi, timelineSpan]);
 
   const handleNext = useCallback(() => {
     if (view === "timeline") {
-      setTimelineAnchor(d => shiftDate(d, 7));
+      setTimelineAnchor(d => shiftTimelineAnchor(d, timelineSpan, 1));
     } else {
       calendarApi?.next();
     }
-  }, [view, calendarApi]);
+  }, [view, calendarApi, timelineSpan]);
 
   const goToDate = useCallback((date: string) => {
     setSelectedDate(date);
@@ -563,49 +558,42 @@ export const CalendarPage: React.FC = () => {
     );
   }, [addMode, selectedDate, addTodo, notifyUndoable]);
 
-  // ── Claude ──
+  // ── Claude conversation inbox ──
 
-  /** A sentence → Claude's draft → the add form, for the user to confirm. */
-  const handleAiQuickAdd = useCallback(async (text: string): Promise<boolean> => {
-    try {
-      const draft = await claude.parseEvent(text, {
-        today,
-        now: formatClock(new Date()),
-        selectedDate,
-        defaultKind: addMode === "todo" ? "todo" : "schedule",
-      });
-      openWithDraft(draft);
-      return true;
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : String(error));
-      return false;
-    }
-  }, [claude, today, selectedDate, addMode, openWithDraft, showToast]);
+  const { lastInbox } = useAssistantInbox(settings.assistantInbox, settings.colorLabels, useCallback(inputs => {
+    addTodos(inputs);
+    const first = inputs[0];
+    notifyUndoable(
+      `Claude가 "${first.title}"${inputs.length > 1 ? ` 외 ${inputs.length - 1}개를` : "을(를)"} 추가했어요 · ${formatShortDate(first.date)}`
+    );
+  }, [addTodos, notifyUndoable]));
 
-  const fetchBriefing = useCallback(() => {
-    const toItem = (todo: Todo, date: string, done: boolean) => ({
-      date,
-      time: getTodoStartTime(todo),
-      title: todo.title,
-      kind: todo.kind ?? "schedule",
-      done,
-      repeat: todo.repeat !== "none" ? describeRepeat(todo) : undefined,
-    });
-    const own = todos.filter(t => !settings.hiddenColors.includes(t.color));
-    const agendaOf = (date: string) =>
-      getAgendaForDate(own, date)
-        .filter(item => item.occurrenceDate === date)
-        .map(item => toItem(item.todo, date, item.done));
+  // ── Notion ──
 
-    return claude.briefing({
-      today,
-      now: formatClock(new Date()),
-      todayItems: getAgendaForDate(own, today).map(item => toItem(item.todo, today, item.done)),
-      weekItems: Array.from({ length: 7 }, (_, i) => agendaOf(shiftDate(today, i + 1))).flat(),
-      overdue: getOverdueTodos(own, today).map(todo => toItem(todo, todo.endDate || todo.date, false)),
-      streaks: getHabitStreaks(own, today).filter(s => s.current > 0).map(s => ({ title: s.todo.title, current: s.current })),
-    });
-  }, [claude, todos, today, settings.hiddenColors]);
+  const describeExport = (result: { created: number; updated: number; skipped: number; failed: number; firstError?: string }) =>
+    `Notion 내보내기: 새로 ${result.created} · 갱신 ${result.updated} · 그대로 ${result.skipped}` +
+    (result.failed ? ` · 실패 ${result.failed} (${result.firstError ?? "알 수 없는 오류"})` : "");
+
+  const handleNotionExport = useCallback(async (): Promise<string> => {
+    const result = await notionExportRef.current(todos);
+    return result ? describeExport(result) : "이미 내보내는 중이에요.";
+  }, [todos]);
+
+  // Automatic export: a while after the last edit, send whatever changed.
+  useEffect(() => {
+    if (!settings.notionAutoSync || !notion.ready) return;
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const result = await notionExportRef.current(todos);
+        if (result?.failed) showToast(describeExport(result));
+      } catch (error) {
+        showToast(`Notion 자동 내보내기 실패: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }, NOTION_AUTO_SYNC_DELAY_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [todos, settings.notionAutoSync, notion.ready, showToast]);
 
   const handleCarryOver = useCallback((ids: string[]) => {
     carryOverTodos(ids, today);
@@ -748,6 +736,7 @@ export const CalendarPage: React.FC = () => {
     >
       <TitleBar
         view={view}
+        navUnit={view === "dayGridMonth" ? "달" : view === "timeGridWeek" ? "주" : NAV_UNITS[timelineSpan]}
         onViewChange={handleViewChange}
         viewTitle={viewTitle}
         viewMonth={viewMonth}
@@ -760,13 +749,10 @@ export const CalendarPage: React.FC = () => {
         onSettingsToggle={toggleSettingsDrawer}
         editMode={editMode}
         onEditModeToggle={toggleEditMode}
-        onShowHelp={openHelp}
         onOpenSearch={openSearch}
         colorLabels={settings.colorLabels}
         hiddenColors={settings.hiddenColors}
         onHiddenColorsChange={handleHiddenColorsChange}
-        moonPhase={moonPhase}
-        showMoonPhase={settings.showMoonPhase}
         addMode={addMode}
         onAddModeChange={setAddMode}
       />
@@ -780,6 +766,11 @@ export const CalendarPage: React.FC = () => {
             <TimelineView
               todos={visibleTodos}
               anchorDate={timelineAnchor}
+              span={timelineSpan}
+              onSpanChange={span => {
+                setSetting("timelineSpan", span);
+                setTimelineAnchor(selectedDate);
+              }}
               selectedDate={selectedDate}
               today={today}
               holidays={holidays}
@@ -797,8 +788,6 @@ export const CalendarPage: React.FC = () => {
               holidays={holidays}
               settings={settings}
               selectedDate={selectedDate}
-              today={today}
-              moonPhase={moonPhase}
               selection={selection}
               memoDates={memoDates}
               onDateClick={handleDateClick}
@@ -842,9 +831,6 @@ export const CalendarPage: React.FC = () => {
             linkedMemos={linkedMemos}
             quickAddRef={quickAddRef}
             onQuickAdd={handleQuickAdd}
-            aiReady={claude.ready}
-            onAiQuickAdd={handleAiQuickAdd}
-            onOpenBriefing={() => setBriefingOpen(true)}
             onOpenAddModal={handleOpenAddTodoModal}
             memoOpen={memoOpen}
             onToggleMemo={toggleMemoWindow}
@@ -870,8 +856,6 @@ export const CalendarPage: React.FC = () => {
         filteredFonts={filteredFonts}
         fontSearch={fontSearch}
         onFontSearchChange={setFontSearch}
-        moonPhase={moonPhase}
-        lunarDate={lunarDate}
         onExportData={() => void handleExportData()}
         onImportData={() => void handleImportData()}
         isExporting={isExporting}
@@ -885,7 +869,10 @@ export const CalendarPage: React.FC = () => {
         feedStatusFor={feedStatusFor}
         onRefreshFeeds={refreshFeeds}
         globalShortcut={globalShortcut}
-        claude={claude}
+        onShowHelp={openHelp}
+        notion={notion}
+        onNotionExport={handleNotionExport}
+        lastInbox={lastInbox}
       />
 
       <AddEventModal
@@ -893,7 +880,6 @@ export const CalendarPage: React.FC = () => {
         initialData={modal}
         defaultReminderMinutes={settings.reminderMinutesBefore}
         colorLabels={settings.colorLabels}
-        onSuggestSubtasks={claude.ready ? claude.suggestSubtasks : undefined}
         onClose={closeModal}
         onSubmit={handleAddEventSubmit}
       />
@@ -902,7 +888,6 @@ export const CalendarPage: React.FC = () => {
         todo={editing?.todo ?? null}
         defaultReminderMinutes={settings.reminderMinutesBefore}
         colorLabels={settings.colorLabels}
-        onSuggestSubtasks={claude.ready ? claude.suggestSubtasks : undefined}
         onClose={closeEditTodoModal}
         onSave={handleSaveEditTodo}
         onDelete={handleDeleteFromEditor}
@@ -928,13 +913,6 @@ export const CalendarPage: React.FC = () => {
       />
 
       <StatsModal open={statsOpen} todos={todos} today={today} onClose={() => setStatsOpen(false)} />
-
-      <BriefingModal
-        open={briefingOpen}
-        today={today}
-        fetchBriefing={fetchBriefing}
-        onClose={() => setBriefingOpen(false)}
-      />
 
       <ShortcutHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 
