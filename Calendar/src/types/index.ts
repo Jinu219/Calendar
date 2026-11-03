@@ -15,6 +15,8 @@ export type CalendarViewType = "dayGridMonth" | "timeGridWeek" | "timeline";
 export type ItemKind = "schedule" | "todo";
 /** The title bar's kind filter: a single kind, or "all" to show both. */
 export type AddMode = ItemKind | "all";
+/** Claude models the user can pick (default: the most capable). */
+export type ClaudeModelId = "claude-opus-5-5" | "claude-sonnet-5-5" | "claude-haiku-5-5";
 /** Whether a change to a recurring item applies to one occurrence or the whole series. */
 export type RecurrenceScope = "this" | "all";
 
@@ -147,6 +149,10 @@ export interface Settings {
   /** Colors (categories) hidden from every view. */
   hiddenColors: string[];
   calendarFeeds: CalendarFeed[];
+
+  /** Off until the user opts in: using it sends item titles/dates to Anthropic. */
+  claudeEnabled: boolean;
+  claudeModel: ClaudeModelId;
 }
 
 export interface ModalState {
@@ -158,6 +164,8 @@ export interface ModalState {
   endTime: string;
   allDay: boolean;
   mode: ItemKind;
+  /** Prefilled fields, e.g. a draft Claude made from a sentence. */
+  draft?: Partial<EventFormData>;
 }
 
 /** Reminder choice in the form: the global default, never, or N minutes before. */

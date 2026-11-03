@@ -75,6 +75,8 @@ interface EventFormProps {
   /** Global reminder lead, shown as the "기본" option. */
   defaultReminderMinutes: number;
   colorLabels?: Record<string, string>;
+  /** When set (Claude enabled), the checklist offers "✨ 단계 추천". */
+  onSuggestSubtasks?: (title: string, dueDate: string, existing: string[]) => Promise<string[]>;
   submitLabel: string;
   onCancel: () => void;
   onSubmit: () => void;
@@ -94,12 +96,37 @@ export const EventForm: React.FC<EventFormProps> = ({
   showRepeat,
   defaultReminderMinutes,
   colorLabels,
+  onSuggestSubtasks,
   submitLabel,
   onCancel,
   onSubmit,
   secondaryActions,
 }) => {
   const [newSubtask, setNewSubtask] = useState("");
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState<string | null>(null);
+
+  const handleSuggest = async () => {
+    if (!onSuggestSubtasks || !value.title.trim()) return;
+
+    setSuggesting(true);
+    setSuggestError(null);
+
+    try {
+      const steps = await onSuggestSubtasks(
+        value.title.trim(),
+        value.endDate || value.startDate,
+        value.subtasks.map(s => s.title)
+      );
+      onChange({
+        subtasks: [...value.subtasks, ...steps.map(title => ({ id: createId("sub"), title, done: false }))],
+      });
+    } catch (error) {
+      setSuggestError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSuggesting(false);
+    }
+  };
   const isTodo = value.kind === "todo";
   const start = parseLocalDate(value.startDate);
   const intervalUnit = REPEAT_INTERVAL_UNITS[value.repeat];
@@ -391,6 +418,20 @@ export const EventForm: React.FC<EventFormProps> = ({
               }}
             />
           </div>
+
+          {onSuggestSubtasks && (
+            <button
+              type="button"
+              className="ai-btn"
+              disabled={suggesting || !value.title.trim()}
+              aria-busy={suggesting}
+              onClick={() => void handleSuggest()}
+              title="제목을 보고 Claude가 세부 단계를 제안해요"
+            >
+              {suggesting ? "Claude가 단계를 나누는 중…" : "✨ 단계 추천"}
+            </button>
+          )}
+          {suggestError && <p className="form-error" role="alert">{suggestError}</p>}
         </fieldset>
       ) : (
         value.subtasks.length > 0 && (

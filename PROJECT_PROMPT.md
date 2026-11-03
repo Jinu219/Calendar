@@ -23,6 +23,8 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
 - `Calendar/src-tauri/src/lib.rs`: Windows 네이티브 창 정책과 트레이를 담당한다.
 - `Calendar/src-tauri/src/storage.rs`: 고정된 파일 이름(`todos`/`settings`/`memos`, `backups/calendar-backup-YYYY-MM-DD.json`)만 쓴다. ICS 다운로드(CORS 회피)도 여기서 한다.
 - `Calendar/src-tauri/src/hotkey.rs`: Win+Alt+C(실패 시 Ctrl+Alt+C) 전역 단축키.
+- `Calendar/src-tauri/src/claude.rs`: Claude API 키를 Windows 자격 증명 관리자(`Calendar/ClaudeApiKey`)에 보관하고, 고정 주소 `https://api.anthropic.com/v1/messages`로만 요청한다(`anthropic-version: 2026-10-21`).
+- `Calendar/src/utils/claudeUtils.ts`: 프롬프트, JSON 스키마, 응답 검증(`toEventDraft` 등). Claude 응답은 여기서 검증한 뒤에만 앱 상태에 들어간다.
 
 ## 유지해야 할 불변 조건
 
@@ -45,6 +47,11 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
 17. 구독 캘린더 항목(`Todo.sourceId`)은 읽기 전용이다. `todos` 상태에 섞지 않고 표시할 때만 합친다(선택·수정·삭제·알림·통계 대상 아님).
 18. 반복 회차 판정은 `doesOccurrenceStartOn` 하나가 결정한다. `listOccurrenceStarts`는 보이는 범위를 하루씩 훑으며 그것만 호출한다. 새 반복 규칙은 여기와 `describeRepeat`, ICS의 `toRepeat`만 고치면 된다.
 19. 하위 체크리스트는 반복 없는 항목에만 둔다(회차별 상태를 만들지 않기 위해).
+20. Claude API 키는 웹뷰로 절대 돌려보내지 않는다(저장·존재 확인·삭제 명령만 있다). 키를 localStorage·파일·백업에 쓰지 않는다.
+21. Claude 기능은 기본 꺼짐이고, 사용자가 누를 때만 요청한다(자동 호출 금지). 보내는 내용은 일정 제목·날짜·시간·반복 설명뿐이며 메모는 보내지 않는다.
+22. Claude 요청에 `temperature`/`top_p`/`top_k`를 넣지 않는다(API 2026-10-21에서 400). 짧은 작업이라 `output_config.effort`는 "low", Opus·Sonnet은 `fallbacks: "default"`(베타 헤더는 Rust가 붙임), Haiku는 fallback 없이 보낸다. `stop_reason`이 `refusal`·`max_tokens`이면 내용을 읽지 않는다.
+23. Claude가 만든 일정은 바로 저장하지 않고 추가 창에 채워서 사용자가 확인하게 한다.
+24. 한 번의 사용자 동작은 유료 요청 한 번이어야 한다: 진행 중 중복 요청을 막고(브리핑은 하루 단위 캐시), 사용량 집계는 상태 업데이트 함수 밖에서 한다(StrictMode 이중 실행).
 
 ## 검증 기준
 

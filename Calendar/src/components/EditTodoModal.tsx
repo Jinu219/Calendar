@@ -21,6 +21,7 @@ interface EditTodoModalProps {
   todo: Todo | null;
   defaultReminderMinutes: number;
   colorLabels: Record<string, string>;
+  onSuggestSubtasks?: (title: string, dueDate: string, existing: string[]) => Promise<string[]>;
   onClose: () => void;
   onSave: (id: string, updates: Partial<Todo>) => void;
   onDelete: (todo: Todo) => void;
@@ -97,6 +98,7 @@ const EditTodoModalContent: React.FC<EditTodoModalProps & { todo: Todo }> = ({
   todo,
   defaultReminderMinutes,
   colorLabels,
+  onSuggestSubtasks,
   onClose,
   onSave,
   onDelete,
@@ -140,6 +142,7 @@ const EditTodoModalContent: React.FC<EditTodoModalProps & { todo: Todo }> = ({
         showRepeat={!scopeLabel}
         defaultReminderMinutes={defaultReminderMinutes}
         colorLabels={colorLabels}
+        onSuggestSubtasks={onSuggestSubtasks}
         submitLabel="저장"
         onCancel={onClose}
         onSubmit={handleSave}

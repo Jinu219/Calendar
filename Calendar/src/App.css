@@ -1972,3 +1972,85 @@ kbd {
 [data-contrast="high"] .todo-item.done { opacity: .8; }
 [data-contrast="high"] :where(button, a, input, select, textarea, summary, [role="separator"], [tabindex]:not([tabindex="-1"])):focus-visible,
 [data-contrast="high"] .fc .fc-event:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+
+/* ════════════════════════════════════════════
+   Claude AI
+   ════════════════════════════════════════════ */
+.ai-quick-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, white 30%);
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform .15s, background .15s;
+}
+.ai-quick-btn:hover:not(:disabled) { transform: translateY(-1px); background: color-mix(in srgb, var(--accent) 22%, white 25%); }
+.ai-quick-btn:disabled { opacity: .5; cursor: default; }
+
+.briefing-btn {
+  margin: 3px 0 2px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, white 25%);
+  padding: 1px 9px;
+  font-family: var(--font);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.briefing-btn:hover { background: color-mix(in srgb, var(--accent) 20%, white 20%); }
+
+.ai-btn {
+  align-self: flex-start;
+  border: 1px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  padding: 4px 10px;
+  font-family: var(--font);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.ai-btn:disabled { opacity: .55; cursor: default; }
+
+.ai-filled-hint {
+  margin: 10px 14px 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 12%, white 30%);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+.modal-box.briefing-modal { width: 440px; max-height: calc(100vh - 40px); overflow-y: auto; }
+.briefing-body { min-height: 120px; }
+.briefing-text {
+  white-space: pre-wrap;
+  font-size: var(--fs-lg);
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+.briefing-loading {
+  font-size: var(--fs-md);
+  color: var(--text-secondary);
+  animation: briefing-pulse 1.4s ease-in-out infinite;
+}
+@keyframes briefing-pulse { 50% { opacity: .45; } }
+
+.claude-key-row { display: flex; gap: 6px; }
+.claude-key-row .font-search { flex: 1; min-width: 0; }
+.claude-key-row .edit-mode-btn { width: auto; padding: 6px 12px; }
+.claude-error { color: #b91c1c; opacity: 1; }
+
+[data-theme-mode="dark"] .ai-quick-btn,
+[data-theme-mode="dark"] .briefing-btn,
+[data-theme-mode="dark"] .ai-filled-hint { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+[data-theme-mode="dark"] .claude-error { color: #fca5a5; }
+
+/* Long forms (repeat options, checklists) scroll inside the dialog instead of
+   running off the top and bottom of the widget. */
+.modal-box { max-height: calc(100vh - 24px); overflow-y: auto; }

@@ -42,6 +42,23 @@ export const useCalendarModal = ({
     });
   }, [setSelectedDate, effectiveKind]);
 
+  /** Open the add form prefilled (e.g. with a draft Claude made from a sentence). */
+  const openWithDraft = useCallback((draft: Partial<EventFormData>) => {
+    const date = draft.startDate ?? draft.date ?? "";
+    if (date) setSelectedDate(date);
+
+    setModal({
+      ...MODAL_CLOSED,
+      open: true,
+      date,
+      startDate: date,
+      endDate: draft.endDate ?? date,
+      allDay: draft.allDay ?? true,
+      mode: draft.kind ?? effectiveKind,
+      draft,
+    });
+  }, [setSelectedDate, effectiveKind]);
+
   /** A drag over days (month) or hours (week) opens the add form for that range. */
   const handleSelect = useCallback((
     startDate: string,
@@ -88,6 +105,7 @@ export const useCalendarModal = ({
     modal,
     closeModal,
     openAddTodoModal,
+    openWithDraft,
     handleSelect,
     handleAddEventSubmit,
   };

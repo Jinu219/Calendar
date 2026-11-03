@@ -25,3 +25,4 @@ export { useCalendarFeeds } from "./useCalendarFeeds";
 export { useTrayStatus } from "./useTrayStatus";
 export { useSelection } from "./useSelection";
 export { useRecurrenceScopePrompt } from "./useRecurrenceScopePrompt";
+export { useClaude } from "./useClaude";

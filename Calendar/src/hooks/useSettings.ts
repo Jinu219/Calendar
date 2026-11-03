@@ -7,6 +7,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { CalendarFeed, Settings } from "../types";
 import { loadJson, persistItem } from "../utils";
 import {
+  CLAUDE_MODELS,
   DEFAULT_SETTINGS,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
@@ -66,6 +67,10 @@ export const normalizeSettings = (value: unknown): Settings => {
       ? saved.hiddenColors.filter((color): color is string => typeof color === "string")
       : [],
     calendarFeeds: normalizeFeeds(saved.calendarFeeds),
+    claudeEnabled: pick("claudeEnabled"),
+    claudeModel: CLAUDE_MODELS.some(model => model.id === saved.claudeModel)
+      ? saved.claudeModel as Settings["claudeModel"]
+      : DEFAULT_SETTINGS.claudeModel,
   };
 };
 

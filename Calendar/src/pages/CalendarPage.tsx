@@ -30,6 +30,7 @@ import {
   useTrayStatus,
   useSelection,
   useRecurrenceScopePrompt,
+  useClaude,
 } from "../hooks";
 
 import {
@@ -44,6 +45,7 @@ import {
   ShortcutHelpModal,
   SearchModal,
   StatsModal,
+  BriefingModal,
   Toast,
   type VisibleDatesInfo,
 } from "../components";
@@ -51,7 +53,12 @@ import {
 import { FLASH_MESSAGE_KEY, MEMO_FOCUS_KEY } from "../constants";
 import {
   expandTodos,
+  describeRepeat,
+  formatClock,
   formatShortDate,
+  getAgendaForDate,
+  getHabitStreaks,
+  getTodoStartTime,
   getHolidayEvents,
   getOccurrenceStartOn,
   getOccurrenceTiming,
@@ -119,6 +126,7 @@ export const CalendarPage: React.FC = () => {
   const [helpOpen, setHelpOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [briefingOpen, setBriefingOpen] = useState(false);
   const [editing, setEditing] = useState<EditingState | null>(null);
   const [calendarApi, setCalendarApi] = useState<CalendarApi | null>(null);
   const [visibleDates, setVisibleDates] = useState<VisibleDatesInfo>(initialVisibleDates);
@@ -161,6 +169,7 @@ export const CalendarPage: React.FC = () => {
   const { feedTodos, statusFor: feedStatusFor, refresh: refreshFeeds } = useCalendarFeeds(settings.calendarFeeds);
   const { selection, select, setSelection, clearSelection } = useSelection(todos);
   const scope = useRecurrenceScopePrompt();
+  const claude = useClaude(settings);
 
   // Holidays for every year on screen (including the timeline's ±3 weeks).
   const holidayYears = useMemo(() => [
@@ -292,6 +301,7 @@ export const CalendarPage: React.FC = () => {
     modal,
     closeModal,
     openAddTodoModal,
+    openWithDraft,
     handleSelect,
     handleAddEventSubmit,
   } = useCalendarModal({
@@ -553,6 +563,50 @@ export const CalendarPage: React.FC = () => {
     );
   }, [addMode, selectedDate, addTodo, notifyUndoable]);
 
+  // ── Claude ──
+
+  /** A sentence → Claude's draft → the add form, for the user to confirm. */
+  const handleAiQuickAdd = useCallback(async (text: string): Promise<boolean> => {
+    try {
+      const draft = await claude.parseEvent(text, {
+        today,
+        now: formatClock(new Date()),
+        selectedDate,
+        defaultKind: addMode === "todo" ? "todo" : "schedule",
+      });
+      openWithDraft(draft);
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  }, [claude, today, selectedDate, addMode, openWithDraft, showToast]);
+
+  const fetchBriefing = useCallback(() => {
+    const toItem = (todo: Todo, date: string, done: boolean) => ({
+      date,
+      time: getTodoStartTime(todo),
+      title: todo.title,
+      kind: todo.kind ?? "schedule",
+      done,
+      repeat: todo.repeat !== "none" ? describeRepeat(todo) : undefined,
+    });
+    const own = todos.filter(t => !settings.hiddenColors.includes(t.color));
+    const agendaOf = (date: string) =>
+      getAgendaForDate(own, date)
+        .filter(item => item.occurrenceDate === date)
+        .map(item => toItem(item.todo, date, item.done));
+
+    return claude.briefing({
+      today,
+      now: formatClock(new Date()),
+      todayItems: getAgendaForDate(own, today).map(item => toItem(item.todo, today, item.done)),
+      weekItems: Array.from({ length: 7 }, (_, i) => agendaOf(shiftDate(today, i + 1))).flat(),
+      overdue: getOverdueTodos(own, today).map(todo => toItem(todo, todo.endDate || todo.date, false)),
+      streaks: getHabitStreaks(own, today).filter(s => s.current > 0).map(s => ({ title: s.todo.title, current: s.current })),
+    });
+  }, [claude, todos, today, settings.hiddenColors]);
+
   const handleCarryOver = useCallback((ids: string[]) => {
     carryOverTodos(ids, today);
     notifyUndoable(`지난 할 일 ${ids.length}개를 오늘로 옮겼어요`);
@@ -788,6 +842,9 @@ export const CalendarPage: React.FC = () => {
             linkedMemos={linkedMemos}
             quickAddRef={quickAddRef}
             onQuickAdd={handleQuickAdd}
+            aiReady={claude.ready}
+            onAiQuickAdd={handleAiQuickAdd}
+            onOpenBriefing={() => setBriefingOpen(true)}
             onOpenAddModal={handleOpenAddTodoModal}
             memoOpen={memoOpen}
             onToggleMemo={toggleMemoWindow}
@@ -828,6 +885,7 @@ export const CalendarPage: React.FC = () => {
         feedStatusFor={feedStatusFor}
         onRefreshFeeds={refreshFeeds}
         globalShortcut={globalShortcut}
+        claude={claude}
       />
 
       <AddEventModal
@@ -835,6 +893,7 @@ export const CalendarPage: React.FC = () => {
         initialData={modal}
         defaultReminderMinutes={settings.reminderMinutesBefore}
         colorLabels={settings.colorLabels}
+        onSuggestSubtasks={claude.ready ? claude.suggestSubtasks : undefined}
         onClose={closeModal}
         onSubmit={handleAddEventSubmit}
       />
@@ -843,6 +902,7 @@ export const CalendarPage: React.FC = () => {
         todo={editing?.todo ?? null}
         defaultReminderMinutes={settings.reminderMinutesBefore}
         colorLabels={settings.colorLabels}
+        onSuggestSubtasks={claude.ready ? claude.suggestSubtasks : undefined}
         onClose={closeEditTodoModal}
         onSave={handleSaveEditTodo}
         onDelete={handleDeleteFromEditor}
@@ -868,6 +928,13 @@ export const CalendarPage: React.FC = () => {
       />
 
       <StatsModal open={statsOpen} todos={todos} today={today} onClose={() => setStatsOpen(false)} />
+
+      <BriefingModal
+        open={briefingOpen}
+        today={today}
+        fetchBriefing={fetchBriefing}
+        onClose={() => setBriefingOpen(false)}
+      />
 
       <ShortcutHelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
 

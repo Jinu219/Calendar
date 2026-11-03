@@ -18,6 +18,8 @@ import type { UpdateStatus } from "../hooks/useAutoUpdate";
 import type { FeedStatus } from "../hooks/useCalendarFeeds";
 import { formatShortDate } from "../utils";
 import { FeedSettings } from "./FeedSettings";
+import { ClaudeSettings } from "./ClaudeSettings";
+import type { ClaudeFeatures } from "../hooks/useClaude";
 import { SegmentedControl } from "./SegmentedControl";
 import { ShortcutListSection } from "./ShortcutHelpModal";
 
@@ -47,6 +49,7 @@ interface SettingsDrawerProps {
   onRefreshFeeds: (id?: string) => void;
   /** The system-wide show/hide shortcut that got registered, if any. */
   globalShortcut: string | null;
+  claude: ClaudeFeatures;
 }
 
 const ON_OFF = (on: string, off: string) => [
@@ -93,6 +96,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   feedStatusFor,
   onRefreshFeeds,
   globalShortcut,
+  claude,
 }) => {
   const handleReset = () => {
     if (window.confirm("설정을 초기화하시겠습니까?")) {
@@ -423,6 +427,22 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
             onChange={feeds => onSetSetting("calendarFeeds", feeds)}
             statusFor={feedStatusFor}
             onRefresh={onRefreshFeeds}
+          />
+        </Section>
+
+        {/* ─────────────── Claude AI ─────────────── */}
+
+        <Section title="Claude AI">
+          <ClaudeSettings
+            enabled={settings.claudeEnabled}
+            model={settings.claudeModel}
+            hasKey={claude.hasKey}
+            usage={claude.usage}
+            onEnabledChange={value => onSetSetting("claudeEnabled", value)}
+            onModelChange={value => onSetSetting("claudeModel", value)}
+            onSaveKey={claude.saveKey}
+            onDeleteKey={claude.deleteKey}
+            onTest={claude.testConnection}
           />
         </Section>
 

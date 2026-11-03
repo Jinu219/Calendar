@@ -27,6 +27,10 @@ interface TodoPanelProps {
   linkedMemos: Memo[];
   quickAddRef: React.RefObject<HTMLInputElement | null>;
   onQuickAdd: (text: string) => void;
+  /** Claude is set up: offer ✨ (sentence → draft) and the daily briefing. */
+  aiReady: boolean;
+  onAiQuickAdd: (text: string) => Promise<boolean>;
+  onOpenBriefing: () => void;
   onOpenAddModal: () => void;
   memoOpen: boolean;
   onToggleMemo: () => void;
@@ -72,6 +76,9 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   linkedMemos,
   quickAddRef,
   onQuickAdd,
+  aiReady,
+  onAiQuickAdd,
+  onOpenBriefing,
   onOpenAddModal,
   memoOpen,
   onToggleMemo,
@@ -87,6 +94,19 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [quickText, setQuickText] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+
+  const handleAiQuickAdd = async () => {
+    const text = quickText.trim();
+    if (!text || aiBusy) return;
+
+    setAiBusy(true);
+    try {
+      if (await onAiQuickAdd(text)) setQuickText("");
+    } finally {
+      setAiBusy(false);
+    }
+  };
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const agenda = useMemo(() => getAgendaForDate(todos, selectedDate), [todos, selectedDate]);
@@ -285,6 +305,12 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
         <div className="todo-header-text">
           <h2 className="todo-date-label">{formatDateDisplayWithWeekday(selectedDate)}</h2>
 
+          {aiReady && (
+            <button type="button" className="briefing-btn" onClick={onOpenBriefing} title="Claude가 오늘과 이번 주를 정리해요">
+              ✨ 오늘 브리핑
+            </button>
+          )}
+
           <div className="todo-subtext">
             {holidayName && <span className="todo-chip holiday">{holidayName}</span>}
             {lunarDate && <span className="todo-chip">음력 {lunarDate}</span>}
@@ -301,12 +327,34 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
           className="todo-input"
           value={quickText}
           onChange={e => setQuickText(e.target.value)}
+          onKeyDown={e => {
+            // Shift+Enter: let Claude read the sentence instead of the local parser.
+            if (aiReady && e.key === "Enter" && e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void handleAiQuickAdd();
+            }
+          }}
+          disabled={aiBusy}
           placeholder={addMode === "todo" ? "할 일 입력 후 Enter" : "예: 14:30 회의 → Enter"}
           aria-label={`${kindLabel} 빠르게 추가 (단축키 /)`}
           title={addMode === "todo"
             ? "선택한 날짜에 할 일을 추가합니다"
             : "시간을 함께 적으면(14:30, 오후 3시 반, 14:00~15:30) 시간 일정으로 추가됩니다"}
         />
+
+        {aiReady && (
+          <button
+            type="button"
+            className="ai-quick-btn"
+            onClick={() => void handleAiQuickAdd()}
+            disabled={aiBusy || !quickText.trim()}
+            aria-busy={aiBusy}
+            aria-label="Claude로 문장을 일정으로 바꾸기 (Shift+Enter)"
+            title="Claude가 문장을 읽고 일정을 채워요 (Shift+Enter) — 예: 다음 주 화요일 3시 치과"
+          >
+            {aiBusy ? "…" : "✨"}
+          </button>
+        )}
 
         <button
           type="button"

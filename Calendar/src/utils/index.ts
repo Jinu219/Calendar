@@ -12,3 +12,4 @@ export * from "./formUtils";
 export * from "./icsUtils";
 export * from "./statsUtils";
 export * from "./windowPlacement";
+export * from "./claudeUtils";

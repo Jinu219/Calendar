@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import type {
+  ClaudeModelId,
   ColorTheme,
   ModalState,
   Settings,
@@ -143,7 +144,26 @@ export const DEFAULT_SETTINGS: Settings = {
   colorLabels: {},
   hiddenColors: [],
   calendarFeeds: [],
+
+  claudeEnabled: false,
+  claudeModel: "claude-opus-5-5",
 };
+
+/** Per-million-token prices (USD) used for the usage estimate shown in settings. */
+export const CLAUDE_MODELS: {
+  id: ClaudeModelId;
+  label: string;
+  inputPerMTok: number;
+  outputPerMTok: number;
+  /** Server-side fallback on a safety decline (not offered for Haiku). */
+  fallback: boolean;
+}[] = [
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5 · 가장 정확 (기본)", inputPerMTok: 4, outputPerMTok: 20, fallback: true },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5 · 빠르고 저렴", inputPerMTok: 2, outputPerMTok: 10, fallback: true },
+  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5 · 가장 저렴", inputPerMTok: 0.1, outputPerMTok: 0.5, fallback: false },
+];
+export const CLAUDE_USAGE_KEY = "cwa:claude-usage";
+export const CLAUDE_BRIEFING_KEY = "cwa:claude-briefing";
 
 export const REMINDER_LEAD_OPTIONS = [0, 5, 10, 30, 60] as const;
 /** Per-item reminder choices (minutes before); 1440 = the day before. */
