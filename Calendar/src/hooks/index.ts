@@ -27,3 +27,4 @@ export { useSelection } from "./useSelection";
 export { useRecurrenceScopePrompt } from "./useRecurrenceScopePrompt";
 export { useAssistantInbox } from "./useAssistantInbox";
 export { useNotion } from "./useNotion";
+export { useGemini } from "./useGemini";

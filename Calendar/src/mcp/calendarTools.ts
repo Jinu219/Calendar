@@ -50,6 +50,7 @@ export const TOOLS = [
               endTime: { ...TIME, description: "24h end time (default: one hour after time)." },
               kind: { type: "string", enum: ["schedule", "todo"], description: "Default 'schedule'." },
               repeat: { type: "string", enum: ["none", "daily", "weekdays", "weekly", "monthly", "yearly"] },
+              repeatInterval: { type: "integer", minimum: 1, maximum: 99, description: "Every N periods (2 = every other week). Default 1." },
               repeatDays: {
                 type: "array",
                 items: { type: "integer", minimum: 0, maximum: 6 },

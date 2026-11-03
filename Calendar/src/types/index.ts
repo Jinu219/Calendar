@@ -17,6 +17,9 @@ export type ItemKind = "schedule" | "todo";
 /** The title bar's kind filter: a single kind, or "all" to show both. */
 export type AddMode = ItemKind | "all";
 /** Whether a change to a recurring item applies to one occurrence or the whole series. */
+/** Free-tier Gemini models the settings offer. */
+export type GeminiModelId = "gemini-3.5-flash-lite" | "gemini-3.8-flash";
+
 export type RecurrenceScope = "this" | "all";
 
 export interface Subtask {
@@ -151,6 +154,10 @@ export interface Settings {
 
   /** Accept items Claude adds from a conversation (through the MCP server's inbox). */
   assistantInbox: boolean;
+
+  /** ✨ / Shift+Enter in quick add sends the sentence to Gemini (off until set up). */
+  geminiEnabled: boolean;
+  geminiModel: GeminiModelId;
 
   /** One-way export of items to a Notion database (off until set up). */
   notionEnabled: boolean;

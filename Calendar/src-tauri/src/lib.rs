@@ -14,6 +14,7 @@ use tauri::{
 };
 use tauri_plugin_autostart::ManagerExt;
 
+mod gemini;
 mod hotkey;
 mod inbox;
 mod notion;
@@ -369,6 +370,10 @@ pub fn run() {
             storage::open_backup_dir,
             storage::fetch_calendar_feed,
             inbox::take_inbox,
+            gemini::set_gemini_api_key,
+            gemini::has_gemini_api_key,
+            gemini::delete_gemini_api_key,
+            gemini::gemini_generate,
             notion::set_notion_token,
             notion::has_notion_token,
             notion::delete_notion_token,

@@ -4,6 +4,7 @@
 
 import type {
   ColorTheme,
+  GeminiModelId,
   ModalState,
   Settings,
   Theme,
@@ -146,6 +147,9 @@ export const DEFAULT_SETTINGS: Settings = {
 
   assistantInbox: true,
 
+  geminiEnabled: false,
+  geminiModel: "gemini-3.5-flash-lite",
+
   notionEnabled: false,
   notionDatabaseId: "",
   notionDataSourceId: "",
@@ -161,6 +165,13 @@ export const NOTION_LAST_EXPORT_KEY = "cwa:notion-last-export";
 
 /** The last batch of items Claude sent from a conversation (shown in settings). */
 export const INBOX_LAST_KEY = "cwa:inbox-last";
+
+export const GEMINI_MODELS: { id: GeminiModelId; label: string }[] = [
+  { id: "gemini-3.5-flash-lite", label: "3.5 Flash-Lite · 빠름" },
+  { id: "gemini-3.8-flash", label: "3.8 Flash · 정확, 횟수 적음" },
+];
+/** Requests made today, shown in settings (free-tier limits are per day). */
+export const GEMINI_USAGE_KEY = "cwa:gemini-usage";
 
 export const REMINDER_LEAD_OPTIONS = [0, 5, 10, 30, 60] as const;
 /** Per-item reminder choices (minutes before); 1440 = the day before. */

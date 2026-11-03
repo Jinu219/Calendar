@@ -32,6 +32,7 @@ import {
   useRecurrenceScopePrompt,
   useAssistantInbox,
   useNotion,
+  useGemini,
 } from "../hooks";
 
 import {
@@ -50,9 +51,10 @@ import {
   type VisibleDatesInfo,
 } from "../components";
 
-import { FLASH_MESSAGE_KEY, MEMO_FOCUS_KEY } from "../constants";
+import { COLOR_NAMES, FLASH_MESSAGE_KEY, MEMO_FOCUS_KEY, TODO_COLORS } from "../constants";
 import {
   expandTodos,
+  formatClock,
   formatTimelineTitle,
   getTimelineRange,
   shiftTimelineAnchor,
@@ -64,10 +66,10 @@ import {
   getTodoSpanDays,
   getWeekNumber,
   parseLocalDate,
-  parseQuickAdd,
+  parseInboxEvent,
+  parseScheduleText,
   shiftDate,
   timingToFields,
-  type QuickAddResult,
 } from "../utils";
 import type {
   AddMode,
@@ -164,6 +166,7 @@ export const CalendarPage: React.FC = () => {
   const { selection, select, setSelection, clearSelection } = useSelection(todos);
   const scope = useRecurrenceScopePrompt();
   const notion = useNotion(settings);
+  const gemini = useGemini(settings);
   const notionExportRef = useRef(notion.exportTodos);
   notionExportRef.current = notion.exportTodos;
 
@@ -539,24 +542,52 @@ export const CalendarPage: React.FC = () => {
     openAddTodoModal(selectedDate);
   }, [openAddTodoModal, selectedDate]);
 
+  /** Enter in quick add: the rule parser reads dates, times and repeats offline. */
   const handleQuickAdd = useCallback((text: string) => {
-    const kind = addMode === "todo" ? "todo" : "schedule";
-    // Times typed into the text ("14:30 회의") only make sense for schedules.
-    const parsed: QuickAddResult = kind === "schedule" ? parseQuickAdd(text) : { title: text.trim() };
-    const timed = parsed.startTime !== undefined;
+    const defaultKind = addMode === "todo" ? "todo" : "schedule";
+    const parsed = parseScheduleText(text, { today, selectedDate, defaultKind });
+    const result = parseInboxEvent(parsed.event, settings.colorLabels);
 
-    addTodo(parsed.title, selectedDate, {
-      kind,
-      allDay: !timed,
-      startDate: selectedDate,
-      endDate: selectedDate,
-      ...(timed ? { startTime: parsed.startTime, endTime: parsed.endTime } : {}),
-    });
+    if (!result.ok) {
+      showToast(result.error);
+      return;
+    }
 
-    notifyUndoable(
-      `"${parsed.title}" 추가 · ${formatShortDate(selectedDate)}${timed ? ` ${parsed.startTime}` : ""}`
-    );
-  }, [addMode, selectedDate, addTodo, notifyUndoable]);
+    addTodos([result.input]);
+    notifyUndoable(`"${result.input.title}" 추가 · ${parsed.understood.join(" · ") || formatShortDate(result.input.date)}`);
+  }, [addMode, today, selectedDate, settings.colorLabels, addTodos, showToast, notifyUndoable]);
+
+  /** ✨ / Shift+Enter: Gemini reads the sentence (several items at once is fine). */
+  const handleAiQuickAdd = useCallback(async (text: string): Promise<boolean> => {
+    try {
+      const events = await gemini.parse(text, {
+        today,
+        now: formatClock(new Date()),
+        selectedDate,
+        defaultKind: addMode === "todo" ? "todo" : "schedule",
+        categories: TODO_COLORS.map(color => settings.colorLabels[color] || COLOR_NAMES[color]),
+      });
+      const results = events.map(event => parseInboxEvent(event, settings.colorLabels));
+      const inputs = results.flatMap(result => (result.ok ? [result.input] : []));
+
+      if (inputs.length === 0) {
+        const firstError = results.find(result => !result.ok);
+        showToast(firstError && !firstError.ok ? firstError.error : "Gemini가 문장에서 일정을 찾지 못했어요.");
+        return false;
+      }
+
+      addTodos(inputs);
+      const first = inputs[0];
+      const time = first.options.startTime ?? first.options.todoTime;
+      notifyUndoable(
+        `✨ "${first.title}"${inputs.length > 1 ? ` 외 ${inputs.length - 1}개` : ""} 추가 · ${formatShortDate(first.date)}${time ? ` ${time}` : ""}`
+      );
+      return true;
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error));
+      return false;
+    }
+  }, [gemini, today, selectedDate, addMode, settings.colorLabels, addTodos, showToast, notifyUndoable]);
 
   // ── Claude conversation inbox ──
 
@@ -831,6 +862,8 @@ export const CalendarPage: React.FC = () => {
             linkedMemos={linkedMemos}
             quickAddRef={quickAddRef}
             onQuickAdd={handleQuickAdd}
+            aiReady={gemini.ready}
+            onAiQuickAdd={handleAiQuickAdd}
             onOpenAddModal={handleOpenAddTodoModal}
             memoOpen={memoOpen}
             onToggleMemo={toggleMemoWindow}
@@ -873,6 +906,7 @@ export const CalendarPage: React.FC = () => {
         notion={notion}
         onNotionExport={handleNotionExport}
         lastInbox={lastInbox}
+        gemini={gemini}
       />
 
       <AddEventModal

@@ -1462,6 +1462,35 @@ select.set-select { min-width:108px; }
   flex-shrink: 0;
 }
 
+/* ✨ Gemini button and the "what Enter would add" line */
+.quick-add .ai-quick-btn {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, white 30%);
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform .12s, background .15s;
+}
+.quick-add .ai-quick-btn:hover:not(:disabled) { transform: translateY(-1px); background: color-mix(in srgb, var(--accent) 22%, white 25%); }
+.quick-add .ai-quick-btn:disabled { opacity: .5; cursor: default; }
+
+.quick-preview {
+  margin: -2px 2px 0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  font-size: var(--fs-xs);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+[data-theme-mode="dark"] .quick-add .ai-quick-btn { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+
 .todo-empty p + p { margin-top: 6px; }
 .todo-empty-hint { font-size: var(--fs-xs); line-height: 1.5; }
 

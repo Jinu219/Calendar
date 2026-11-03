@@ -12,6 +12,7 @@ import {
   getSubtaskProgress,
   getTodoStartDate,
   getTodoTimeLabel,
+  parseScheduleText,
 } from "../utils";
 
 interface TodoPanelProps {
@@ -27,6 +28,10 @@ interface TodoPanelProps {
   linkedMemos: Memo[];
   quickAddRef: React.RefObject<HTMLInputElement | null>;
   onQuickAdd: (text: string) => void;
+  /** Gemini is set up: offer ✨ (and Shift+Enter) for sentences the rules don't get. */
+  aiReady: boolean;
+  /** Resolves true when items were added (the input is then cleared). */
+  onAiQuickAdd: (text: string) => Promise<boolean>;
   onOpenAddModal: () => void;
   memoOpen: boolean;
   onToggleMemo: () => void;
@@ -72,6 +77,8 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   linkedMemos,
   quickAddRef,
   onQuickAdd,
+  aiReady,
+  onAiQuickAdd,
   onOpenAddModal,
   memoOpen,
   onToggleMemo,
@@ -87,6 +94,7 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const [quickText, setQuickText] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const agenda = useMemo(() => getAgendaForDate(todos, selectedDate), [todos, selectedDate]);
@@ -97,6 +105,13 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
   const selectedKeys = new Set(selection.map(ref => `${ref.todoId}__${ref.occurrenceDate}`));
   const kindLabel = addMode === "todo" ? "할 일" : "일정";
   const showOverdue = selectedDate === today && overdue.length > 0;
+
+  // What Enter would add, shown under the input while typing.
+  const preview = useMemo(() => {
+    if (!quickText.trim()) return null;
+    const parsed = parseScheduleText(quickText, { today, selectedDate, defaultKind: addMode === "todo" ? "todo" : "schedule" });
+    return parsed.recognized ? `${parsed.event.title} · ${parsed.understood.join(" · ")}` : null;
+  }, [quickText, today, selectedDate, addMode]);
 
   const resetDrag = () => {
     setDragId(null);
@@ -119,6 +134,18 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
 
     onQuickAdd(quickText);
     setQuickText("");
+  };
+
+  const handleAiQuickAdd = async () => {
+    const text = quickText.trim();
+    if (!text || aiBusy) return;
+
+    setAiBusy(true);
+    try {
+      if (await onAiQuickAdd(text)) setQuickText("");
+    } finally {
+      setAiBusy(false);
+    }
   };
 
   const toggleExpanded = (id: string) => {
@@ -301,12 +328,31 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
           className="todo-input"
           value={quickText}
           onChange={e => setQuickText(e.target.value)}
-          placeholder={addMode === "todo" ? "할 일 입력 후 Enter" : "예: 14:30 회의 → Enter"}
+          onKeyDown={e => {
+            // Shift+Enter: let Gemini read the sentence instead of the rules.
+            if (aiReady && e.key === "Enter" && e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              void handleAiQuickAdd();
+            }
+          }}
+          placeholder={addMode === "todo" ? "예: 금요일까지 보고서 → Enter" : "예: 내일 3시 치과 → Enter"}
           aria-label={`${kindLabel} 빠르게 추가 (단축키 /)`}
-          title={addMode === "todo"
-            ? "선택한 날짜에 할 일을 추가합니다"
-            : "시간을 함께 적으면(14:30, 오후 3시 반, 14:00~15:30) 시간 일정으로 추가됩니다"}
+          aria-describedby={preview ? "quick-add-preview" : undefined}
+          title={`날짜·시간·반복을 함께 적으면 알아서 넣어요 (다음 주 화요일 3시 치과, 매주 월수금 7시 헬스, 11/11~11/13 대동제)${aiReady ? " · Shift+Enter 또는 ✨: Gemini가 읽기" : ""}`}
         />
+
+        {aiReady && (
+          <button
+            type="button"
+            className="ai-quick-btn"
+            onClick={() => void handleAiQuickAdd()}
+            disabled={!quickText.trim() || aiBusy}
+            aria-label="Gemini로 문장을 일정으로 바꾸기 (Shift+Enter)"
+            title="Gemini가 문장을 읽고 일정을 만들어요 (Shift+Enter) — 여러 일정도 한 번에"
+          >
+            {aiBusy ? "…" : "✨"}
+          </button>
+        )}
 
         <button
           type="button"
@@ -328,6 +374,12 @@ export const TodoPanel: React.FC<TodoPanelProps> = ({
           메모
         </button>
       </form>
+
+      {preview && (
+        <p className="quick-preview" id="quick-add-preview" aria-live="polite">
+          <span aria-hidden="true">→ </span>{preview}
+        </p>
+      )}
 
       {showOverdue && (
         <section className="overdue-box" aria-label="지난 할 일">

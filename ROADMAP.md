@@ -37,6 +37,14 @@
 | ? 도움말 버튼을 설정 → 앱 → 단축키로 이동 | `TitleBar.tsx`, `SettingsDrawer.tsx` |
 | Claude 대화 → 앱 일정 추가(MCP 서버, inbox 폴더, 2초 폴링, 한 번에 실행 취소) | `mcp/server.mjs`, `src/mcp/calendarTools.ts`, `inboxUtils.ts`, `inbox.rs`, `useAssistantInbox.ts` |
 
+### 문장으로 일정 추가 (2026-11)
+
+| 항목 | 구현 위치 |
+|---|---|
+| 한국어 날짜·시간·반복·알림·카테고리 규칙 파서, 입력 중 미리보기 | `scheduleParser.ts`, `TodoPanel.tsx` |
+| ✨ / Shift+Enter → Gemini 무료 등급(여러 일정 한 번에), 키는 자격 증명 관리자 | `geminiUtils.ts`, `useGemini.ts`, `gemini.rs`, `GeminiSettings.tsx` |
+| 반복 간격(격주 등)을 외부 입력 형식에 추가 | `inboxUtils.ts` `repeatInterval`, MCP 스키마 |
+
 ### Notion 내보내기 (2026-11)
 
 | 항목 | 구현 위치 |
@@ -59,6 +67,7 @@
 - 보조 모니터·배율 125%/150%에서 메모창 위치
 - MCP 등록 후 새 Claude 대화에서 "내일 3시 치과 넣어줘" → 켜진 앱에 2초 안에 들어오는지, 앱을 끈 채로 추가한 뒤 켜면 들어오는지, 토스트의 실행 취소
 - 설정 서랍이 실제 창 크기·배율(125%/150%)에서도 탭마다 스크롤 없이 보이는지
+- 실제 Gemini 무료 키로 ✨ 응답 품질과 속도, 무료 한도(429) 안내 문구, `Calendar/GeminiApiKey` 저장·삭제
 - 실제 Notion 통합 토큰과 데이터베이스로 연결 → 열 자동 추가 → 내보내기 → 다시 내보내기(그대로) → 앱에서 고친 뒤 갱신, Notion에서 페이지를 지운 뒤 다시 만들어지는지
 - `Calendar/NotionToken`이 자격 증명 관리자에 생기고 "토큰 삭제"로 지워지는지
 

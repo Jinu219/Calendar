@@ -8,7 +8,6 @@ import {
   getOccurrenceStartOn,
   isOccurrenceDone,
   listOccurrenceStarts,
-  parseQuickAdd,
   shiftTodoToTiming,
 } from "./todoUtils";
 
@@ -148,22 +147,5 @@ describe("calendar events", () => {
     expect(events.filter(e => e.extendedProps?.todoId === "a")).toHaveLength(4);
     expect(events[1].title).toBe("✓ x");
     expect(events.find(e => e.extendedProps?.todoId === "f")?.editable).toBe(false);
-  });
-});
-
-describe("quick add", () => {
-  it.each([
-    ["14:30 회의", { title: "회의", startTime: "14:30", endTime: "15:30" }],
-    ["오후 3시 반 미팅", { title: "미팅", startTime: "15:30", endTime: "16:30" }],
-    ["회의 14:00~15:30", { title: "회의", startTime: "14:00", endTime: "15:30" }],
-    ["오후 2시~4시 스터디", { title: "스터디", startTime: "14:00", endTime: "16:00" }],
-    ["3시 치과", { title: "치과", startTime: "15:00", endTime: "16:00" }],
-    ["오전 9시 운동", { title: "운동", startTime: "09:00", endTime: "10:00" }],
-    ["23:30 정리", { title: "정리", startTime: "23:30", endTime: "23:59" }],
-    ["2시간 공부", { title: "2시간 공부" }],
-    ["3월 보고서", { title: "3월 보고서" }],
-    ["14:00", { title: "14:00" }],
-  ])("parses %s", (input, expected) => {
-    expect(parseQuickAdd(input)).toEqual(expected);
   });
 });

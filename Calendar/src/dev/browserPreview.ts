@@ -8,6 +8,7 @@
 // It is only ever loaded by main.tsx in development outside Tauri.
 
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
+import { parseScheduleText } from "../utils/scheduleParser";
 
 const MONITOR = {
   name: "Browser",
@@ -35,6 +36,25 @@ const DEMO_ICS = [
   "END:VEVENT",
   "END:VCALENDAR",
 ].join("\r\n");
+
+/** A generateContent reply built from the rule parser, so ✨ can be exercised offline. */
+const fakeGeminiReply = (rawBody: string) => {
+  const prompt = (JSON.parse(rawBody) as { contents: { parts: { text: string }[] }[] }).contents[0].parts[0].text;
+  const field = (name: string) => new RegExp(`^${name}: (\\S+)`, "m").exec(prompt)?.[1] ?? "";
+  const sentence = /^문장: (.*)$/m.exec(prompt)?.[1] ?? "";
+  const { event } = parseScheduleText(sentence, {
+    today: field("오늘"),
+    selectedDate: field("선택한 날짜"),
+    defaultKind: field("기본 종류") === "todo" ? "todo" : "schedule",
+  });
+
+  return {
+    status: 200,
+    body: JSON.stringify({
+      candidates: [{ finishReason: "STOP", content: { parts: [{ text: JSON.stringify({ events: [event] }) }] } }],
+    }),
+  };
+};
 
 let fakeNotionPages = 0;
 
@@ -105,6 +125,20 @@ export function installBrowserPreviewMocks() {
         sessionStorage.removeItem("preview:inbox");
         return pending ? [pending] : [];
       }
+      // Gemini: replies from the rule parser (no network, no key).
+      case "has_gemini_api_key":
+        return sessionStorage.getItem("preview:gemini-key") === "1";
+      case "set_gemini_api_key": {
+        const key = String((args as { key?: string } | undefined)?.key ?? "");
+        if (key.length < 30) throw "Gemini API 키 형식이 아니에요. AI Studio에서 복사한 키(AIza…)를 붙여 넣어 주세요.";
+        sessionStorage.setItem("preview:gemini-key", "1");
+        return null;
+      }
+      case "delete_gemini_api_key":
+        sessionStorage.removeItem("preview:gemini-key");
+        return null;
+      case "gemini_generate":
+        return fakeGeminiReply(String((args as { body?: string } | undefined)?.body ?? "{}"));
       // Notion: an in-memory database so the export UI can be exercised.
       case "has_notion_token":
         return sessionStorage.getItem("preview:notion-token") === "1";

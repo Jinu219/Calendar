@@ -10,6 +10,7 @@ import {
   DEFAULT_SETTINGS,
   FONT_SIZE_MAX,
   FONT_SIZE_MIN,
+  GEMINI_MODELS,
   SETTINGS_KEY,
   THEMES,
   TODAY_STYLES,
@@ -67,6 +68,10 @@ export const normalizeSettings = (value: unknown): Settings => {
       : [],
     calendarFeeds: normalizeFeeds(saved.calendarFeeds),
     assistantInbox: pick("assistantInbox"),
+    geminiEnabled: pick("geminiEnabled"),
+    geminiModel: GEMINI_MODELS.some(model => model.id === saved.geminiModel)
+      ? saved.geminiModel as Settings["geminiModel"]
+      : DEFAULT_SETTINGS.geminiModel,
     notionEnabled: pick("notionEnabled"),
     notionDatabaseId: pick("notionDatabaseId"),
     notionDataSourceId: pick("notionDataSourceId"),

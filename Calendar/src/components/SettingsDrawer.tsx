@@ -20,8 +20,10 @@ import type { UpdateStatus } from "../hooks/useAutoUpdate";
 import type { FeedStatus } from "../hooks/useCalendarFeeds";
 import type { InboxReceipt } from "../hooks/useAssistantInbox";
 import type { NotionFeatures } from "../hooks/useNotion";
+import type { GeminiFeatures } from "../hooks/useGemini";
 import { formatShortDate } from "../utils";
 import { FeedSettings } from "./FeedSettings";
+import { GeminiSettings } from "./GeminiSettings";
 import { NotionSettings } from "./NotionSettings";
 import { SegmentedControl } from "./SegmentedControl";
 import { SelectRow, SettingGroup, SettingRow, SliderRow, SwitchRow } from "./SettingControls";
@@ -57,6 +59,7 @@ interface SettingsDrawerProps {
   onNotionExport: () => Promise<string>;
   /** The last batch Claude added from a conversation. */
   lastInbox: InboxReceipt | null;
+  gemini: GeminiFeatures;
 }
 
 type TabKey = "look" | "events" | "connect" | "app";
@@ -103,6 +106,7 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
   notion,
   onNotionExport,
   lastInbox,
+  gemini,
 }) => {
   const [tab, setTab] = useState<TabKey>("look");
   const [fontsOpen, setFontsOpen] = useState(false);
@@ -378,6 +382,10 @@ export const SettingsDrawer: React.FC<SettingsDrawerProps> = ({
                   ? `마지막: ${formatAt(lastInbox.at)} · ${lastInbox.titles[0]}${lastInbox.titles.length > 1 ? ` 외 ${lastInbox.titles.length - 1}개` : ""}`
                   : "Claude에게 \"이 일정 캘린더에 넣어줘\"라고 하면 여기로 들어와요."}
               </p>
+            </SettingGroup>
+
+            <SettingGroup title="무료 AI">
+              <GeminiSettings settings={settings} gemini={gemini} onSetSetting={onSetSetting} />
             </SettingGroup>
 
             <SettingGroup title="Notion">

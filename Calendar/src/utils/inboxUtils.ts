@@ -28,6 +28,8 @@ export interface InboxEventInput {
   endTime?: string;
   kind?: ItemKind;
   repeat?: RepeatType;
+  /** Every N days/weeks/months/years (2 = 격주). */
+  repeatInterval?: number;
   /** Weekly rules: 0 = Sunday … 6 = Saturday. */
   repeatDays?: number[];
   repeatUntil?: string;
@@ -103,6 +105,13 @@ export const parseInboxEvent = (raw: unknown, colorLabels: Record<string, string
   const repeat = (e.repeat ?? "none") as RepeatType;
   if (!REPEATS.includes(repeat)) return fail(`"${title}": repeat는 ${REPEATS.join("/")} 중 하나예요.`);
 
+  const interval = e.repeatInterval;
+  const badInterval = !Number.isInteger(interval) || (interval as number) < 1 || (interval as number) > 99
+    || ((interval as number) > 1 && (repeat === "none" || repeat === "weekdays"));
+  if (interval !== undefined && badInterval) {
+    return fail(`"${title}": repeatInterval은 반복 일정에 쓰는 1~99 정수예요.`);
+  }
+
   let repeatDays: number[] | undefined;
   if (e.repeatDays !== undefined) {
     if (repeat !== "weekly") return fail(`"${title}": repeatDays는 repeat가 weekly일 때만 써요.`);
@@ -154,6 +163,7 @@ export const parseInboxEvent = (raw: unknown, colorLabels: Record<string, string
     }
   }
 
+  if (typeof interval === "number" && interval > 1) options.repeatInterval = interval;
   if (repeatDays) options.repeatDays = repeatDays;
   if (typeof e.repeatUntil === "string") options.repeatEndDate = e.repeatUntil;
   if (reminder !== undefined) options.reminderMinutes = reminder as number | null;
