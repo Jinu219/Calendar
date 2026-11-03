@@ -124,6 +124,9 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
   calendarMode,
 }) => {
   const calendarRef = useRef<FullCalendar>(null);
+  // Event elements outlive renders, so their right-click listener reads the latest handler.
+  const editRef = useRef(onEventDoubleClick);
+  editRef.current = onEventDoubleClick;
 
   useEffect(() => {
     const api = calendarRef.current?.getApi() ?? null;
@@ -262,7 +265,16 @@ const CalendarViewComponent: React.FC<CalendarViewProps> = ({
     const title = arg.event.title.replace(/^✓ /, "");
 
     arg.el.setAttribute("aria-label", `${title}, ${time}${done ? ", 완료" : ""}`);
-    arg.el.setAttribute("title", `${title} — 클릭: 선택 · 더블클릭: 수정`);
+    arg.el.setAttribute("title", `${title} — 클릭: 선택 · 더블클릭/우클릭: 수정`);
+
+    // Right-click edits, as in the todo panel.
+    const ref = refOf(arg.event);
+    if (ref) {
+      arg.el.addEventListener("contextmenu", e => {
+        e.preventDefault();
+        editRef.current(ref);
+      });
+    }
   }, []);
 
   // Note: day cell args have no `dateStr` (FullCalendar's type allows any extra

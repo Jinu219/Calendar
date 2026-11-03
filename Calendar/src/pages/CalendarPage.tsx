@@ -17,7 +17,7 @@ import {
   useCalendarModal,
   useTodoPanelResize,
   useCalendarKeyboardShortcuts,
-  usePreventDevToolsShortcuts,
+  usePreventBrowserBehaviors,
   useMemoWindow,
   useMemos,
   useBackup,
@@ -142,6 +142,7 @@ export const CalendarPage: React.FC = () => {
     toggleDone,
     deleteTodo,
     removeOccurrences,
+    deleteFollowing,
     moveTodo,
     applyTiming,
     editOccurrence,
@@ -317,7 +318,7 @@ export const CalendarPage: React.FC = () => {
     setTodoPanelWidth: width => setSetting("todoPanelWidth", width),
   });
 
-  usePreventDevToolsShortcuts();
+  usePreventBrowserBehaviors();
 
   // ───────────────────────────────────────────────────────
   // Handlers: undo / toast
@@ -474,12 +475,15 @@ export const CalendarPage: React.FC = () => {
       if (choice === "this") {
         removeOccurrences([{ todoId: todo.id, occurrenceDate }]);
         notifyUndoable(`"${todo.title}" ${formatShortDate(occurrenceDate)} 일정을 삭제했어요`);
+      } else if (choice === "following") {
+        deleteFollowing(todo.id, occurrenceDate);
+        notifyUndoable(`"${todo.title}" ${formatShortDate(occurrenceDate)}부터 이후 일정을 삭제했어요`);
       } else {
         deleteTodo(todo.id);
         notifyUndoable(`"${todo.title}"을(를) 삭제했어요`);
       }
-    });
-  }, [withScope, removeOccurrences, deleteTodo, notifyUndoable]);
+    }, undefined, true);
+  }, [withScope, removeOccurrences, deleteFollowing, deleteTodo, notifyUndoable]);
 
   const handleEventTimingChange = useCallback((
     ref: OccurrenceRef,
@@ -932,6 +936,7 @@ export const CalendarPage: React.FC = () => {
         open={scope.prompt !== null}
         actionLabel={scope.prompt?.actionLabel ?? ""}
         occurrenceDate={scope.prompt?.occurrenceDate}
+        allowFollowing={scope.prompt?.allowFollowing ?? false}
         onChoose={scope.choose}
         onCancel={scope.cancel}
       />

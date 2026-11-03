@@ -20,7 +20,8 @@ export type AddMode = ItemKind | "all";
 /** Free-tier Gemini models the settings offer. */
 export type GeminiModelId = "gemini-3.5-flash-lite" | "gemini-3.8-flash";
 
-export type RecurrenceScope = "this" | "all";
+/** Which occurrences of a series an action applies to ("following": this one and later). */
+export type RecurrenceScope = "this" | "following" | "all";
 
 export interface Subtask {
   id: string;

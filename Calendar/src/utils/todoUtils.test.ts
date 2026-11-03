@@ -3,6 +3,7 @@ import type { Todo } from "../types";
 import {
   describeRepeat,
   doesOccurrenceStartOn,
+  endSeriesBefore,
   expandTodos,
   getAgendaForDate,
   getOccurrenceStartOn,
@@ -147,5 +148,34 @@ describe("calendar events", () => {
     expect(events.filter(e => e.extendedProps?.todoId === "a")).toHaveLength(4);
     expect(events[1].title).toBe("✓ x");
     expect(events.find(e => e.extendedProps?.todoId === "f")?.editable).toBe(false);
+  });
+});
+
+describe("delete this and following", () => {
+  const weekly = todo({
+    repeat: "weekly",
+    date: "2026-11-02",
+    startDate: "2026-11-02",
+    endDate: "2026-11-02",
+    exceptions: ["2026-11-09", "2026-11-23"],
+    doneDates: ["2026-11-02", "2026-11-30"],
+  });
+
+  it("ends the series the day before and drops later bookkeeping", () => {
+    const kept = endSeriesBefore(weekly, "2026-11-16");
+
+    expect(kept).toMatchObject({ repeatEndDate: "2026-11-15", exceptions: ["2026-11-09"], doneDates: ["2026-11-02"] });
+    expect(listOccurrenceStarts(kept!, "2026-11-01", "2026-12-31")).toEqual(["2026-11-02"]);
+  });
+
+  it("keeps an earlier end date", () => {
+    expect(endSeriesBefore({ ...weekly, repeatEndDate: "2026-11-10" }, "2026-11-30")?.repeatEndDate).toBe("2026-11-10");
+  });
+
+  it("leaves nothing when there is no occurrence before that day", () => {
+    expect(endSeriesBefore(weekly, "2026-11-02")).toBeNull();
+    // 11/9 is skipped, so 11/16 is the second real occurrence: 11/2 stays.
+    expect(endSeriesBefore(weekly, "2026-11-16")).not.toBeNull();
+    expect(endSeriesBefore({ ...weekly, exceptions: ["2026-11-02"] }, "2026-11-09")).toBeNull();
   });
 });

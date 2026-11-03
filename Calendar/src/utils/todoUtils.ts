@@ -206,6 +206,31 @@ export const listOccurrenceStarts = (
   return starts;
 };
 
+/**
+ * The series without the occurrence starting on `date` and every later one
+ * ("이후 모두 삭제"), or null when nothing would be left of it.
+ */
+export const endSeriesBefore = (todo: Todo, date: string): Todo | null => {
+  const start = getTodoStartDate(todo);
+  const lastKept = shiftDate(date, -1);
+
+  if (todo.repeat === "none" || lastKept < start || listOccurrenceStarts(todo, start, lastKept).length === 0) {
+    return null;
+  }
+
+  const before = (dates: string[] | undefined) => {
+    const kept = dates?.filter(d => d < date);
+    return kept && kept.length > 0 ? kept : undefined;
+  };
+
+  return {
+    ...todo,
+    repeatEndDate: todo.repeatEndDate && todo.repeatEndDate < lastKept ? todo.repeatEndDate : lastKept,
+    exceptions: before(todo.exceptions),
+    doneDates: before(todo.doneDates),
+  };
+};
+
 /** Where one occurrence of a todo currently sits. */
 export const getOccurrenceTiming = (todo: Todo, occurrenceDate: string): EventTiming => ({
   startDate: occurrenceDate,

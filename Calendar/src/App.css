@@ -962,6 +962,10 @@ select.set-select { min-width:108px; }
 .scope-modal-actions { justify-content:center; }
 .scope-modal-actions .modal-cancel,
 .scope-modal-actions .modal-confirm { flex:1; text-align:center; }
+/* Three choices read better as a list than squeezed into one row. */
+.scope-modal-actions.stacked { flex-direction:column; align-items:stretch; }
+.scope-modal-actions.stacked .modal-cancel,
+.scope-modal-actions.stacked .modal-confirm { flex:none; width:100%; }
 
 /* ════════════════════════════════════════════
    Toast

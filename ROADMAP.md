@@ -45,6 +45,14 @@
 | ✨ / Shift+Enter → Gemini 무료 등급(여러 일정 한 번에), 키는 자격 증명 관리자 | `geminiUtils.ts`, `useGemini.ts`, `gemini.rs`, `GeminiSettings.tsx` |
 | 반복 간격(격주 등)을 외부 입력 형식에 추가 | `inboxUtils.ts` `repeatInterval`, MCP 스키마 |
 
+### 반복 삭제 범위와 우클릭 (2026-11)
+
+| 항목 | 구현 위치 |
+|---|---|
+| 반복 일정 삭제: 이 날짜만 / 이 날짜부터 이후 모두 / 전체 | `RecurrenceScopeModal.tsx`, `todoUtils.ts` `endSeriesBefore`, `useTodos` `deleteFollowing` |
+| 브라우저 우클릭 메뉴 막기(개발 모드·메모창 포함), 일정 우클릭 = 수정 | `usePreventBrowserBehaviors.ts`, `CalendarView.tsx` |
+| 빠른 추가 "3시 반복…"을 3시 반으로 읽던 문제 | `scheduleParser.ts` |
+
 ### Notion 내보내기 (2026-11)
 
 | 항목 | 구현 위치 |
@@ -84,6 +92,7 @@
 - 앱에서 지운 일정의 페이지를 Notion에서 보관할지 선택하는 옵션
 
 ### 그 밖에
+- 반복 일정 수정·이동에도 "이후 모두"(시리즈를 둘로 나누기)
 - 반복 규칙: 매월 여러 날짜(1일·15일), 마지막 날, 공휴일 건너뛰기
 - 일정에 장소·메모 필드, 링크 열기
 - 구독 캘린더 일정도 알림 받기(선택)

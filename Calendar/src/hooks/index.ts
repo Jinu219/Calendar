@@ -12,7 +12,7 @@ export { useWindowPosition } from "./useWindowPosition";
 export { useCalendarModal } from "./useCalendarModal";
 export { useTodoPanelResize } from "./useTodoPanelResize";
 export { useCalendarKeyboardShortcuts } from "./useCalendarKeyboardShortcuts";
-export { usePreventDevToolsShortcuts } from "./usePreventDevToolsShortcuts";
+export { usePreventBrowserBehaviors } from "./usePreventBrowserBehaviors";
 export { useMemos } from "./useMemos";
 export { useMemoWindow } from "./useMemoWindow";
 export { useBackup } from "./useBackup";

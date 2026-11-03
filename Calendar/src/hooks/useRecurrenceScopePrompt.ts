@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════
-// useRecurrenceScopePrompt Hook — "this date only or the whole series?"
+// useRecurrenceScopePrompt Hook — "this date only, from here on, or the whole series?"
 // ═══════════════════════════════════════════════════════════
 
 import { useCallback, useState } from "react";
@@ -8,6 +8,8 @@ import type { RecurrenceScope, Todo } from "../types";
 interface ScopePrompt {
   actionLabel: string;
   occurrenceDate: string;
+  /** Offer "this and following" (only deleting supports it so far). */
+  allowFollowing: boolean;
   onChoose: (scope: RecurrenceScope) => void;
   onCancel?: () => void;
 }
@@ -24,14 +26,15 @@ export function useRecurrenceScopePrompt() {
     occurrenceDate: string,
     actionLabel: string,
     action: (scope: RecurrenceScope) => void,
-    onCancel?: () => void
+    onCancel?: () => void,
+    allowFollowing = false
   ) => {
     if (todo.repeat === "none") {
       action("all");
       return;
     }
 
-    setPrompt({ actionLabel, occurrenceDate, onChoose: action, onCancel });
+    setPrompt({ actionLabel, occurrenceDate, allowFollowing, onChoose: action, onCancel });
   }, []);
 
   const choose = useCallback((scope: RecurrenceScope) => {

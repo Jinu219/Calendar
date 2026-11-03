@@ -12,6 +12,7 @@ import type {
 } from "../types";
 import {
   createId,
+  endSeriesBefore,
   getTodoStartDate,
   isOccurrenceDone,
   loadJson,
@@ -221,6 +222,17 @@ export function useTodos() {
     mutate(prev => prev.filter(t => t.id !== id));
   }, [mutate]);
 
+  /** Delete the occurrence on `fromDate` and every later one; earlier ones stay. */
+  const deleteFollowing = useCallback((id: string, fromDate: string) => {
+    mutate(prev => {
+      const todo = prev.find(t => t.id === id);
+      if (!todo) return prev;
+
+      const kept = endSeriesBefore(todo, fromDate);
+      return kept ? prev.map(t => (t.id === id ? kept : t)) : prev.filter(t => t.id !== id);
+    });
+  }, [mutate]);
+
   /**
    * Remove specific occurrences as one undo step: a one-off todo is deleted, a
    * recurring todo only skips that date and keeps the rest of the series.
@@ -332,6 +344,7 @@ export function useTodos() {
     toggleDone,
     deleteTodo,
     removeOccurrences,
+    deleteFollowing,
     moveTodo,
     applyTiming,
     editOccurrence,

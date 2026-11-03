@@ -18,6 +18,8 @@ describe("times (the old quick add)", () => {
     ["저녁 7시 약속", { title: "약속", time: "19:00", endTime: "20:00" }],
     ["3시부터 5시까지 세미나", { title: "세미나", time: "15:00", endTime: "17:00" }],
     ["정오 점심", { title: "점심", time: "12:00", endTime: "13:00" }],
+    ["3시 반복 점검", { title: "반복 점검", time: "15:00", endTime: "16:00" }],
+    ["3시반에 통화", { title: "통화", time: "15:30", endTime: "16:30" }],
   ])("%s", (input, expected) => {
     expect(parse(input).event).toMatchObject({ ...expected, date: "2026-11-05", kind: "schedule" });
   });

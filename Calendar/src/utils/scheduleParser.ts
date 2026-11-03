@@ -128,8 +128,10 @@ const findDate = (text: string, today: string): Found | null => {
 // 오전/오후 or a time-of-day word, the hour, then ":MM" or "시" with an
 // optional "반" / "N분". The hour isn't part of a date ("11/20"), and "시"
 // must end there or be followed by a particle — not "시간", "시험", "시작".
+// "반" likewise ends the word ("3시 반에"), so "3시 반복…" stays 3시.
+const PARTICLE_AHEAD = String.raw`(?=$|[\s~\-–,.!?)]|에|부터|까지|쯤|경)`;
 const SI = String.raw`시(?=$|[\s~\-–,.!?)]|\d|반|에|부터|까지|쯤|경|정각|전|후|이후|이전)`;
-const TIME = String.raw`(?:(오전|오후|아침|새벽|낮|점심|저녁|밤)\s*)?(?<![\d/.:])(\d{1,2})(?::(\d{2})|\s*${SI}(?:\s*(반|\d{1,2}\s*분))?)`;
+const TIME = String.raw`(?:(오전|오후|아침|새벽|낮|점심|저녁|밤)\s*)?(?<![\d/.:])(\d{1,2})(?::(\d{2})|\s*${SI}(?:\s*(반${PARTICLE_AHEAD}|\d{1,2}\s*분))?)`;
 const TIME_RE = new RegExp(`${TIME}(?:\\s*(?:[~\\-–]|부터)\\s*${TIME})?(\\s*까지)?`);
 const NOON_RE = /정오/;
 const AFTERNOON = new Set(["오후", "낮", "점심", "저녁", "밤"]);

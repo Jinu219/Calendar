@@ -1,11 +1,14 @@
 import React from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MemoBoard } from "../components";
+import { usePreventBrowserBehaviors } from "../hooks";
 
 export const MemoWindowPage: React.FC = () => {
   const params = new URLSearchParams(window.location.search);
   const memoId = params.get("memoId");
   const detached = params.get("detached") === "true";
+
+  usePreventBrowserBehaviors();
 
   const handleStartDrag = async (
     event: React.MouseEvent<HTMLButtonElement>
