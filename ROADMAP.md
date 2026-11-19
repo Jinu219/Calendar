@@ -53,6 +53,13 @@
 | 브라우저 우클릭 메뉴 막기(개발 모드·메모창 포함), 일정 우클릭 = 수정 | `usePreventBrowserBehaviors.ts`, `CalendarView.tsx` |
 | 빠른 추가 "3시 반복…"을 3시 반으로 읽던 문제 | `scheduleParser.ts` |
 
+### 아이콘과 메모 입력 (2026-11)
+
+| 항목 | 구현 위치 |
+|---|---|
+| 트레이 아이콘이 두 개 뜨던 문제(설정의 `trayIcon`과 코드가 각각 만듦) | `tauri.conf.json` |
+| 새 앱 아이콘(파스텔 라인): 원본 SVG에서 크기별로 다시 만듦, 16px에서도 보이는 굵은 선·투명 모서리 | `src-tauri/icons/app-icon.svg`, `public/calendar-icon.svg` |
+
 ### Notion 내보내기 (2026-11)
 
 | 항목 | 구현 위치 |
