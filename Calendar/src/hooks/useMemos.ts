@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Memo } from "../types";
 import { DEFAULT_MEMO_COLOR, MEMOS_KEY } from "../constants";
 import { createId, persistItem } from "../utils";
@@ -57,10 +57,20 @@ const loadMemos = (): Memo[] => {
 
 export function useMemos() {
   const [memos, setMemos] = useState<Memo[]>(() => loadMemos());
+  // The memos JSON this window last read from or wrote to storage. Both the
+  // calendar and every memo window use this hook; without it a window saved
+  // again what another window had just saved, and because storage events
+  // arrive late, that echo could be an older version that overwrote the text
+  // being typed (lost characters, broken Hangul composition).
+  const syncedJsonRef = useRef<string | null>(localStorage.getItem(MEMOS_KEY));
 
   useEffect(() => {
+    const json = JSON.stringify(memos);
+    if (json === syncedJsonRef.current) return;
+
+    syncedJsonRef.current = json;
     try {
-      persistItem(MEMOS_KEY, JSON.stringify(memos));
+      persistItem(MEMOS_KEY, json);
     } catch (error) {
       console.error("Failed to persist memos:", error);
     }
@@ -68,13 +78,18 @@ export function useMemos() {
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
-      if (event.key !== MEMOS_KEY) return;
+      if (event.key !== MEMOS_KEY && event.key !== null) return;
+
+      // Read what is saved now rather than event.newValue: the other window may
+      // have saved again since this event was queued.
+      const raw = localStorage.getItem(MEMOS_KEY);
+      if (raw === syncedJsonRef.current) return;
 
       try {
-        setMemos(event.newValue
-          ? normalizeMemos(JSON.parse(event.newValue))
-          : [createMemo()]
-        );
+        const next = raw ? normalizeMemos(JSON.parse(raw)) : [createMemo()];
+        // Taken from storage, so the save effect must not write it back.
+        syncedJsonRef.current = JSON.stringify(next);
+        setMemos(next);
       } catch {
         // ignore invalid external storage changes
       }

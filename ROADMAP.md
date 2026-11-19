@@ -59,6 +59,7 @@
 |---|---|
 | 트레이 아이콘이 두 개 뜨던 문제(설정의 `trayIcon`과 코드가 각각 만듦) | `tauri.conf.json` |
 | 새 앱 아이콘(파스텔 라인): 원본 SVG에서 크기별로 다시 만듦, 16px에서도 보이는 굵은 선·투명 모서리 | `src-tauri/icons/app-icon.svg`, `public/calendar-icon.svg` |
+| 메모창에서 글자가 빠지거나 늦게 한꺼번에 나오던 문제(달력 창이 메모 저장을 옛 값으로 되저장) | `useMemos.ts` |
 
 ### Notion 내보내기 (2026-11)
 
