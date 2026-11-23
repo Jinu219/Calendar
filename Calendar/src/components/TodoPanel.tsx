@@ -12,6 +12,7 @@ import {
   getSubtaskProgress,
   getTodoStartDate,
   getTodoTimeLabel,
+  memoPreviewText,
   parseScheduleText,
 } from "../utils";
 
@@ -61,8 +62,7 @@ const metaFor = (item: AgendaItem, settings: Settings): string[] => {
   return meta;
 };
 
-const memoPreview = (memo: Memo): string =>
-  memo.content.split("\n").find(line => line.trim())?.replace(/^- \[[ xX]\] /, "").trim() || "(빈 메모)";
+const memoPreview = (memo: Memo): string => memoPreviewText(memo.content) || "(빈 메모)";
 
 export const TodoPanel: React.FC<TodoPanelProps> = ({
   selectedDate,

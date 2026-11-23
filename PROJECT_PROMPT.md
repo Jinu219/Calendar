@@ -69,6 +69,7 @@ Calendar는 Windows 전용 데스크톱 캘린더 위젯이다. 메인 창은 �
 33. 브라우저 우클릭 메뉴(새로고침·다른 이름으로 저장)는 개발 모드 포함 두 창 모두에서 막는다(텍스트 입력칸은 잘라내기·붙여넣기 메뉴 유지). 새로고침·인쇄·저장·개발자 도구 키는 빌드에서만 막는다. 일정 우클릭은 수정(할 일 패널과 같음).
 34. 트레이 아이콘은 `lib.rs`의 `TrayIconBuilder` 하나만 만든다. `tauri.conf.json`에 `app.trayIcon`을 넣으면 메뉴 없는 아이콘이 하나 더 생긴다. 앱 아이콘의 원본은 `src-tauri/icons/app-icon.svg`이고, 바꿀 때는 `tauri icon`으로 만든 뒤 저장소에 있는 파일(32x32·128x128·128x128@2x·icon.png·icon.ico·icon.icns·StoreLogo)만 교체한다. 16px 트레이에서 읽히도록 굵은 흰 선과 진한 바탕을 유지한다.
 35. 메모는 달력 창과 메모창(분리 메모창 포함)이 함께 쓰므로, `useMemos`는 자기 창에서 고친 내용만 저장한다. 다른 창의 저장(storage 이벤트)은 `event.newValue` 대신 지금 저장된 값을 읽어 반영만 하고 다시 저장하지 않는다. 되저장하면 늦게 도착한 옛 값이 입력 중인 글자를 덮어 글자가 빠지거나 한글 조합이 깨진다.
+36. 메모 서식은 글자 그대로 저장한다(`# `, `- `, `1. `, `- [ ] `, `**`, `*`, `~~`, 두 칸 = 들여쓰기 한 단계). 해석과 편집 계산은 `memoFormat.ts`의 순수 함수가 맡고, 메모는 클릭 전엔 `MemoRichView`로 꾸며 보여 주고 클릭하면 textarea로 원문을 고친다. 서식 버튼·단축키·목록 Enter는 `document.execCommand("insertText")`로 적용해 Ctrl+Z가 살아 있게 하고, 목록 Enter는 keydown이 아니라 `beforeinput`(insertLineBreak)에서 처리해 한글 조합을 Enter로 끝낼 때도 줄바꿈이 한 번만 일어나게 한다. 서식 버튼은 mousedown에서 기본 동작을 막아 커서가 메모에 남게 한다. 미리보기(할 일 패널)는 `memoPreviewText`로 표시를 뺀 글자만 보여 준다.
 
 ## 검증 기준
 

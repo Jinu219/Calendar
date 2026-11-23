@@ -1,9 +1,22 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { COLOR_NAMES, MEMO_COLORS, MEMO_FOCUS_KEY } from "../constants";
 import { useMemos, useToast } from "../hooks";
-import { fitOnScreen, formatShortDate, screenPointOf } from "../utils";
+import {
+  continueList,
+  cycleHeading,
+  fitOnScreen,
+  formatShortDate,
+  indentSelection,
+  lineEndOffset,
+  screenPointOf,
+  toggleChecklistLine,
+  toggleInlineMark,
+  toggleLineFormat,
+  type MemoEdit,
+} from "../utils";
+import { MemoRichView } from "./MemoRichView";
 import { Toast } from "./Toast";
 
 interface MemoBoardProps {
@@ -28,7 +41,41 @@ const DETACHED_LABELS = [
 
 const DETACHED_MEMO_WIDTH = 300;
 const DETACHED_MEMO_HEIGHT = 320;
-const CHECKBOX_LINE = /^(\s*)- \[( |x|X)\] (.*)$/;
+
+const MEMO_PLACEHOLDER =
+  "오늘 기억할 것, 공부 메모, 작업 아이디어를 적어보세요.\n" +
+  "# 제목 · - 목록 · - [ ] 체크 · **굵게** · ~~취소~~\n" +
+  "Tab 들여쓰기 · Esc 편집 끝";
+
+type EditMaker = (value: string, start: number, end: number) => MemoEdit | null;
+
+/** Formatting buttons and their shortcuts, shown while editing. */
+const FORMAT_BUTTONS: { label: string; title: string; className?: string; make: EditMaker }[] = [
+  { label: "H", title: "제목 (누를 때마다 큰 제목 → 중간 → 작게 → 본문) · Ctrl+1·2·3", make: cycleHeading },
+  { label: "B", title: "굵게 · Ctrl+B", className: "memo-b", make: (v, s, e) => toggleInlineMark(v, s, e, "**") },
+  { label: "I", title: "기울임 · Ctrl+I", className: "memo-i", make: (v, s, e) => toggleInlineMark(v, s, e, "*") },
+  { label: "S", title: "취소선 · Ctrl+Shift+S", className: "memo-s", make: (v, s, e) => toggleInlineMark(v, s, e, "~~") },
+  { label: "•", title: "글머리 목록", make: (v, s, e) => toggleLineFormat(v, s, e, "bullet") },
+  { label: "☑", title: "체크리스트", make: (v, s, e) => toggleLineFormat(v, s, e, "check") },
+];
+
+/** Editor shortcuts; Tab and Shift+Tab indent. */
+const shortcutEdit = (event: React.KeyboardEvent<HTMLTextAreaElement>): EditMaker | null => {
+  const ctrl = event.ctrlKey || event.metaKey;
+  if (event.key === "Tab" && !ctrl && !event.altKey) {
+    return (v, s, e) => indentSelection(v, s, e, event.shiftKey);
+  }
+  if (!ctrl || event.altKey) return null;
+
+  const key = event.key.toLowerCase();
+  if (!event.shiftKey && key === "b") return FORMAT_BUTTONS[1].make;
+  if (!event.shiftKey && key === "i") return FORMAT_BUTTONS[2].make;
+  if (event.shiftKey && event.code === "KeyS") return FORMAT_BUTTONS[3].make;
+  if (!event.shiftKey && (key === "1" || key === "2" || key === "3")) {
+    return (v, s, e) => toggleLineFormat(v, s, e, `h${key}` as "h1" | "h2" | "h3");
+  }
+  return null;
+};
 
 const getAvailableDetachedLabel = async () => {
   for (const label of DETACHED_LABELS) {
@@ -51,17 +98,6 @@ const closeCurrentWindow = async () => {
 /** "id|timestamp" → id (the timestamp makes re-focusing the same memo fire again). */
 const readFocusRequest = (value: string | null): string | null => value?.split("|")[0] || null;
 
-/** Flip the "- [ ]" / "- [x]" mark on one line of the memo. */
-const toggleChecklistLine = (content: string, lineIndex: number): string =>
-  content
-    .split("\n")
-    .map((line, i) => {
-      if (i !== lineIndex) return line;
-      const match = CHECKBOX_LINE.exec(line);
-      return match ? `${match[1]}- [${match[2] === " " ? "x" : " "}] ${match[3]}` : line;
-    })
-    .join("\n");
-
 export const MemoBoard: React.FC<MemoBoardProps> = ({
   memoId,
   detached = false,
@@ -77,7 +113,9 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
 
   const dragStateRef = useRef<DragState | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [checklistView, setChecklistView] = useState(false);
+  // The memo shows formatted until it is clicked; then the plain text is edited.
+  const [editing, setEditing] = useState(false);
+  const pendingCaretRef = useRef<number | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const visibleMemos = useMemo(() => {
@@ -274,29 +312,91 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
     }
   };
 
-  /** Start a "- [ ] " checklist item on the cursor's line (or a new line). */
-  const insertCheckbox = () => {
-    if (!activeMemo) return;
+  const activeMemoKey = activeMemo?.id;
+  const showEditor = !!activeMemo && (editing || !activeMemo.content.trim());
 
+  /**
+   * Apply an edit through the browser's own text insertion, so it fires the
+   * normal input event (→ onChange) and Ctrl+Z can undo it.
+   */
+  const applyEdit = useCallback((edit: MemoEdit) => {
     const textarea = textareaRef.current;
-    const content = activeMemo.content;
-    const cursor = textarea?.selectionStart ?? content.length;
-    const lineStart = content.lastIndexOf("\n", cursor - 1) + 1;
-    const line = content.slice(lineStart, content.indexOf("\n", cursor) === -1 ? undefined : content.indexOf("\n", cursor));
+    if (!textarea || !activeMemoKey) return;
 
-    const next = CHECKBOX_LINE.test(line)
-      ? content
-      : line.trim()
-        ? `${content.slice(0, lineStart)}- [ ] ${content.slice(lineStart)}`
-        : `${content.slice(0, cursor)}- [ ] ${content.slice(cursor)}`;
+    textarea.focus();
+    textarea.setSelectionRange(edit.from, edit.to);
+    const applied = edit.insert
+      ? document.execCommand("insertText", false, edit.insert)
+      : edit.from === edit.to || document.execCommand("delete");
 
-    updateMemo(activeMemo.id, { content: next });
-    setChecklistView(false);
-    requestAnimationFrame(() => {
-      textarea?.focus();
-      const end = next.indexOf("\n", lineStart);
-      textarea?.setSelectionRange(end === -1 ? next.length : end, end === -1 ? next.length : end);
-    });
+    if (!applied) {
+      const value = textarea.value;
+      updateMemo(activeMemoKey, { content: value.slice(0, edit.from) + edit.insert + value.slice(edit.to) });
+      requestAnimationFrame(() => textarea.setSelectionRange(edit.selStart, edit.selEnd));
+      return;
+    }
+
+    textarea.setSelectionRange(edit.selStart, edit.selEnd);
+  }, [activeMemoKey, updateMemo]);
+
+  const runFormat = (make: EditMaker) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const edit = make(textarea.value, textarea.selectionStart, textarea.selectionEnd);
+    if (edit) applyEdit(edit);
+  };
+
+  // Coming from the formatted view: focus the editor at the clicked line.
+  useEffect(() => {
+    if (!editing) return;
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    if (document.activeElement !== textarea) textarea.focus();
+    if (pendingCaretRef.current !== null) {
+      const caret = Math.min(pendingCaretRef.current, textarea.value.length);
+      pendingCaretRef.current = null;
+      textarea.setSelectionRange(caret, caret);
+    }
+  }, [editing]);
+
+  // Enter in a list starts the next item. Handled on the line break itself
+  // (not keydown) so Korean input finishing a syllable with Enter still works.
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!showEditor || !textarea) return;
+
+    const handleBeforeInput = (event: InputEvent) => {
+      if (event.inputType !== "insertLineBreak" && event.inputType !== "insertParagraph") return;
+      if (event.isComposing || textarea.selectionStart !== textarea.selectionEnd) return;
+      const edit = continueList(textarea.value, textarea.selectionStart);
+      if (!edit) return;
+      event.preventDefault();
+      applyEdit(edit);
+    };
+
+    textarea.addEventListener("beforeinput", handleBeforeInput);
+    return () => textarea.removeEventListener("beforeinput", handleBeforeInput);
+  }, [showEditor, applyEdit]);
+
+  const handleEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.currentTarget.blur();
+      return;
+    }
+
+    const make = shortcutEdit(event);
+    if (!make) return;
+    event.preventDefault();
+    runFormat(make);
+  };
+
+  const startEditingAt = (lineIndex: number) => {
+    if (!activeMemo) return;
+    pendingCaretRef.current = lineEndOffset(activeMemo.content, lineIndex);
+    setEditing(true);
   };
 
   const handleCloseDetachedWindow = closeCurrentWindow;
@@ -314,8 +414,6 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
       </section>
     );
   }
-
-  const lines = activeMemo.content.split("\n");
 
   return (
     <section
@@ -387,26 +485,7 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
           </div>
         )}
 
-        {checklistView ? (
-          <div className="memo-checklist" role="list" aria-label="메모 체크리스트 보기">
-            {lines.map((line, index) => {
-              const match = CHECKBOX_LINE.exec(line);
-
-              return match ? (
-                <label key={index} className={`memo-check-line ${match[2] !== " " ? "done" : ""}`} role="listitem">
-                  <input
-                    type="checkbox"
-                    checked={match[2] !== " "}
-                    onChange={() => updateMemo(activeMemo.id, { content: toggleChecklistLine(activeMemo.content, index) })}
-                  />
-                  <span style={{ paddingLeft: `${match[1].length * 0.5}em` }}>{match[3]}</span>
-                </label>
-              ) : (
-                <p key={index} className="memo-plain-line" role="listitem">{line || " "}</p>
-              );
-            })}
-          </div>
-        ) : (
+        {showEditor ? (
           <textarea
             ref={textareaRef}
             className="memo-textarea"
@@ -414,11 +493,49 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
             onChange={event =>
               updateMemo(activeMemo.id, { content: event.target.value })
             }
-            placeholder={"오늘 기억할 것, 공부 메모, 작업 아이디어를 적어보세요.\n☑ 버튼으로 체크리스트 줄을 만들 수 있어요."}
-            aria-label="메모 내용"
+            onFocus={() => setEditing(true)}
+            onBlur={() => setEditing(false)}
+            onKeyDown={handleEditorKeyDown}
+            placeholder={MEMO_PLACEHOLDER}
+            aria-label="메모 내용 (Tab 들여쓰기, Esc 편집 끝)"
+            spellCheck={false}
+          />
+        ) : (
+          <MemoRichView
+            content={activeMemo.content}
+            onEditLine={startEditingAt}
+            onToggleCheck={index => updateMemo(activeMemo.id, { content: toggleChecklistLine(activeMemo.content, index) })}
           />
         )}
 
+        {editing ? (
+          <div className="memo-toolbar memo-format-bar" role="toolbar" aria-label="서식">
+            <div className="memo-format-list">
+              {FORMAT_BUTTONS.map(button => (
+                <button
+                  key={button.label}
+                  type="button"
+                  className={`memo-icon-btn ${button.className ?? ""}`}
+                  // Keep the caret in the memo while formatting.
+                  onMouseDown={event => event.preventDefault()}
+                  onClick={() => runFormat(button.make)}
+                  title={button.title}
+                  aria-label={button.title}
+                >
+                  {button.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="memo-small-action-btn"
+              onClick={() => textareaRef.current?.blur()}
+              title="편집 끝 (Esc)"
+            >
+              완료
+            </button>
+          </div>
+        ) : (
         <div className="memo-toolbar">
           <div className="memo-color-list" role="radiogroup" aria-label="메모 색상">
             {MEMO_COLORS.map(color => (
@@ -439,27 +556,6 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
           </div>
 
           <div className="memo-action-list">
-            <button
-              type="button"
-              className="memo-icon-btn"
-              onClick={insertCheckbox}
-              title="체크리스트 줄 추가"
-              aria-label="체크리스트 줄 추가"
-            >
-              ☑
-            </button>
-
-            <button
-              type="button"
-              className={`memo-icon-btn ${checklistView ? "active" : ""}`}
-              onClick={() => setChecklistView(prev => !prev)}
-              aria-pressed={checklistView}
-              title={checklistView ? "편집으로 돌아가기" : "체크리스트로 보기 (눌러서 체크)"}
-              aria-label="체크리스트로 보기"
-            >
-              {checklistView ? "✎" : "✓"}
-            </button>
-
             <button
               type="button"
               className={`memo-icon-btn ${activeMemo.linkedDate ? "active" : ""}`}
@@ -491,6 +587,7 @@ export const MemoBoard: React.FC<MemoBoardProps> = ({
             </button>
           </div>
         </div>
+        )}
       </div>
 
       <Toast toast={toast} onDismiss={dismissToast} />

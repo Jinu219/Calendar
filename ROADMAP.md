@@ -17,7 +17,7 @@
 | ICS/webcal 구독(읽기 전용, 6시간마다 갱신) | `icsUtils.ts`, `useCalendarFeeds.ts`, `FeedSettings.tsx` |
 | 밤(다크)·고대비 테마 | `constants`, `App.css` |
 | 통계(주간 완료율, 30일, 반복 습관 연속 기록) | `statsUtils.ts`, `StatsModal.tsx` |
-| 메모 체크리스트(☑ 줄 추가·눌러서 체크), 메모 날짜 연결(달력 📝·패널 표시) | `MemoBoard.tsx` |
+| 메모 체크리스트(☑ 줄 추가·눌러서 체크, 11월 메모 서식에서 보기 화면으로 통합), 메모 날짜 연결(달력 📝·패널 표시) | `MemoBoard.tsx` |
 | 하위 체크리스트 | `EventForm`, `TodoPanel` |
 | 코드 정리: `useSelection`·`useRecurrenceScopePrompt` 분리, 모니터·배율 인식 창 배치, 메모창 `alert()` → 토스트, 음력표 2035년까지 | `hooks/`, `utils/windowPlacement.ts` |
 
@@ -60,6 +60,15 @@
 | 트레이 아이콘이 두 개 뜨던 문제(설정의 `trayIcon`과 코드가 각각 만듦) | `tauri.conf.json` |
 | 새 앱 아이콘(파스텔 라인): 원본 SVG에서 크기별로 다시 만듦, 16px에서도 보이는 굵은 선·투명 모서리 | `src-tauri/icons/app-icon.svg`, `public/calendar-icon.svg` |
 | 메모창에서 글자가 빠지거나 늦게 한꺼번에 나오던 문제(달력 창이 메모 저장을 옛 값으로 되저장) | `useMemos.ts` |
+
+### 메모 서식 (2026-11)
+
+| 항목 | 구현 위치 |
+|---|---|
+| 제목(#·##·###), 글머리(-·+, 들여쓰면 ◦▪), 번호, 체크, 굵게·기울임·취소선 — 평소엔 꾸며 보여 주고 누르면 원문 편집 | `memoFormat.ts`, `MemoRichView.tsx`, `MemoBoard.tsx` |
+| 편집 중 서식 버튼(H·B·I·S·•·☑·완료), Ctrl+B / Ctrl+I / Ctrl+Shift+S / Ctrl+1~3, Tab·Shift+Tab 들여쓰기, Esc 편집 끝 | `MemoBoard.tsx` |
+| 목록에서 Enter → 다음 항목 자동, 빈 항목에서 Enter → 한 단계 밖으로·목록 끝, Ctrl+Z 유지 | `continueList`, `execCommand("insertText")` |
+| 할 일 패널의 메모 미리보기에서 서식 표시 빼기 | `memoPreviewText` |
 
 ### Notion 내보내기 (2026-11)
 
